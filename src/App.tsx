@@ -18,7 +18,7 @@ type RouteName = 'home' | 'task' | 'record' | 'report' | 'progress' | 'schoolOve
 type Route = { name: RouteName; taskId?: string };
 type Action = { label: string; hash?: string; tone: 'primary' | 'secondary'; toast?: string; onClick?: () => void; disabled?: boolean };
 
-const filters = ['全部', '待反馈', '逾期', '待心理老师确认', '跟进中', '已闭环'];
+const filters = ['全部', '待观察反馈', '已反馈待确认', '跟进中', '持续关注', '复测待安排', '转介中', '已闭环', '逾期未更新'];
 
 const statusTone: Record<StatusKey, string> = {
   waitingFeedback: 'pending',
@@ -72,60 +72,84 @@ export function App() {
           by: role.teacherName ?? '班主任',
           role: '班主任',
           time: now,
-          text: '已提交本次观察反馈：学生今日课堂回应稳定，建议心理老师确认下一步处置。',
-          tag: '待心理老师确认',
+          text: '观察时间段：今天上午；观察场景：课堂与课间；异常表现：课堂回应较少，课间多独处；发生频率：近两天偶发；影响程度：轻度影响课堂参与；已采取措施：完成一次低压力关心；事实描述：能回应简单询问，暂未发现冲突升级；需要心理老师尽快查看：是。',
+          tag: '已反馈待确认',
         };
         const timeline: HandlingTimelineItem = {
           id: `feedback-${Date.now()}`,
           time: now,
           role: '班主任',
           action: '班主任提交观察反馈',
-          status: '待心理老师确认',
-          note: '协作反馈已提交，任务状态同步更新为待心理老师确认。',
+          status: '已反馈待确认',
+          note: '班主任提交事实观察反馈，当前内容仅作为协作线索，等待心理老师确认。',
           audience: ['all'],
         };
         return {
           ...item,
-          status: '待心理老师确认',
+          status: '已反馈待确认',
           statusKey: 'pendingCounselorConfirm',
-          nextAction: '等待心理老师确认',
+          nextAction: '查看已提交反馈',
           records: [...item.records, record],
           timeline: [...item.timeline, timeline],
         };
       }),
     );
-    showToast('跟进记录已提交，等待心理老师确认');
+    showToast('已提交给心理老师。当前内容仅作为观察线索，后续由心理老师结合访谈、测评和既有记录进行专业判断。');
     navigate(`#/task/${taskId}`);
   };
 
-  const confirmFeedback = (taskId: string) => {
+  const applyCounselorAction = (
+    taskId: string,
+    action: string,
+    status: string,
+    statusKey: StatusKey,
+    result: WarningTask['result'],
+    nextAction: string,
+    note: string,
+  ) => {
     setWarningTasks((current) =>
       current.map((item) => {
         if (item.id !== taskId) return item;
-        const nextStatus = item.attention === '重点关注' ? '持续关注' : '跟进中';
-        const nextStatusKey: StatusKey = item.attention === '重点关注' ? 'continuousAttention' : 'active';
         const timeline: HandlingTimelineItem = {
-          id: `confirm-${Date.now()}`,
+          id: `counselor-${Date.now()}`,
           time: '刚刚',
           role: '心理老师',
-          action: '心理老师确认反馈',
-          status: nextStatus,
-          note: item.attention === '重点关注' ? '确认反馈后进入持续关注，并准备后续干预计划。' : '确认反馈后继续跟进观察。',
+          action,
+          status,
+          note,
           audience: ['all'],
         };
         return {
           ...item,
-          status: nextStatus,
-          statusKey: nextStatusKey,
-          result: item.attention === '重点关注' ? '持续关注' : '持续关注',
-          nextAction: item.attention === '重点关注' ? '查看关注计划' : '查看进度',
+          status,
+          statusKey,
+          result,
+          nextAction,
           timeline: [...item.timeline, timeline],
-          records: item.records.map((record) => (record.tag === '待心理老师确认' ? { ...record, tag: '心理老师已确认' } : record)),
+          records: item.records.map((record) => (record.tag === '已反馈待确认' ? { ...record, tag: '心理老师已确认' } : record)),
         };
       }),
     );
-    showToast('心理老师已确认反馈，任务进入后续处置');
+    showToast(`${action}已记录，处置状态已同步更新`);
   };
+
+  const confirmFeedback = (taskId: string) =>
+    applyCounselorAction(taskId, '确认进入干预', '跟进中', 'active', '持续关注', '查看处置进度', '确认班主任反馈后进入干预跟进，由心理老师继续判断后续处置。');
+
+  const returnForSupplement = (taskId: string) =>
+    applyCounselorAction(taskId, '退回补充信息', '待观察反馈', 'waitingFeedback', '持续关注', '补充观察反馈', '反馈信息不足，退回班主任补充事实观察，不形成专业结论。');
+
+  const arrangeRetest = (taskId: string) =>
+    applyCounselorAction(taskId, '安排复测', '复测待安排', 'retestPending', '复测待安排', '查看复测计划', '结合反馈和既有记录，安排下一次复测计划。');
+
+  const continueAttention = (taskId: string) =>
+    applyCounselorAction(taskId, '持续关注', '持续关注', 'continuousAttention', '持续关注', '查看关注计划', '确认继续保持持续关注，并制定后续观察与沟通节奏。');
+
+  const suggestReferral = (taskId: string) =>
+    applyCounselorAction(taskId, '转介建议', '转介中', 'referral', '转介中', '查看转介进度', '建议启动专业资源转介流程，转介细节按权限展示。');
+
+  const closeAttention = (taskId: string) =>
+    applyCounselorAction(taskId, '解除关注', '已闭环', 'closed', '已闭环', '查看闭环详情', '确认本轮关注解除，流程进入闭环留痕。');
 
   const guardedRoute = role.id === 'principal' ? { name: 'schoolOverview' as const } : route;
 
@@ -143,11 +167,23 @@ export function App() {
           showToast={showToast}
         />
       )}
-      {guardedRoute.name === 'task' && <TaskDetail role={role} task={task} onConfirmFeedback={confirmFeedback} showToast={showToast} />}
+      {guardedRoute.name === 'task' && (
+        <TaskDetail
+          role={role}
+          task={task}
+          onConfirmFeedback={confirmFeedback}
+          onReturnForSupplement={returnForSupplement}
+          onArrangeRetest={arrangeRetest}
+          onContinueAttention={continueAttention}
+          onSuggestReferral={suggestReferral}
+          onCloseAttention={closeAttention}
+          showToast={showToast}
+        />
+      )}
       {guardedRoute.name === 'record' && <FollowUpRecord task={task} role={role} onSubmit={submitFollowUp} showToast={showToast} />}
       {guardedRoute.name === 'report' && <ClueReport role={role} tasks={visibleTasksForRole(warningTasks, role)} showToast={showToast} />}
       {guardedRoute.name === 'progress' && <ProgressDetail task={task} role={role} onConfirmFeedback={confirmFeedback} showToast={showToast} />}
-      {guardedRoute.name === 'schoolOverview' && <SchoolOverview role={role} roleId={roleId} setRoleId={changeRole} />}
+      {guardedRoute.name === 'schoolOverview' && <SchoolOverview role={role} roleId={roleId} setRoleId={changeRole} showToast={showToast} />}
     </MobileShell>
   );
 }
@@ -186,7 +222,7 @@ function MobileShell({
         </button>
         <div>
           <p className="eyebrow">{role.org}</p>
-          <h1>{routeTitle(route.name)}</h1>
+          <h1>{routeTitle(route.name, role)}</h1>
         </div>
         {canReport ? (
           <button className="icon-button" onClick={() => navigate('#/report')} aria-label="上报线索">
@@ -202,11 +238,21 @@ function MobileShell({
   );
 }
 
-function routeTitle(routeName: RouteName) {
+function routeTitle(routeName: RouteName, role: Role) {
+  if (routeName === 'home') {
+    if (role.id === 'homeroomTeacher') return '我的观察任务';
+    if (role.id === 'gradeDirector') return '年级督办';
+    if (role.id === 'counselor') return '线索复核';
+  }
+  if (routeName === 'task') {
+    if (role.id === 'counselor') return '反馈确认详情';
+    if (role.id === 'homeroomTeacher') return '观察任务详情';
+    if (role.id === 'gradeDirector') return '督办详情';
+  }
   const titles: Record<RouteName, string> = {
     home: '预警协同',
-    task: '预警任务',
-    record: '跟进记录',
+    task: '任务详情',
+    record: '填写观察反馈',
     report: '协作线索',
     progress: '处置进度',
     schoolOverview: '校级全局视角',
@@ -237,9 +283,9 @@ function Dashboard({
   const visibleTasks = filter === '全部' ? scopedTasks : scopedTasks.filter((task) => task.status === filter);
   const stats = useMemo(
     () => [
-      ['待反馈', scopedTasks.filter((task) => task.statusKey === 'waitingFeedback').length],
-      ['逾期', scopedTasks.filter((task) => task.statusKey === 'overdue').length],
-      ['待确认', scopedTasks.filter((task) => task.statusKey === 'pendingCounselorConfirm').length],
+      ['待观察反馈', scopedTasks.filter((task) => task.statusKey === 'waitingFeedback').length],
+      ['逾期未更新', scopedTasks.filter((task) => task.statusKey === 'overdue').length],
+      ['已反馈待确认', scopedTasks.filter((task) => task.statusKey === 'pendingCounselorConfirm').length],
       ['已闭环', scopedTasks.filter((task) => task.statusKey === 'closed').length],
     ],
     [scopedTasks],
@@ -251,7 +297,7 @@ function Dashboard({
       <section className="hero-panel">
         <div>
           <p className="eyebrow">正式预警后的协作跟进</p>
-          <h2>今日有 {openTasks} 项需要关注</h2>
+          <h2>{dashboardTitle(role, openTasks)}</h2>
           <p>{role.scope}</p>
         </div>
         <RoleSwitcher roleId={roleId} setRoleId={setRoleId} />
@@ -262,7 +308,7 @@ function Dashboard({
 
       <section className="stats-grid" aria-label="任务概览">
         {stats.map(([label, value]) => (
-          <button className="stat-card" key={label} onClick={() => setFilter(label === '待确认' ? '待心理老师确认' : String(label))}>
+          <button className="stat-card" key={label} onClick={() => setFilter(String(label))}>
             <strong>{value}</strong>
             <span>{label}</span>
           </button>
@@ -283,7 +329,24 @@ function Dashboard({
   );
 }
 
-function SchoolOverview({ role, roleId, setRoleId }: { role: Role; roleId: RoleId; setRoleId: (roleId: RoleId) => void }) {
+function dashboardTitle(role: Role, openTasks: number) {
+  if (role.id === 'homeroomTeacher') return `有 ${openTasks} 项观察任务待处理`;
+  if (role.id === 'gradeDirector') return `本年级有 ${openTasks} 项需督办`;
+  if (role.id === 'counselor') return `有 ${openTasks} 项反馈或线索需复核`;
+  return `今日有 ${openTasks} 项需要关注`;
+}
+
+function SchoolOverview({
+  role,
+  roleId,
+  setRoleId,
+  showToast,
+}: {
+  role: Role;
+  roleId: RoleId;
+  setRoleId: (roleId: RoleId) => void;
+  showToast: (message: string) => void;
+}) {
   const cards = [
     ['本周新增正式预警', schoolOverview.weekNewWarnings],
     ['当前跟进中', schoolOverview.activeCount],
@@ -346,9 +409,32 @@ function SchoolOverview({ role, roleId, setRoleId }: { role: Role; roleId: RoleI
         </div>
       </InfoSection>
 
+      <InfoSection title="需校级关注事项">
+        <div className="attention-list">
+          {schoolOverview.attentionItems.map((item) => (
+            <button className="attention-item" key={`${item.grade}-${item.issue}`} onClick={() => showToast('已打开脱敏事项说明')}>
+              <strong>{item.grade}</strong>
+              <span>{item.issue}</span>
+              <small>{item.suggestion}</small>
+            </button>
+          ))}
+        </div>
+        <div className="card-actions">
+          <button className="primary-btn" onClick={() => showToast('已模拟发起流程督办')}>
+            发起流程督办
+          </button>
+          <button className="secondary-btn" onClick={() => showToast('已模拟提醒年级负责人')}>
+            提醒年级负责人
+          </button>
+        </div>
+        <button className="text-link" onClick={() => showToast('资源压力说明：仅展示聚合排队和教师负荷，不展示个体学生信息。')}>
+          查看资源压力说明
+        </button>
+      </InfoSection>
+
       <aside className="permission-notice">
         <strong>隐私边界</strong>
-        <p>校级视角仅展示聚合处置状态，用于资源调配与流程督办；不展示学生测评原文、咨询记录、敏感题项和 AI 原始判断。</p>
+        <p>校级视角仅展示聚合处置状态与脱敏事项，用于资源调配与流程督办；不展示学生姓名、班级、测评原文、咨询记录、敏感题项和 AI 原始判断。</p>
       </aside>
     </section>
   );
@@ -378,7 +464,8 @@ function TaskCard({
   showToast: (message: string) => void;
 }) {
   const action = taskPrimaryAction(task, role);
-  const displayName = role.id === 'gradeDirector' ? task.maskedStudent : task.student;
+  const displayName = role.id === 'gradeDirector' ? `${task.className} · 脱敏事项` : task.student;
+  const summaryLabel = role.id === 'gradeDirector' ? '查看督办详情' : role.id === 'homeroomTeacher' ? '查看观察任务' : '查看复核详情';
 
   return (
     <article className="task-card">
@@ -389,7 +476,7 @@ function TaskCard({
             <AttentionLevelTag level={task.attention} />
           </div>
           <p>
-            {task.className} · {task.type}
+            {role.id === 'homeroomTeacher' ? '观察任务' : role.id === 'gradeDirector' ? '本年级协作进度' : task.type}
           </p>
         </div>
         <StatusBadge task={task} />
@@ -397,7 +484,7 @@ function TaskCard({
       <dl className="meta-grid">
         <div>
           <dt>责任人</dt>
-          <dd>{task.owner}</dd>
+          <dd>{role.id === 'counselor' ? `${task.owner} / ${task.counselor}` : task.owner}</dd>
         </div>
         <div>
           <dt>截止</dt>
@@ -407,7 +494,7 @@ function TaskCard({
       <p className="next-action">{task.nextAction}</p>
       <div className="card-actions">
         <button className="secondary-btn" onClick={() => navigate(`#/task/${task.id}`)}>
-          查看摘要
+          {summaryLabel}
         </button>
         <button
           className="primary-btn"
@@ -427,19 +514,158 @@ function TaskDetail({
   role,
   task,
   onConfirmFeedback,
+  onReturnForSupplement,
+  onArrangeRetest,
+  onContinueAttention,
+  onSuggestReferral,
+  onCloseAttention,
   showToast,
 }: {
   role: Role;
   task: WarningTask;
   onConfirmFeedback: (taskId: string) => void;
+  onReturnForSupplement: (taskId: string) => void;
+  onArrangeRetest: (taskId: string) => void;
+  onContinueAttention: (taskId: string) => void;
+  onSuggestReferral: (taskId: string) => void;
+  onCloseAttention: (taskId: string) => void;
   showToast: (message: string) => void;
 }) {
   const permissions = rolePermissions[role.id];
-  const directorView = role.id === 'gradeDirector';
-  const displayName = directorView ? task.maskedStudent : task.student;
 
   if (!permissions.canEnterStudentDetail) {
     return <PrincipalDetailGuard />;
+  }
+
+  if (role.id === 'counselor') {
+    return (
+      <>
+        <section className="content with-bottom-bar">
+          <section className="detail-head">
+            <div>
+              <p className="eyebrow">反馈确认详情</p>
+              <h2>
+                {task.student} · {task.className}
+              </h2>
+              <p>
+                状态：{task.status} · 当前结果：{task.result}
+              </p>
+            </div>
+            <StatusBadge task={task} />
+          </section>
+
+          <InfoSection title="学生基础信息">
+            <div className="info-list">
+              <div>
+                <span>关注等级</span>
+                <strong>{task.attention}</strong>
+              </div>
+              <div>
+                <span>责任班主任</span>
+                <strong>{task.owner}</strong>
+              </div>
+              <div>
+                <span>正式预警来源</span>
+                <strong>{task.source}</strong>
+              </div>
+            </div>
+          </InfoSection>
+
+          <InfoSection title="班主任已提交反馈">
+            {task.records.length ? task.records.map((record) => <SubmittedRecord key={`${record.by}-${record.time}-${record.tag}`} record={record} />) : <p className="muted-text">暂无班主任反馈，需等待观察任务提交。</p>}
+          </InfoSection>
+
+          <InfoSection title="异常观察要点">
+            <ChipList items={task.focus} />
+            <p>{task.suggestion}</p>
+          </InfoSection>
+
+          <InfoSection title="历史处置记录">
+            <Timeline task={task} role={role} />
+          </InfoSection>
+
+          <InfoSection title="专业判断边界" className="warning-box">
+            <p>当前内容来自班主任观察反馈，仅作为协作线索。是否进入干预流程，需由心理老师结合访谈、测评和既有记录判断。</p>
+          </InfoSection>
+
+          <InfoSection title="处置进度">
+            <p>处置进度作为次级入口，用于查看完整闭环时间线，不替代本页的反馈确认操作。</p>
+            <button className="text-link" onClick={() => (window.location.hash = `#/task/${task.id}/progress`)}>
+              查看处置进度
+            </button>
+          </InfoSection>
+        </section>
+        <BottomActionBar
+          actions={counselorReviewActions(task, onConfirmFeedback, onReturnForSupplement, onArrangeRetest, onContinueAttention, onSuggestReferral, onCloseAttention)}
+          showToast={showToast}
+        />
+      </>
+    );
+  }
+
+  if (role.id === 'gradeDirector') {
+    return (
+      <>
+        <section className="content with-bottom-bar">
+          <section className="detail-head">
+            <div>
+              <p className="eyebrow">本年级协作进度</p>
+              <h2>{task.className} · 脱敏督办事项</h2>
+              <p>
+                状态：{task.status} · 截止：{task.deadline}
+              </p>
+            </div>
+            <StatusBadge task={task} />
+          </section>
+
+          <PermissionNotice role={role} />
+
+          <InfoSection title="督办摘要">
+            <div className="info-list">
+              <div>
+                <span>责任班主任</span>
+                <strong>{task.owner}</strong>
+              </div>
+              <div>
+                <span>所在班级</span>
+                <strong>{task.className}</strong>
+              </div>
+              <div>
+                <span>下一步</span>
+                <strong>{task.statusKey === 'pendingCounselorConfirm' ? '等待心理老师专业确认' : task.nextAction}</strong>
+              </div>
+              <div>
+                <span>逾期情况</span>
+                <strong>{task.overdueHours ? `已超过 ${task.overdueHours} 小时` : '未逾期'}</strong>
+              </div>
+            </div>
+          </InfoSection>
+
+          <InfoSection title="脱敏流程状态">
+            <p>{task.desensitizedFlow}</p>
+            <p className="privacy-line">本页不展示学生姓名、AI 原始判断、敏感题项、咨询记录和完整干预细节。</p>
+          </InfoSection>
+
+          <InfoSection title="可督办事项">
+            <div className="todo-list">
+              <div>
+                <span>待观察反馈 / 逾期未更新</span>
+                <strong>提醒班主任反馈</strong>
+              </div>
+              <div>
+                <span>信息不足</span>
+                <strong>提醒补充信息</strong>
+              </div>
+              <div>
+                <span>专业判断</span>
+                <strong>仅查看状态，不直接督促心理老师</strong>
+              </div>
+            </div>
+          </InfoSection>
+        </section>
+        <BottomActionBar actions={detailActions(task, role, onConfirmFeedback, showToast)} showToast={showToast} />
+      </>
+    );
   }
 
   return (
@@ -447,12 +673,12 @@ function TaskDetail({
       <section className="content with-bottom-bar">
         <section className="detail-head">
           <div>
-            <AttentionLevelTag level={task.attention} />
+            <p className="eyebrow">观察任务详情</p>
             <h2>
-              {displayName} · {task.className}
+              {task.student} · {task.className}
             </h2>
             <p>
-              状态：{task.status} · 当前结果：{task.result}
+              状态：{task.status} · 截止：{task.deadline}
             </p>
           </div>
           <StatusBadge task={task} />
@@ -460,48 +686,23 @@ function TaskDetail({
 
         <PermissionNotice role={role} />
 
-        <InfoSection title="正式预警边界">
-          <p>{permissions.canViewAiClueSummary ? task.aiClueSummary : task.desensitizedFlow}</p>
+        <InfoSection title="协作任务边界">
+          <p>{task.desensitizedFlow}</p>
           <p className="privacy-line">{task.restricted}</p>
         </InfoSection>
 
-        <InfoSection title={directorView ? '本年级脱敏进度' : '协作要求'}>
-          {directorView ? (
-            <div className="info-list">
-              <div>
-                <span>责任班主任</span>
-                <strong>{task.owner}</strong>
-              </div>
-              <div>
-                <span>心理老师</span>
-                <strong>{task.counselor}</strong>
-              </div>
-              <div>
-                <span>下一步</span>
-                <strong>{task.nextAction}</strong>
-              </div>
-            </div>
-          ) : (
-            <>
-              <ChipList items={task.focus} />
-              <p>{task.suggestion}</p>
-              <div className="warning-box">请勿在班级群、公开场合讨论学生心理状态。当前信息不是诊断结论。</div>
-            </>
-          )}
+        <InfoSection title="观察重点">
+          <ChipList items={task.focus} />
+          <p>{task.suggestion}</p>
+          <div className="warning-box">请记录可观察事实，避免填写风险等级、干预结论、心理状态判断、是否转介或是否解除关注。</div>
         </InfoSection>
 
-        {permissions.canViewInterventionDetail && (
-          <InfoSection title="心理老师处置视角">
-            <p>可查看正式预警摘要、协作反馈、干预进度，并确认反馈后推进复测、持续关注、解除关注或转介。</p>
-          </InfoSection>
-        )}
-
-        <InfoSection title="处置时间线">
+        <InfoSection title="协作流程">
           <Timeline task={task} role={role} />
         </InfoSection>
 
         <InfoSection title="已提交反馈">
-          {task.records.length ? task.records.map((record) => <SubmittedRecord key={`${record.by}-${record.time}-${record.tag}`} record={record} />) : <p className="muted-text">暂无跟进记录，等待责任人提交首次反馈。</p>}
+          {task.records.length ? task.records.map((record) => <SubmittedRecord key={`${record.by}-${record.time}-${record.tag}`} record={record} />) : <p className="muted-text">暂无观察反馈，等待责任人提交首次反馈。</p>}
         </InfoSection>
       </section>
       <BottomActionBar actions={detailActions(task, role, onConfirmFeedback, showToast)} showToast={showToast} />
@@ -524,7 +725,7 @@ function FollowUpRecord({
   if (!canSubmit) {
     return (
       <section className="content">
-        <PermissionBlock title="当前角色或状态不可填写跟进记录" text="已闭环、待心理老师确认或非班主任角色不能继续提交普通跟进记录。" />
+        <PermissionBlock title="当前角色或状态不可填写观察反馈" text="已闭环、已反馈待确认或非班主任角色不能继续提交普通观察反馈。" />
       </section>
     );
   }
@@ -534,37 +735,56 @@ function FollowUpRecord({
       <section className="content with-bottom-bar">
         <section className="compact-summary">
           <div>
-            <p className="eyebrow">{task.type}</p>
+            <p className="eyebrow">观察任务</p>
             <h2>
               {task.student} · {task.className}
             </h2>
-            <p>提交后由 {task.counselor} 确认，本页不填写测评分数或敏感题项。</p>
+            <p>提交后由 {task.counselor} 确认，本页只记录事实观察，不填写专业判断或处置结论。</p>
           </div>
           <StatusBadge task={task} />
         </section>
 
         <section className="form-card">
-          <FormField label="跟进方式">
-            <SelectableChips items={['日常观察', '简短沟通', '家校沟通', '面谈', '其他']} defaults={['日常观察']} />
+          <FormField label="观察时间段">
+            <input defaultValue="今天上午 08:00-12:00" />
           </FormField>
-          <FormField label="观察标签">
-            <SelectableChips items={['情绪状态', '出勤变化', '同伴关系', '课堂表现', '家庭沟通', '其他']} defaults={['情绪状态', '出勤变化']} />
+          <FormField label="观察场景">
+            <SelectableChips items={['课堂', '课间', '午休', '放学后', '家校沟通', '其他']} defaults={['课堂', '课间']} />
           </FormField>
-          <FormField label="记录正文">
-            <textarea defaultValue="今天上午课堂状态较安静，课后能回应简单关心，未发现明显冲突。" placeholder="请描述你观察到的具体变化，避免主观判断和标签化表达。" />
+          <FormField label="异常表现">
+            <SelectableChips items={['课堂回应减少', '出勤变化', '同伴互动减少', '情绪波动', '独处增多', '暂未发现明显异常']} defaults={['课堂回应减少', '独处增多']} />
           </FormField>
-          <FormField label="是否发现新风险">
+          <FormField label="发生频率">
+            <select defaultValue="近两天偶发">
+              <option>单次出现</option>
+              <option>近两天偶发</option>
+              <option>连续多日出现</option>
+              <option>频率暂不明确</option>
+            </select>
+          </FormField>
+          <FormField label="影响程度">
+            <select defaultValue="轻度影响课堂参与">
+              <option>暂未影响日常学习</option>
+              <option>轻度影响课堂参与</option>
+              <option>影响出勤或同伴互动</option>
+              <option>需要心理老师尽快查看</option>
+            </select>
+          </FormField>
+          <FormField label="已采取措施">
+            <SelectableChips items={['日常关心', '简短沟通', '联系家长', '调整座位/任务', '暂未处理']} defaults={['日常关心']} />
+          </FormField>
+          <FormField label="事实描述">
+            <textarea defaultValue="今天上午课堂状态较安静，课间多独处；课后能回应简单关心，暂未发现明显冲突升级。" placeholder="请描述你观察到的具体事实，避免主观判断、标签化和诊断性表达。" />
+          </FormField>
+          <FormField label="是否需要心理老师尽快查看">
             <div className="option-list">
-              {['无', '有轻微变化', '需要心理老师介入', '紧急'].map((item, index) => (
+              {['是，建议尽快查看', '否，按常规节奏确认'].map((item, index) => (
                 <label key={item}>
-                  <input type="radio" name="risk" defaultChecked={index === 1} />
+                  <input type="radio" name="urgentReview" defaultChecked={index === 0} />
                   {item}
                 </label>
               ))}
             </div>
-          </FormField>
-          <FormField label="下一步建议">
-            <SelectableChips items={['继续观察', '转心理老师确认', '安排复测', '暂无']} defaults={['转心理老师确认']} />
           </FormField>
         </section>
 
@@ -731,10 +951,10 @@ function SegmentedControl({ items, active, onChange }: { items: string[]; active
 
 function PermissionNotice({ role }: { role: Role }) {
   const text: Record<RoleId, string> = {
-    counselor: '心理老师可查看正式预警摘要、协作记录、干预进度与闭环详情；专业档案仍以管理端沉淀为准。',
-    homeroomTeacher: '班主任仅查看分配给自己的协作任务，不展示原始测评结果、敏感题项和 AI 原始判断。',
-    gradeDirector: '年级主任仅查看本年级脱敏进度、逾期和待确认状态，不填写心理跟进记录。',
-    principal: '校级管理者仅查看全校聚合数据、闭环率、逾期风险和资源压力，不进入个体学生详情。',
+    counselor: '心理老师可查看完整反馈、历史处置记录、专业判断提示和处置时间线，并负责确认反馈、复测、持续关注、转介或解除关注。',
+    homeroomTeacher: '班主任仅查看自己被分配的观察任务，只提交事实观察；不展示 AI 原始判断、敏感题项、完整咨询记录，也不填写风险等级或干预结论。',
+    gradeDirector: '年级主任仅查看本年级脱敏进度和督办状态，可提醒班主任反馈或补充信息，不填写心理记录，不直接督促专业判断。',
+    principal: '校级管理者仅查看全校聚合数据和脱敏事项，可发起流程督办，不进入个体学生详情。',
   };
   return (
     <aside className="permission-notice">
@@ -937,39 +1157,59 @@ function visibleTimeline(task: WarningTask, role: Role) {
 
 function taskPrimaryAction(task: WarningTask, role: Role): Action {
   if (role.id === 'gradeDirector') {
-    if (task.statusKey === 'overdue') return { label: '督促处理', toast: '已模拟发送督办提醒', tone: 'primary' };
-    return { label: '查看进度', hash: `#/task/${task.id}/progress`, tone: 'primary' };
+    if (task.statusKey === 'overdue') return { label: '提醒班主任反馈', toast: '已模拟提醒班主任反馈', tone: 'primary' };
+    if (task.statusKey === 'pendingCounselorConfirm') return { label: '查看本年级进度', hash: `#/task/${task.id}`, tone: 'primary' };
+    return { label: '查看本年级进度', hash: `#/task/${task.id}`, tone: 'primary' };
   }
   if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
-    return { label: '待确认反馈', hash: `#/task/${task.id}`, tone: 'primary' };
+    return { label: '确认反馈', hash: `#/task/${task.id}`, tone: 'primary' };
   }
-  if (role.id === 'homeroomTeacher' && task.statusKey === 'waitingFeedback') return { label: '记录跟进', hash: `#/task/${task.id}/record`, tone: 'primary' };
+  if (role.id === 'homeroomTeacher' && task.statusKey === 'waitingFeedback') return { label: '填写观察反馈', hash: `#/task/${task.id}/record`, tone: 'primary' };
   if (role.id === 'homeroomTeacher' && task.statusKey === 'overdue') return { label: '尽快反馈', hash: `#/task/${task.id}/record`, tone: 'primary' };
   if (task.statusKey === 'pendingCounselorConfirm') return { label: '查看已提交反馈', hash: `#/task/${task.id}`, tone: 'primary' };
   if (task.statusKey === 'continuousAttention') return { label: '查看关注计划', hash: `#/task/${task.id}/progress`, tone: 'primary' };
   if (task.statusKey === 'retestPending') return { label: '查看复测计划', hash: `#/task/${task.id}/progress`, tone: 'primary' };
   if (task.statusKey === 'referral') return { label: '查看转介进度', hash: `#/task/${task.id}/progress`, tone: 'primary' };
   if (task.statusKey === 'closed') return { label: '查看闭环详情', hash: `#/task/${task.id}/progress`, tone: 'primary' };
-  return { label: '查看进度', hash: `#/task/${task.id}/progress`, tone: 'primary' };
+  return { label: task.statusKey === 'active' ? '查看处置进度' : '查看进度', hash: `#/task/${task.id}/progress`, tone: 'primary' };
+}
+
+function counselorReviewActions(
+  task: WarningTask,
+  onConfirmFeedback: (taskId: string) => void,
+  onReturnForSupplement: (taskId: string) => void,
+  onArrangeRetest: (taskId: string) => void,
+  onContinueAttention: (taskId: string) => void,
+  onSuggestReferral: (taskId: string) => void,
+  onCloseAttention: (taskId: string) => void,
+): Action[] {
+  return [
+    { label: '退回补充信息', tone: 'secondary', onClick: () => onReturnForSupplement(task.id), disabled: task.statusKey === 'closed' },
+    { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id), disabled: task.statusKey === 'closed' },
+    { label: '安排复测', tone: 'secondary', onClick: () => onArrangeRetest(task.id), disabled: task.statusKey === 'closed' },
+    { label: '持续关注', tone: 'secondary', onClick: () => onContinueAttention(task.id), disabled: task.statusKey === 'closed' },
+    { label: '转介建议', tone: 'secondary', onClick: () => onSuggestReferral(task.id), disabled: task.statusKey === 'closed' },
+    { label: '解除关注', tone: 'secondary', onClick: () => onCloseAttention(task.id), disabled: task.statusKey === 'closed' },
+  ];
 }
 
 function detailActions(task: WarningTask, role: Role, onConfirmFeedback: (taskId: string) => void, showToast: (message: string) => void): Action[] {
   if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
     return [
       { label: '查看进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
-      { label: '确认反馈', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
+      { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
     ];
   }
   if (role.id === 'gradeDirector') {
     return [
-      { label: '查看进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
-      { label: '督促责任人', tone: 'primary', onClick: () => showToast('已模拟发送督办提醒') },
+      { label: task.statusKey === 'pendingCounselorConfirm' ? '提醒补充信息' : '查看本年级进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
+      { label: task.statusKey === 'overdue' ? '提醒班主任反馈' : '提醒补充信息', tone: 'primary', onClick: () => showToast('已模拟发送年级督办提醒') },
     ];
   }
   if (role.id === 'homeroomTeacher' && ['waitingFeedback', 'overdue'].includes(task.statusKey)) {
     return [
       { label: '提交线索', hash: '#/report', tone: 'secondary' },
-      { label: task.statusKey === 'overdue' ? '尽快反馈' : '记录跟进', hash: `#/task/${task.id}/record`, tone: 'primary' },
+      { label: task.statusKey === 'overdue' ? '尽快反馈' : '填写观察反馈', hash: `#/task/${task.id}/record`, tone: 'primary' },
     ];
   }
   return [
@@ -982,13 +1222,13 @@ function progressActions(task: WarningTask, role: Role, onConfirmFeedback: (task
   if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
     return [
       { label: '返回详情', hash: `#/task/${task.id}`, tone: 'secondary' },
-      { label: '确认反馈', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
+      { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
     ];
   }
   if (role.id === 'gradeDirector') {
     return [
       { label: '返回详情', hash: `#/task/${task.id}`, tone: 'secondary' },
-      { label: '督促责任人', tone: 'primary', onClick: () => showToast('已模拟发送督办提醒') },
+      { label: '提醒班主任反馈', tone: 'primary', onClick: () => showToast('已模拟发送年级督办提醒') },
     ];
   }
   return [
