@@ -225,7 +225,7 @@ function MobileShell({
           <h1>{routeTitle(route.name, role)}</h1>
         </div>
         {canReport ? (
-          <button className="icon-button" onClick={() => navigate('#/report')} aria-label="上报线索">
+          <button className="icon-button" onClick={() => navigate('#/report')} aria-label={role.id === 'counselor' ? '新增专业记录' : '上报协作线索'}>
             +
           </button>
         ) : (
@@ -248,6 +248,15 @@ function routeTitle(routeName: RouteName, role: Role) {
     if (role.id === 'counselor') return '反馈确认详情';
     if (role.id === 'homeroomTeacher') return '观察任务详情';
     if (role.id === 'gradeDirector') return '督办详情';
+  }
+  if (routeName === 'report') {
+    if (role.id === 'counselor') return '新增专业记录';
+    if (role.id === 'homeroomTeacher') return '上报协作线索';
+  }
+  if (routeName === 'progress') {
+    if (role.id === 'counselor') return '完整处置时间线';
+    if (role.id === 'homeroomTeacher') return '我的反馈状态';
+    if (role.id === 'gradeDirector') return '本年级督办进度';
   }
   const titles: Record<RouteName, string> = {
     home: '预警协同',
@@ -473,7 +482,7 @@ function TaskCard({
         <div>
           <div className="title-row">
             <h3>{displayName}</h3>
-            <AttentionLevelTag level={task.attention} />
+            <AttentionLevelTag level={task.attention} roleId={role.id} />
           </div>
           <p>
             {role.id === 'homeroomTeacher' ? '观察任务' : role.id === 'gradeDirector' ? '本年级协作进度' : task.type}
@@ -810,19 +819,21 @@ function ClueReport({ role, tasks, showToast }: { role: Role; tasks: WarningTask
     );
   }
 
+  const counselorMode = role.id === 'counselor';
+
   return (
     <>
       <section className="content with-bottom-bar">
         <section className="compact-summary">
           <div>
-            <p className="eyebrow">线索回流</p>
-            <h2>上报协作线索</h2>
-            <p>用于补充学生近期状态，提交后将由心理老师确认。</p>
+            <p className="eyebrow">{counselorMode ? '专业记录' : '线索回流'}</p>
+            <h2>{counselorMode ? '新增专业记录' : '上报协作线索'}</h2>
+            <p>{counselorMode ? '用于记录心理老师的专业处置动作，班主任和年级主任不可填写。' : '用于补充学生近期状态，提交后将由心理老师确认。'}</p>
           </div>
         </section>
 
         <section className="form-card">
-          <FormField label="选择学生">
+          <FormField label={counselorMode ? '选择记录对象' : '选择学生'}>
             <select defaultValue={tasks[0] ? `${tasks[0].student} · ${tasks[0].className}` : ''}>
               {tasks.map((task) => (
                 <option key={task.id}>
@@ -837,14 +848,20 @@ function ClueReport({ role, tasks, showToast }: { role: Role; tasks: WarningTask
               <input defaultValue="课间 / 走廊" />
             </div>
           </FormField>
-          <FormField label="线索类型">
-            <SelectableChips items={['情绪异常', '行为变化', '人际冲突', '出勤异常', '家庭事件', '其他']} defaults={['行为变化']} />
+          <FormField label={counselorMode ? '记录类型' : '线索类型'}>
+            <SelectableChips
+              items={counselorMode ? ['反馈确认', '干预记录', '复测安排', '持续关注', '转介沟通', '解除关注'] : ['情绪异常', '行为变化', '人际冲突', '出勤异常', '家庭事件', '其他']}
+              defaults={counselorMode ? ['干预记录'] : ['行为变化']}
+            />
           </FormField>
-          <FormField label="紧急程度">
-            <SelectableChips items={['一般', '需要关注', '尽快确认', '紧急']} defaults={['需要关注']} className="urgency" />
+          <FormField label={counselorMode ? '处置阶段' : '紧急程度'}>
+            <SelectableChips items={counselorMode ? ['跟进中', '复测待安排', '持续关注', '转介中', '已闭环'] : ['一般', '需要关注', '尽快确认', '紧急']} defaults={counselorMode ? ['跟进中'] : ['需要关注']} className="urgency" />
           </FormField>
-          <FormField label="观察描述">
-            <textarea defaultValue="学生连续两天课间独处，今天主动回避同伴邀请，暂未发现冲突升级。" placeholder="请尽量记录可观察事实。" />
+          <FormField label={counselorMode ? '专业记录摘要' : '观察描述'}>
+            <textarea
+              defaultValue={counselorMode ? '已结合班主任反馈完成一次简短访谈，后续进入持续关注并安排复测。' : '学生连续两天课间独处，今天主动回避同伴邀请，暂未发现冲突升级。'}
+              placeholder={counselorMode ? '请记录专业处置摘要，完整档案仍以管理端为准。' : '请尽量记录可观察事实。'}
+            />
           </FormField>
           <FormField label="是否已与学生沟通">
             <div className="option-list">
@@ -864,8 +881,8 @@ function ClueReport({ role, tasks, showToast }: { role: Role; tasks: WarningTask
       </section>
       <BottomActionBar
         actions={[
-          { label: '保存草稿', tone: 'secondary', toast: '线索草稿已保存' },
-          { label: '提交线索', tone: 'primary', toast: '线索已提交给心理老师确认' },
+          { label: '保存草稿', tone: 'secondary', toast: counselorMode ? '专业记录草稿已保存' : '线索草稿已保存' },
+          { label: counselorMode ? '保存专业记录' : '提交线索', tone: 'primary', toast: counselorMode ? '专业记录已保存' : '线索已提交给心理老师确认' },
         ]}
         showToast={showToast}
       />
@@ -888,7 +905,7 @@ function ProgressDetail({
     return <PrincipalDetailGuard />;
   }
 
-  const displayName = role.id === 'gradeDirector' ? task.maskedStudent : task.student;
+  const displayName = role.id === 'gradeDirector' ? `${task.className} · 脱敏事项` : task.student;
 
   return (
     <>
@@ -898,8 +915,8 @@ function ProgressDetail({
             <p className="eyebrow">
               {displayName} · {task.className}
             </p>
-            <h2>当前处置结果：{task.result}</h2>
-            <p>从 AI 线索复核到协作反馈、干预确认、复测或转介的完整留痕。</p>
+            <h2>{progressHeading(task, role)}</h2>
+            <p>{progressDescription(role)}</p>
           </div>
         </section>
 
@@ -914,7 +931,7 @@ function ProgressDetail({
           </div>
         </InfoSection>
 
-        <InfoSection title="完整处置时间线">
+        <InfoSection title={progressTimelineTitle(role)}>
           <DetailedTimeline task={task} role={role} />
         </InfoSection>
 
@@ -935,6 +952,27 @@ function ProgressDetail({
       <BottomActionBar actions={progressActions(task, role, onConfirmFeedback, showToast)} showToast={showToast} />
     </>
   );
+}
+
+function progressHeading(task: WarningTask, role: Role) {
+  if (role.id === 'counselor') return `当前处置结果：${task.result}`;
+  if (role.id === 'homeroomTeacher') return `我的反馈状态：${task.status}`;
+  if (role.id === 'gradeDirector') return `本年级督办进度：${task.status}`;
+  return '处置进度';
+}
+
+function progressDescription(role: Role) {
+  if (role.id === 'counselor') return '从 AI 线索复核到协作反馈、干预确认、复测或转介的完整留痕。';
+  if (role.id === 'homeroomTeacher') return '仅展示本人协作反馈、心理老师确认状态和必要结果摘要。';
+  if (role.id === 'gradeDirector') return '仅展示本年级脱敏流程状态，用于判断是否需要督办。';
+  return '校级角色不进入个体处置进度页。';
+}
+
+function progressTimelineTitle(role: Role) {
+  if (role.id === 'counselor') return '完整处置时间线';
+  if (role.id === 'homeroomTeacher') return '我的反馈时间线';
+  if (role.id === 'gradeDirector') return '本年级脱敏时间线';
+  return '处置时间线';
 }
 
 function SegmentedControl({ items, active, onChange }: { items: string[]; active: string; onChange: (item: string) => void }) {
@@ -1076,9 +1114,14 @@ function StatusBadge({ task }: { task: WarningTask }) {
   return <span className={`status-badge ${statusTone[task.statusKey]}`}>{task.status}</span>;
 }
 
-function AttentionLevelTag({ level }: { level: AttentionLevel }) {
+function AttentionLevelTag({ level, roleId }: { level: AttentionLevel; roleId?: RoleId }) {
   const key = level === '重点关注' ? 'high' : level === '持续关注' ? 'medium' : 'low';
-  return <span className={`attention-tag ${key}`}>{level}</span>;
+  const teacherLabel: Record<AttentionLevel, string> = {
+    重点关注: '协作优先级：高',
+    持续关注: '协作优先级：中',
+    一般关注: '协作优先级：常规',
+  };
+  return <span className={`attention-tag ${key}`}>{roleId === 'homeroomTeacher' ? teacherLabel[level] : level}</span>;
 }
 
 function BottomActionBar({ actions, showToast }: { actions: Action[]; showToast?: (message: string) => void }) {
@@ -1183,13 +1226,29 @@ function counselorReviewActions(
   onSuggestReferral: (taskId: string) => void,
   onCloseAttention: (taskId: string) => void,
 ): Action[] {
+  if (task.statusKey === 'closed') {
+    return [
+      { label: '查看处置进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
+      { label: '已闭环', tone: 'primary', toast: '本轮流程已闭环', disabled: true },
+    ];
+  }
+  if (task.statusKey === 'pendingCounselorConfirm') {
+    return [
+      { label: '退回补充信息', tone: 'secondary', onClick: () => onReturnForSupplement(task.id) },
+      { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
+    ];
+  }
+  if (task.statusKey === 'waitingFeedback' || task.statusKey === 'overdue') {
+    return [
+      { label: '查看处置进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
+      { label: task.statusKey === 'overdue' ? '等待补充反馈' : '等待观察反馈', tone: 'primary', disabled: true },
+    ];
+  }
   return [
-    { label: '退回补充信息', tone: 'secondary', onClick: () => onReturnForSupplement(task.id), disabled: task.statusKey === 'closed' },
-    { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id), disabled: task.statusKey === 'closed' },
-    { label: '安排复测', tone: 'secondary', onClick: () => onArrangeRetest(task.id), disabled: task.statusKey === 'closed' },
-    { label: '持续关注', tone: 'secondary', onClick: () => onContinueAttention(task.id), disabled: task.statusKey === 'closed' },
-    { label: '转介建议', tone: 'secondary', onClick: () => onSuggestReferral(task.id), disabled: task.statusKey === 'closed' },
-    { label: '解除关注', tone: 'secondary', onClick: () => onCloseAttention(task.id), disabled: task.statusKey === 'closed' },
+    { label: '安排复测', tone: 'secondary', onClick: () => onArrangeRetest(task.id) },
+    { label: '持续关注', tone: 'secondary', onClick: () => onContinueAttention(task.id) },
+    { label: '转介建议', tone: 'secondary', onClick: () => onSuggestReferral(task.id) },
+    { label: '解除关注', tone: 'primary', onClick: () => onCloseAttention(task.id) },
   ];
 }
 
