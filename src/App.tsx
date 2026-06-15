@@ -16,7 +16,7 @@ import {
 
 type RouteName = 'home' | 'task' | 'record' | 'report' | 'progress' | 'schoolOverview';
 type Route = { name: RouteName; taskId?: string };
-type Action = { label: string; hash?: string; tone: 'primary' | 'secondary'; toast?: string; onClick?: () => void; disabled?: boolean };
+type Action = { label: string; hash?: string; tone: 'primary' | 'secondary'; toast?: string; onClick?: () => void; disabled?: boolean; hidden?: boolean };
 type HomeStatusDefinition = { label: string; match: (task: WarningTask) => boolean };
 
 const statusTone: Record<StatusKey, string> = {
@@ -33,9 +33,10 @@ const statusTone: Record<StatusKey, string> = {
 export function App() {
   const [roleId, setRoleId] = useState<RoleId>('homeroomTeacher');
   const [warningTasks, setWarningTasks] = useState<WarningTask[]>(initialTasks);
-  const [filter, setFilter] = useState('待我反馈');
+  const [filter, setFilter] = useState('待反馈');
   const [route, setRoute] = useState<Route>(getRoute());
   const [toast, setToast] = useState('');
+  const demoMode = isDemoMode();
 
   useEffect(() => {
     const handleHashChange = () => setRoute(getRoute());
@@ -134,10 +135,10 @@ export function App() {
   };
 
   const confirmFeedback = (taskId: string) =>
-    applyCounselorAction(taskId, '确认进入干预', '跟进中', 'active', '持续关注', '查看处置进度', '确认班主任反馈后进入干预跟进，由心理老师继续判断后续处置。');
+    applyCounselorAction(taskId, '确认进入干预', '跟进中', 'active', '持续关注', '已进入干预处理', '确认班主任反馈后进入干预跟进，由心理老师继续判断后续处置。');
 
   const returnForSupplement = (taskId: string) =>
-    applyCounselorAction(taskId, '退回补充信息', '待观察反馈', 'waitingFeedback', '持续关注', '补充观察反馈', '反馈信息不足，退回班主任补充事实观察，不形成专业结论。');
+    applyCounselorAction(taskId, '请班主任补充反馈', '需补充', 'waitingFeedback', '持续关注', '补充观察反馈', '反馈信息不足，请班主任补充事实观察，不形成专业结论。');
 
   const arrangeRetest = (taskId: string) =>
     applyCounselorAction(taskId, '安排复测', '复测待安排', 'retestPending', '复测待安排', '查看复测计划', '结合反馈和既有记录，安排下一次复测计划。');
@@ -163,6 +164,7 @@ export function App() {
           filter={filter}
           setFilter={setFilter}
           setRoleId={changeRole}
+          demoMode={demoMode}
           navigate={navigate}
           showToast={showToast}
         />
@@ -183,7 +185,7 @@ export function App() {
       {guardedRoute.name === 'record' && <FollowUpRecord task={task} role={role} onSubmit={submitFollowUp} showToast={showToast} />}
       {guardedRoute.name === 'report' && <ClueReport role={role} tasks={visibleTasksForRole(warningTasks, role)} showToast={showToast} />}
       {guardedRoute.name === 'progress' && <ProgressDetail task={task} role={role} onConfirmFeedback={confirmFeedback} showToast={showToast} />}
-      {guardedRoute.name === 'schoolOverview' && <SchoolOverview role={role} roleId={roleId} setRoleId={changeRole} showToast={showToast} />}
+      {guardedRoute.name === 'schoolOverview' && <SchoolOverview role={role} roleId={roleId} setRoleId={changeRole} demoMode={demoMode} showToast={showToast} />}
     </MobileShell>
   );
 }
@@ -197,6 +199,11 @@ function getRoute(): Route {
   if (parts[0] === 'task') return { name: 'task', taskId: parts[1] };
   if (parts[0] === 'report') return { name: 'report' };
   return { name: 'home' };
+}
+
+function isDemoMode() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('demo') === '1' || window.localStorage.getItem('demoMode') === '1';
 }
 
 function MobileShell({
@@ -277,6 +284,7 @@ function Dashboard({
   filter,
   setFilter,
   setRoleId,
+  demoMode,
   navigate,
   showToast,
 }: {
@@ -286,6 +294,7 @@ function Dashboard({
   filter: string;
   setFilter: (filter: string) => void;
   setRoleId: (roleId: RoleId) => void;
+  demoMode: boolean;
   navigate: (hash: string) => void;
   showToast: (message: string) => void;
 }) {
@@ -306,7 +315,7 @@ function Dashboard({
           <h2>{dashboardTitle(role, openTasks)}</h2>
           <p>{role.scope}</p>
         </div>
-        <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} />
+        <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} demoMode={demoMode} />
       </section>
 
       {role.id === 'counselor' && counselorOverdueCount > 0 && (
@@ -350,11 +359,13 @@ function SchoolOverview({
   role,
   roleId,
   setRoleId,
+  demoMode,
   showToast,
 }: {
   role: Role;
   roleId: RoleId;
   setRoleId: (roleId: RoleId) => void;
+  demoMode: boolean;
   showToast: (message: string) => void;
 }) {
   const cards = [
@@ -372,7 +383,7 @@ function SchoolOverview({
           <h2>先处理最需要推进的事项</h2>
           <p>只展示脱敏督办信息，用于判断是否需要协调年级负责人或心理负责人。</p>
         </div>
-        <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} />
+        <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} demoMode={demoMode} />
       </section>
 
       <section className="overview-grid">
@@ -387,7 +398,7 @@ function SchoolOverview({
       <InfoSection title="需立即关注">
         <div className="principal-alert-list">
           {schoolOverview.attentionItems.map((item) => (
-            <button className="principal-alert-item" key={`${item.subject}-${item.issue}`} onClick={() => showToast('已打开脱敏事项说明')}>
+            <article className="principal-alert-item" key={`${item.subject}-${item.issue}`}>
               <div>
                 <strong>{item.subject}</strong>
                 <span>{item.riskLevel}</span>
@@ -403,21 +414,10 @@ function SchoolOverview({
                   <dd>{item.notified}</dd>
                 </div>
               </dl>
-              <small>{item.suggestion}</small>
-            </button>
+              <button className="primary-btn" onClick={() => showToast(`已模拟${item.actionLabel}`)}>{item.actionLabel}</button>
+            </article>
           ))}
         </div>
-        <div className="card-actions">
-          <button className="primary-btn" onClick={() => showToast('已模拟发起流程督办')}>
-            发起流程督办
-          </button>
-          <button className="secondary-btn" onClick={() => showToast('已模拟提醒年级负责人')}>
-            提醒年级负责人
-          </button>
-        </div>
-        <button className="text-link" onClick={() => showToast('资源压力说明：仅展示聚合排队和教师负荷，不展示个体学生信息。')}>
-          查看资源压力说明
-        </button>
       </InfoSection>
 
       <details className="secondary-analysis">
@@ -455,6 +455,9 @@ function SchoolOverview({
             <MetricLine label="转介中任务" value={`${schoolOverview.referralCount} 项`} />
           </div>
         </InfoSection>
+        <button className="text-link" onClick={() => showToast('资源压力说明：仅展示聚合排队和教师负荷，不展示个体学生信息。')}>
+          查看资源压力说明
+        </button>
       </details>
 
       <aside className="permission-notice">
@@ -477,7 +480,8 @@ function RoleSwitcher({ roleId, setRoleId }: { roleId: RoleId; setRoleId: (roleI
   );
 }
 
-function DemoRoleEntry({ roleId, setRoleId }: { roleId: RoleId; setRoleId: (roleId: RoleId) => void }) {
+function DemoRoleEntry({ roleId, setRoleId, demoMode }: { roleId: RoleId; setRoleId: (roleId: RoleId) => void; demoMode: boolean }) {
+  if (!demoMode) return null;
   return (
     <details className="demo-role-entry">
       <summary>演示入口</summary>
@@ -499,7 +503,8 @@ function TaskCard({
 }) {
   const action = taskPrimaryAction(task, role);
   const displayName = role.id === 'gradeDirector' ? `${task.className} · 脱敏事项` : task.student;
-  const summaryLabel = role.id === 'gradeDirector' ? '查看督办详情' : role.id === 'homeroomTeacher' ? '查看观察任务' : '查看复核详情';
+  const summaryLabel = role.id === 'gradeDirector' ? '查看督办详情' : role.id === 'homeroomTeacher' ? '查看任务' : '查看复核详情';
+  const compactCard = role.id === 'homeroomTeacher' || role.id === 'gradeDirector';
 
   return (
     <article className="task-card">
@@ -509,36 +514,46 @@ function TaskCard({
             <h3>{displayName}</h3>
             <AttentionLevelTag level={task.attention} roleId={role.id} />
           </div>
-          <p>
-            {role.id === 'homeroomTeacher' ? '观察任务' : role.id === 'gradeDirector' ? '本年级协作进度' : task.type}
-          </p>
+          {!compactCard && <p>{task.type}</p>}
         </div>
         <HomeStatusBadge task={task} role={role} />
       </div>
-      <dl className="meta-grid">
-        <div>
-          <dt>责任人</dt>
-          <dd>{role.id === 'counselor' ? `${task.owner} / ${task.counselor}` : task.owner}</dd>
-        </div>
+      <dl className={`meta-grid ${compactCard ? 'is-compact' : ''}`}>
+        {!compactCard && (
+          <div>
+            <dt>责任人</dt>
+            <dd>{role.id === 'counselor' ? `${task.owner} / ${task.counselor}` : task.owner}</dd>
+          </div>
+        )}
         <div>
           <dt>截止</dt>
           <dd className={task.statusKey === 'overdue' ? 'danger-text' : ''}>{task.deadline}</dd>
         </div>
       </dl>
-      <p className="next-action">{task.nextAction}</p>
+      {role.id === 'homeroomTeacher' && (
+        <>
+          <ChipList items={task.focus.slice(0, 2)} compact />
+          {task.statusKey === 'pendingCounselorConfirm' && <p className="muted-text">已提交给心理老师，等待专业确认</p>}
+        </>
+      )}
+      {!compactCard && <p className="next-action">{task.nextAction}</p>}
       <div className="card-actions">
         <button className="secondary-btn" onClick={() => navigate(`#/task/${task.id}`)}>
           {summaryLabel}
         </button>
-        <button
-          className="primary-btn"
-          onClick={() => {
-            if (action.hash) navigate(action.hash);
-            if (action.toast) showToast(action.toast);
-          }}
-        >
-          {action.label}
-        </button>
+        {!action.hidden && (
+          <button
+            className="primary-btn"
+            disabled={action.disabled}
+            onClick={() => {
+              if (action.disabled) return;
+              if (action.hash) navigate(action.hash);
+              if (action.toast) showToast(action.toast);
+            }}
+          >
+            {action.label}
+          </button>
+        )}
       </div>
     </article>
   );
@@ -614,20 +629,14 @@ function TaskDetail({
             <p>{task.suggestion}</p>
           </InfoSection>
 
-          <InfoSection title="历史处置记录">
-            <Timeline task={task} role={role} />
+          <InfoSection title="完整处置时间线">
+            <DetailedTimeline task={task} role={role} />
           </InfoSection>
 
           <InfoSection title="专业判断边界" className="warning-box">
             <p>当前内容来自班主任观察反馈，仅作为协作线索。是否进入干预流程，需由心理老师结合访谈、测评和既有记录判断。</p>
           </InfoSection>
 
-          <InfoSection title="处置进度">
-            <p>处置进度作为次级入口，用于查看完整闭环时间线，不替代本页的反馈确认操作。</p>
-            <button className="text-link" onClick={() => (window.location.hash = `#/task/${task.id}/progress`)}>
-              查看处置进度
-            </button>
-          </InfoSection>
         </section>
         <BottomActionBar
           actions={counselorReviewActions(task, onConfirmFeedback, onReturnForSupplement, onArrangeRetest, onContinueAttention, onSuggestReferral, onCloseAttention)}
@@ -731,8 +740,17 @@ function TaskDetail({
           <div className="warning-box">请记录可观察事实，避免填写风险等级、干预结论、心理状态判断、是否转介或是否解除关注。</div>
         </InfoSection>
 
-        <InfoSection title="协作流程">
-          <Timeline task={task} role={role} />
+        <InfoSection title="我的反馈状态">
+          <div className="todo-list">
+            <div>
+              <span>提交状态</span>
+              <strong>{teacherFeedbackStatus(task)}</strong>
+            </div>
+            <div>
+              <span>专业确认</span>
+              <strong>{teacherConfirmationStatus(task)}</strong>
+            </div>
+          </div>
         </InfoSection>
 
         <InfoSection title="已提交反馈">
@@ -979,6 +997,20 @@ function ProgressDetail({
   );
 }
 
+function teacherFeedbackStatus(task: WarningTask) {
+  if (task.status === '需补充') return '需补充观察反馈';
+  if (task.records.length || task.statusKey !== 'waitingFeedback') return '已提交给心理老师';
+  return '尚未提交';
+}
+
+function teacherConfirmationStatus(task: WarningTask) {
+  if (task.statusKey === 'pendingCounselorConfirm') return '等待心理老师确认';
+  if (task.statusKey === 'closed') return '已闭环';
+  if (['active', 'continuousAttention', 'retestPending', 'referral'].includes(task.statusKey)) return '心理老师已确认';
+  if (task.status === '需补充') return '等待补充后再次确认';
+  return '待提交后确认';
+}
+
 function progressHeading(task: WarningTask, role: Role) {
   if (role.id === 'counselor') return `当前处置结果：${task.result}`;
   if (role.id === 'homeroomTeacher') return `我的反馈状态：${task.status}`;
@@ -1125,9 +1157,9 @@ function SelectableChips({ items, defaults, className = '' }: { items: string[];
   );
 }
 
-function ChipList({ items }: { items: string[] }) {
+function ChipList({ items, compact = false }: { items: string[]; compact?: boolean }) {
   return (
-    <div className="chip-list">
+    <div className={`chip-list ${compact ? 'is-compact' : ''}`}>
       {items.map((item) => (
         <span key={item}>{item}</span>
       ))}
@@ -1218,16 +1250,16 @@ function MetricLine({ label, value }: { label: string; value: string | number })
 function homeStatusDefinitions(role: Role): HomeStatusDefinition[] {
   if (role.id === 'homeroomTeacher') {
     return [
-      { label: '待我反馈', match: (task) => ['waitingFeedback', 'overdue'].includes(task.statusKey) },
-      { label: '已提交待确认', match: (task) => task.statusKey === 'pendingCounselorConfirm' },
+      { label: '待反馈', match: (task) => ['waitingFeedback', 'overdue'].includes(task.statusKey) },
+      { label: '已提交', match: (task) => task.statusKey === 'pendingCounselorConfirm' },
       { label: '已完成', match: (task) => task.statusKey === 'closed' },
     ];
   }
   if (role.id === 'gradeDirector') {
     return [
-      { label: '待督办', match: (task) => ['waitingFeedback', 'pendingCounselorConfirm'].includes(task.statusKey) },
+      { label: '待反馈', match: (task) => task.statusKey === 'waitingFeedback' },
       { label: '已逾期', match: (task) => task.statusKey === 'overdue' },
-      { label: '已完成', match: (task) => task.statusKey === 'closed' },
+      { label: '已跟进', match: (task) => ['pendingCounselorConfirm', 'active', 'continuousAttention', 'retestPending', 'referral', 'closed'].includes(task.statusKey) },
     ];
   }
   if (role.id === 'counselor') {
@@ -1241,6 +1273,9 @@ function homeStatusDefinitions(role: Role): HomeStatusDefinition[] {
 }
 
 function homeStatusLabel(task: WarningTask, role: Role) {
+  if (role.id === 'homeroomTeacher' && task.status === '需补充') return '需补充';
+  if (role.id === 'gradeDirector' && task.status === '需补充') return '需补充';
+  if (role.id === 'gradeDirector' && task.statusKey === 'pendingCounselorConfirm') return '等待心理老师确认';
   return homeStatusDefinitions(role).find((item) => item.match(task))?.label ?? task.status;
 }
 
@@ -1260,21 +1295,18 @@ function visibleTimeline(task: WarningTask, role: Role) {
 
 function taskPrimaryAction(task: WarningTask, role: Role): Action {
   if (role.id === 'gradeDirector') {
-    if (task.statusKey === 'overdue') return { label: '提醒班主任反馈', toast: '已模拟提醒班主任反馈', tone: 'primary' };
-    if (task.statusKey === 'pendingCounselorConfirm') return { label: '查看本年级进度', hash: `#/task/${task.id}`, tone: 'primary' };
-    return { label: '查看本年级进度', hash: `#/task/${task.id}`, tone: 'primary' };
+    if (task.status === '需补充') return { label: '提醒补充信息', toast: '已模拟提醒补充信息', tone: 'primary' };
+    if (['waitingFeedback', 'overdue'].includes(task.statusKey)) return { label: '提醒班主任反馈', toast: '已模拟提醒班主任反馈', tone: 'primary' };
+    return { label: '等待心理老师确认', tone: 'primary', disabled: true, hidden: task.statusKey === 'closed' };
   }
   if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
     return { label: '确认反馈', hash: `#/task/${task.id}`, tone: 'primary' };
   }
-  if (role.id === 'homeroomTeacher' && task.statusKey === 'waitingFeedback') return { label: '填写观察反馈', hash: `#/task/${task.id}/record`, tone: 'primary' };
+  if (role.id === 'homeroomTeacher' && task.status === '需补充') return { label: '补充观察反馈', hash: `#/task/${task.id}/record`, tone: 'primary' };
+  if (role.id === 'homeroomTeacher' && task.statusKey === 'waitingFeedback') return { label: '填写反馈', hash: `#/task/${task.id}/record`, tone: 'primary' };
   if (role.id === 'homeroomTeacher' && task.statusKey === 'overdue') return { label: '尽快反馈', hash: `#/task/${task.id}/record`, tone: 'primary' };
-  if (task.statusKey === 'pendingCounselorConfirm') return { label: '查看已提交反馈', hash: `#/task/${task.id}`, tone: 'primary' };
-  if (task.statusKey === 'continuousAttention') return { label: '查看关注计划', hash: `#/task/${task.id}/progress`, tone: 'primary' };
-  if (task.statusKey === 'retestPending') return { label: '查看复测计划', hash: `#/task/${task.id}/progress`, tone: 'primary' };
-  if (task.statusKey === 'referral') return { label: '查看转介进度', hash: `#/task/${task.id}/progress`, tone: 'primary' };
-  if (task.statusKey === 'closed') return { label: '查看闭环详情', hash: `#/task/${task.id}/progress`, tone: 'primary' };
-  return { label: task.statusKey === 'active' ? '查看处置进度' : '查看进度', hash: `#/task/${task.id}/progress`, tone: 'primary' };
+  if (role.id === 'homeroomTeacher') return { label: '查看任务', hash: `#/task/${task.id}`, tone: 'primary', hidden: true };
+  return { label: '查看详情', hash: `#/task/${task.id}`, tone: 'primary' };
 }
 
 function counselorReviewActions(
@@ -1288,20 +1320,20 @@ function counselorReviewActions(
 ): Action[] {
   if (task.statusKey === 'closed') {
     return [
-      { label: '查看处置进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
+      { label: '返回首页', hash: '#/', tone: 'secondary' },
       { label: '已闭环', tone: 'primary', toast: '本轮流程已闭环', disabled: true },
     ];
   }
   if (task.statusKey === 'pendingCounselorConfirm') {
     return [
-      { label: '退回补充信息', tone: 'secondary', onClick: () => onReturnForSupplement(task.id) },
+      { label: '请班主任补充反馈', tone: 'secondary', onClick: () => onReturnForSupplement(task.id) },
       { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
     ];
   }
   if (task.statusKey === 'waitingFeedback' || task.statusKey === 'overdue') {
     return [
-      { label: '查看处置进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
-      { label: task.statusKey === 'overdue' ? '等待补充反馈' : '等待观察反馈', tone: 'primary', disabled: true },
+      { label: '返回首页', hash: '#/', tone: 'secondary' },
+      { label: task.status === '需补充' || task.statusKey === 'overdue' ? '等待补充反馈' : '等待观察反馈', tone: 'primary', disabled: true },
     ];
   }
   return [
@@ -1315,25 +1347,28 @@ function counselorReviewActions(
 function detailActions(task: WarningTask, role: Role, onConfirmFeedback: (taskId: string) => void, showToast: (message: string) => void): Action[] {
   if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
     return [
-      { label: '查看进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
+      { label: '请班主任补充反馈', tone: 'secondary', toast: '请在反馈确认详情中发起补充' },
       { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
     ];
   }
   if (role.id === 'gradeDirector') {
-    return [
-      { label: task.statusKey === 'pendingCounselorConfirm' ? '提醒补充信息' : '查看本年级进度', hash: `#/task/${task.id}/progress`, tone: 'secondary' },
-      { label: task.statusKey === 'overdue' ? '提醒班主任反馈' : '提醒补充信息', tone: 'primary', onClick: () => showToast('已模拟发送年级督办提醒') },
-    ];
+    if (task.statusKey === 'pendingCounselorConfirm') {
+      return [{ label: '等待心理老师确认', tone: 'primary', disabled: true }];
+    }
+    if (task.statusKey === 'closed') {
+      return [{ label: '已完成', tone: 'primary', disabled: true }];
+    }
+    return [{ label: task.status === '需补充' ? '提醒补充信息' : '提醒班主任反馈', tone: 'primary', onClick: () => showToast('已模拟发送年级督办提醒') }];
   }
   if (role.id === 'homeroomTeacher' && ['waitingFeedback', 'overdue'].includes(task.statusKey)) {
     return [
       { label: '提交线索', hash: '#/report', tone: 'secondary' },
-      { label: task.statusKey === 'overdue' ? '尽快反馈' : '填写观察反馈', hash: `#/task/${task.id}/record`, tone: 'primary' },
+      { label: task.status === '需补充' ? '补充观察反馈' : task.statusKey === 'overdue' ? '尽快反馈' : '填写反馈', hash: `#/task/${task.id}/record`, tone: 'primary' },
     ];
   }
   return [
     { label: '返回首页', hash: '#/', tone: 'secondary' },
-    { label: taskPrimaryAction(task, role).label, hash: `#/task/${task.id}/progress`, tone: 'primary' },
+    { label: task.statusKey === 'closed' ? '已完成' : '查看任务', hash: `#/task/${task.id}`, tone: 'primary', disabled: task.statusKey === 'closed' },
   ];
 }
 

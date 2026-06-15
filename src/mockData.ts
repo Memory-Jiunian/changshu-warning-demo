@@ -427,7 +427,7 @@ export const schoolOverview = {
       progress: '观察反馈未提交，心理老师等待班主任补充事实信息。',
       timeStatus: '已超时 2 小时',
       notified: '年级主任、班主任',
-      suggestion: '督办入口：提醒年级主任跟进',
+      actionLabel: '提醒年级负责人',
     },
     {
       subject: '高三（1）班 · W同学',
@@ -436,16 +436,16 @@ export const schoolOverview = {
       progress: '转介资源预约排队，需协调心理负责人确认资源安排。',
       timeStatus: '剩余 6 小时',
       notified: '心理负责人',
-      suggestion: '督办入口：协调心理负责人',
+      actionLabel: '协调心理负责人',
     },
     {
-      subject: '高一年级 · 多班级',
+      subject: '高一年级 · 5项未回收',
       riskLevel: '中优先级',
       issue: '多名班主任未反馈',
       progress: '多个观察任务仍未回收，建议由年级负责人统一提醒。',
       timeStatus: '今日内处理',
       notified: '年级负责人',
-      suggestion: '督办入口：发起流程督办',
+      actionLabel: '发起流程督办',
     },
   ],
 };
