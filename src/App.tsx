@@ -17,8 +17,7 @@ import {
 type RouteName = 'home' | 'task' | 'record' | 'report' | 'progress' | 'schoolOverview';
 type Route = { name: RouteName; taskId?: string };
 type Action = { label: string; hash?: string; tone: 'primary' | 'secondary'; toast?: string; onClick?: () => void; disabled?: boolean };
-
-const filters = ['全部', '待观察反馈', '已反馈待确认', '跟进中', '持续关注', '复测待安排', '转介中', '已闭环', '逾期未更新'];
+type HomeStatusDefinition = { label: string; match: (task: WarningTask) => boolean };
 
 const statusTone: Record<StatusKey, string> = {
   waitingFeedback: 'pending',
@@ -34,7 +33,7 @@ const statusTone: Record<StatusKey, string> = {
 export function App() {
   const [roleId, setRoleId] = useState<RoleId>('homeroomTeacher');
   const [warningTasks, setWarningTasks] = useState<WarningTask[]>(initialTasks);
-  const [filter, setFilter] = useState('全部');
+  const [filter, setFilter] = useState('待我反馈');
   const [route, setRoute] = useState<Route>(getRoute());
   const [toast, setToast] = useState('');
 
@@ -58,7 +57,8 @@ export function App() {
   const showToast = (message: string) => setToast(message);
   const changeRole = (nextRoleId: RoleId) => {
     setRoleId(nextRoleId);
-    setFilter('全部');
+    const nextRole = roles.find((item) => item.id === nextRoleId) ?? roles[0];
+    setFilter(homeStatusDefinitions(nextRole)[0]?.label ?? '');
     if (nextRoleId === 'principal') navigate('#/school-overview');
     if (nextRoleId !== 'principal' && route.name === 'schoolOverview') navigate('#/');
   };
@@ -242,7 +242,7 @@ function routeTitle(routeName: RouteName, role: Role) {
   if (routeName === 'home') {
     if (role.id === 'homeroomTeacher') return '我的观察任务';
     if (role.id === 'gradeDirector') return '年级督办';
-    if (role.id === 'counselor') return '线索复核';
+    if (role.id === 'counselor') return '待确认反馈';
   }
   if (routeName === 'task') {
     if (role.id === 'counselor') return '反馈确认详情';
@@ -258,6 +258,7 @@ function routeTitle(routeName: RouteName, role: Role) {
     if (role.id === 'homeroomTeacher') return '我的反馈状态';
     if (role.id === 'gradeDirector') return '本年级督办进度';
   }
+  if (routeName === 'schoolOverview' && role.id === 'principal') return '预警督办 / 消息中心';
   const titles: Record<RouteName, string> = {
     home: '预警协同',
     task: '任务详情',
@@ -289,17 +290,13 @@ function Dashboard({
   showToast: (message: string) => void;
 }) {
   const scopedTasks = visibleTasksForRole(tasks, role);
-  const visibleTasks = filter === '全部' ? scopedTasks : scopedTasks.filter((task) => task.status === filter);
-  const stats = useMemo(
-    () => [
-      ['待观察反馈', scopedTasks.filter((task) => task.statusKey === 'waitingFeedback').length],
-      ['逾期未更新', scopedTasks.filter((task) => task.statusKey === 'overdue').length],
-      ['已反馈待确认', scopedTasks.filter((task) => task.statusKey === 'pendingCounselorConfirm').length],
-      ['已闭环', scopedTasks.filter((task) => task.statusKey === 'closed').length],
-    ],
-    [scopedTasks],
-  );
-  const openTasks = stats[0][1] + stats[1][1] + stats[2][1];
+  const statusDefinitions = useMemo(() => homeStatusDefinitions(role), [role]);
+  const activeFilter = statusDefinitions.some((item) => item.label === filter) ? filter : statusDefinitions[0]?.label;
+  const activeDefinition = statusDefinitions.find((item) => item.label === activeFilter);
+  const visibleTasks = activeDefinition ? scopedTasks.filter(activeDefinition.match) : scopedTasks;
+  const stats = useMemo(() => statusDefinitions.map((item) => [item.label, scopedTasks.filter(item.match).length] as const), [scopedTasks, statusDefinitions]);
+  const openTasks = stats.reduce((sum, [label, value]) => (label.includes('完成') || label.includes('闭环') ? sum : sum + value), 0);
+  const counselorOverdueCount = role.id === 'counselor' ? scopedTasks.filter((task) => task.statusKey === 'overdue').length : 0;
 
   return (
     <section className="content">
@@ -309,11 +306,15 @@ function Dashboard({
           <h2>{dashboardTitle(role, openTasks)}</h2>
           <p>{role.scope}</p>
         </div>
-        <RoleSwitcher roleId={roleId} setRoleId={setRoleId} />
-        <button className="text-link" onClick={() => navigate('#/school-overview')}>
-          查看校级全局视角
-        </button>
+        <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} />
       </section>
+
+      {role.id === 'counselor' && counselorOverdueCount > 0 && (
+        <aside className="priority-reminder">
+          <strong>{counselorOverdueCount} 项逾期未更新</strong>
+          <span>请优先查看待确认反馈和超时协作任务。</span>
+        </aside>
+      )}
 
       <section className="stats-grid" aria-label="任务概览">
         {stats.map(([label, value]) => (
@@ -325,7 +326,7 @@ function Dashboard({
       </section>
 
       <PermissionNotice role={role} />
-      <SegmentedControl items={filters} active={filter} onChange={setFilter} />
+      <SegmentedControl items={statusDefinitions.map((item) => item.label)} active={activeFilter} onChange={setFilter} />
 
       <section className="task-list">
         {visibleTasks.length ? (
@@ -341,7 +342,7 @@ function Dashboard({
 function dashboardTitle(role: Role, openTasks: number) {
   if (role.id === 'homeroomTeacher') return `有 ${openTasks} 项观察任务待处理`;
   if (role.id === 'gradeDirector') return `本年级有 ${openTasks} 项需督办`;
-  if (role.id === 'counselor') return `有 ${openTasks} 项反馈或线索需复核`;
+  if (role.id === 'counselor') return `有 ${openTasks} 项反馈需要确认`;
   return `今日有 ${openTasks} 项需要关注`;
 }
 
@@ -357,22 +358,21 @@ function SchoolOverview({
   showToast: (message: string) => void;
 }) {
   const cards = [
-    ['本周新增正式预警', schoolOverview.weekNewWarnings],
-    ['当前跟进中', schoolOverview.activeCount],
-    ['逾期未更新', schoolOverview.overdueCount],
-    ['已闭环', schoolOverview.closedCount],
-    ['闭环率', schoolOverview.closureRate],
+    ['危险待推进', schoolOverview.highPriorityUnconfirmed],
+    ['超时未处理', schoolOverview.staleOver48h],
+    ['干预中', schoolOverview.activeCount],
+    ['今日闭环', schoolOverview.todayClosed],
   ];
 
   return (
     <section className="content">
       <section className="hero-panel">
         <div>
-          <p className="eyebrow">全校预警处置概览</p>
-          <h2>看流程压力，不看学生隐私</h2>
-          <p>{role.scope}</p>
+          <p className="eyebrow">预警督办 / 消息中心</p>
+          <h2>先处理最需要推进的事项</h2>
+          <p>只展示脱敏督办信息，用于判断是否需要协调年级负责人或心理负责人。</p>
         </div>
-        <RoleSwitcher roleId={roleId} setRoleId={setRoleId} />
+        <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} />
       </section>
 
       <section className="overview-grid">
@@ -384,46 +384,25 @@ function SchoolOverview({
         ))}
       </section>
 
-      <InfoSection title="年级分布">
-        <div className="grade-list">
-          {schoolOverview.gradeDistribution.map((item) => (
-            <div className="grade-row" key={item.grade}>
-              <div>
-                <strong>{item.grade}</strong>
-                <span>正式预警 {item.total} · 跟进中 {item.active}</span>
-              </div>
-              <div>
-                <b>{item.closureRate}</b>
-                <small>逾期 {item.overdue}</small>
-              </div>
-            </div>
-          ))}
-        </div>
-      </InfoSection>
-
-      <InfoSection title="处置压力提示">
-        <div className="pressure-grid">
-          <MetricLine label="心理老师待确认" value={`${schoolOverview.counselorPending} 项`} />
-          <MetricLine label="班主任待反馈" value={`${schoolOverview.teacherPending} 项`} />
-          <MetricLine label="超过 48 小时未更新" value={`${schoolOverview.staleOver48h} 项`} />
-          <MetricLine label="资源压力" value={schoolOverview.resourcePressure} />
-        </div>
-      </InfoSection>
-
-      <InfoSection title="异常提醒">
-        <div className="pressure-grid">
-          <MetricLine label="高优先级任务未确认" value={`${schoolOverview.highPriorityUnconfirmed} 项`} />
-          <MetricLine label="多次复测仍需关注" value={`${schoolOverview.repeatedRetestAttention} 项`} />
-          <MetricLine label="转介中任务" value={`${schoolOverview.referralCount} 项`} />
-        </div>
-      </InfoSection>
-
-      <InfoSection title="需校级关注事项">
-        <div className="attention-list">
+      <InfoSection title="需立即关注">
+        <div className="principal-alert-list">
           {schoolOverview.attentionItems.map((item) => (
-            <button className="attention-item" key={`${item.grade}-${item.issue}`} onClick={() => showToast('已打开脱敏事项说明')}>
-              <strong>{item.grade}</strong>
-              <span>{item.issue}</span>
+            <button className="principal-alert-item" key={`${item.subject}-${item.issue}`} onClick={() => showToast('已打开脱敏事项说明')}>
+              <div>
+                <strong>{item.subject}</strong>
+                <span>{item.riskLevel}</span>
+              </div>
+              <p>{item.progress}</p>
+              <dl>
+                <div>
+                  <dt>时限</dt>
+                  <dd className={item.timeStatus.includes('超时') ? 'danger-text' : ''}>{item.timeStatus}</dd>
+                </div>
+                <div>
+                  <dt>已通知</dt>
+                  <dd>{item.notified}</dd>
+                </div>
+              </dl>
               <small>{item.suggestion}</small>
             </button>
           ))}
@@ -440,6 +419,43 @@ function SchoolOverview({
           查看资源压力说明
         </button>
       </InfoSection>
+
+      <details className="secondary-analysis">
+        <summary>查看统计分析</summary>
+        <InfoSection title="年级分布">
+          <div className="grade-list">
+            {schoolOverview.gradeDistribution.map((item) => (
+              <div className="grade-row" key={item.grade}>
+                <div>
+                  <strong>{item.grade}</strong>
+                  <span>正式预警 {item.total} · 跟进中 {item.active}</span>
+                </div>
+                <div>
+                  <b>{item.closureRate}</b>
+                  <small>逾期 {item.overdue}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </InfoSection>
+
+        <InfoSection title="处置压力提示">
+          <div className="pressure-grid">
+            <MetricLine label="心理老师待确认" value={`${schoolOverview.counselorPending} 项`} />
+            <MetricLine label="班主任待观察反馈" value={`${schoolOverview.teacherPending} 项`} />
+            <MetricLine label="超过 48 小时未更新" value={`${schoolOverview.staleOver48h} 项`} />
+            <MetricLine label="资源压力" value={schoolOverview.resourcePressure} />
+          </div>
+        </InfoSection>
+
+        <InfoSection title="异常提醒">
+          <div className="pressure-grid">
+            <MetricLine label="高优先级任务未确认" value={`${schoolOverview.highPriorityUnconfirmed} 项`} />
+            <MetricLine label="多次复测仍需关注" value={`${schoolOverview.repeatedRetestAttention} 项`} />
+            <MetricLine label="转介中任务" value={`${schoolOverview.referralCount} 项`} />
+          </div>
+        </InfoSection>
+      </details>
 
       <aside className="permission-notice">
         <strong>隐私边界</strong>
@@ -458,6 +474,15 @@ function RoleSwitcher({ roleId, setRoleId }: { roleId: RoleId; setRoleId: (roleI
         </button>
       ))}
     </div>
+  );
+}
+
+function DemoRoleEntry({ roleId, setRoleId }: { roleId: RoleId; setRoleId: (roleId: RoleId) => void }) {
+  return (
+    <details className="demo-role-entry">
+      <summary>演示入口</summary>
+      <RoleSwitcher roleId={roleId} setRoleId={setRoleId} />
+    </details>
   );
 }
 
@@ -488,7 +513,7 @@ function TaskCard({
             {role.id === 'homeroomTeacher' ? '观察任务' : role.id === 'gradeDirector' ? '本年级协作进度' : task.type}
           </p>
         </div>
-        <StatusBadge task={task} />
+        <HomeStatusBadge task={task} role={role} />
       </div>
       <dl className="meta-grid">
         <div>
@@ -1114,6 +1139,12 @@ function StatusBadge({ task }: { task: WarningTask }) {
   return <span className={`status-badge ${statusTone[task.statusKey]}`}>{task.status}</span>;
 }
 
+function HomeStatusBadge({ task, role }: { task: WarningTask; role: Role }) {
+  if (task.statusKey === 'overdue') return <span className="status-badge overdue">逾期</span>;
+  const label = homeStatusLabel(task, role);
+  return <span className={`status-badge ${statusTone[task.statusKey]}`}>{label}</span>;
+}
+
 function AttentionLevelTag({ level, roleId }: { level: AttentionLevel; roleId?: RoleId }) {
   const key = level === '重点关注' ? 'high' : level === '持续关注' ? 'medium' : 'low';
   const teacherLabel: Record<AttentionLevel, string> = {
@@ -1182,6 +1213,35 @@ function MetricLine({ label, value }: { label: string; value: string | number })
       <strong>{value}</strong>
     </div>
   );
+}
+
+function homeStatusDefinitions(role: Role): HomeStatusDefinition[] {
+  if (role.id === 'homeroomTeacher') {
+    return [
+      { label: '待我反馈', match: (task) => ['waitingFeedback', 'overdue'].includes(task.statusKey) },
+      { label: '已提交待确认', match: (task) => task.statusKey === 'pendingCounselorConfirm' },
+      { label: '已完成', match: (task) => task.statusKey === 'closed' },
+    ];
+  }
+  if (role.id === 'gradeDirector') {
+    return [
+      { label: '待督办', match: (task) => ['waitingFeedback', 'pendingCounselorConfirm'].includes(task.statusKey) },
+      { label: '已逾期', match: (task) => task.statusKey === 'overdue' },
+      { label: '已完成', match: (task) => task.statusKey === 'closed' },
+    ];
+  }
+  if (role.id === 'counselor') {
+    return [
+      { label: '待确认', match: (task) => task.statusKey === 'pendingCounselorConfirm' },
+      { label: '处理中', match: (task) => !['pendingCounselorConfirm', 'closed'].includes(task.statusKey) },
+      { label: '已闭环', match: (task) => task.statusKey === 'closed' },
+    ];
+  }
+  return [];
+}
+
+function homeStatusLabel(task: WarningTask, role: Role) {
+  return homeStatusDefinitions(role).find((item) => item.match(task))?.label ?? task.status;
 }
 
 function visibleTasksForRole(tasks: WarningTask[], role: Role) {
