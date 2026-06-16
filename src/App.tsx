@@ -18,6 +18,10 @@ type RouteName = 'home' | 'task' | 'record' | 'report' | 'progress' | 'schoolOve
 type Route = { name: RouteName; taskId?: string };
 type Action = { label: string; hash?: string; tone: 'primary' | 'secondary'; toast?: string; onClick?: () => void; disabled?: boolean; hidden?: boolean };
 type HomeStatusDefinition = { label: string; match: (task: WarningTask) => boolean };
+type ConfirmDialog =
+  | { kind: 'supplement'; taskId: string }
+  | { kind: 'directorReminder'; taskId: string }
+  | { kind: 'principalAction'; itemKey: string; actionLabel: string; subject: string; progress: string; target: string };
 
 const statusTone: Record<StatusKey, string> = {
   waitingFeedback: 'pending',
@@ -36,6 +40,8 @@ export function App() {
   const [filter, setFilter] = useState('待反馈');
   const [route, setRoute] = useState<Route>(getRoute());
   const [toast, setToast] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
+  const [principalLogs, setPrincipalLogs] = useState<Record<string, string>>({});
   const demoMode = isDemoMode();
 
   useEffect(() => {
@@ -137,8 +143,82 @@ export function App() {
   const confirmFeedback = (taskId: string) =>
     applyCounselorAction(taskId, '确认进入干预', '跟进中', 'active', '持续关注', '已进入干预处理', '确认班主任反馈后进入干预跟进，由心理老师继续判断后续处置。');
 
-  const returnForSupplement = (taskId: string) =>
-    applyCounselorAction(taskId, '请班主任补充反馈', '需补充', 'waitingFeedback', '持续关注', '补充观察反馈', '反馈信息不足，请班主任补充事实观察，不形成专业结论。');
+  const requestSupplement = (taskId: string) => setConfirmDialog({ kind: 'supplement', taskId });
+
+  const sendSupplementRequest = (taskId: string) => {
+    setWarningTasks((current) =>
+      current.map((item) => {
+        if (item.id !== taskId) return item;
+        const timeline: HandlingTimelineItem = {
+          id: `supplement-${Date.now()}`,
+          time: '刚刚',
+          role: '心理老师',
+          action: '心理老师发送补充请求',
+          status: '需补充',
+          note:
+            `发送对象：${item.owner}；补充原因：观察时间不明确、场景描述不足、缺少近期行为变化；` +
+            '补充说明：请补充近 3 天课堂、课间和家校沟通中的具体观察事实，避免主观判断。；补充时限：今天 18:00 前；通知方式：小程序待办 + 短信提醒。',
+          audience: ['all'],
+        };
+        return {
+          ...item,
+          status: '需补充',
+          statusKey: 'waitingFeedback',
+          nextAction: '补充观察反馈',
+          timeline: [...item.timeline, timeline],
+        };
+      }),
+    );
+    setConfirmDialog(null);
+    showToast('已发送补充请求，并记录到处置时间线');
+  };
+
+  const openDirectorReminder = (taskId: string) => setConfirmDialog({ kind: 'directorReminder', taskId });
+
+  const sendDirectorReminder = (taskId: string) => {
+    setWarningTasks((current) =>
+      current.map((item) => {
+        if (item.id !== taskId) return item;
+        const message = `${item.owner}，您有一条学生观察反馈待办，请于今天 18:00 前进入心理健康小程序完成反馈。`;
+        const timeline: HandlingTimelineItem = {
+          id: `director-reminder-${Date.now()}`,
+          time: '刚刚',
+          role: '年级主任',
+          action: '年级主任发送督办提醒',
+          status: item.status,
+          note: `提醒对象：${item.owner}；通知方式：小程序待办 + 短信提醒；消息内容：${message}；发送时间：刚刚。`,
+          audience: ['director', 'counselor'],
+        };
+        return {
+          ...item,
+          timeline: [...item.timeline, timeline],
+        };
+      }),
+    );
+    setConfirmDialog(null);
+    showToast('已发送提醒，并记录到督办留痕');
+  };
+
+  const openPrincipalAction = (item: (typeof schoolOverview.attentionItems)[number]) => {
+    const target = item.actionLabel.includes('心理') ? '心理负责人' : '年级负责人';
+    setConfirmDialog({
+      kind: 'principalAction',
+      itemKey: `${item.subject}-${item.issue}`,
+      actionLabel: item.actionLabel,
+      subject: item.subject,
+      progress: item.progress,
+      target,
+    });
+  };
+
+  const sendPrincipalAction = (dialog: Extract<ConfirmDialog, { kind: 'principalAction' }>) => {
+    setPrincipalLogs((current) => ({
+      ...current,
+      [dialog.itemKey]: `已于 刚刚 发送给 ${dialog.target}`,
+    }));
+    setConfirmDialog(null);
+    showToast('已发送督办提醒，并完成留痕');
+  };
 
   const arrangeRetest = (taskId: string) =>
     applyCounselorAction(taskId, '安排复测', '复测待安排', 'retestPending', '复测待安排', '查看复测计划', '结合反馈和既有记录，安排下一次复测计划。');
@@ -167,6 +247,7 @@ export function App() {
           demoMode={demoMode}
           navigate={navigate}
           showToast={showToast}
+          onOpenDirectorReminder={openDirectorReminder}
         />
       )}
       {guardedRoute.name === 'task' && (
@@ -174,7 +255,8 @@ export function App() {
           role={role}
           task={task}
           onConfirmFeedback={confirmFeedback}
-          onReturnForSupplement={returnForSupplement}
+          onReturnForSupplement={requestSupplement}
+          onOpenDirectorReminder={openDirectorReminder}
           onArrangeRetest={arrangeRetest}
           onContinueAttention={continueAttention}
           onSuggestReferral={suggestReferral}
@@ -185,7 +267,25 @@ export function App() {
       {guardedRoute.name === 'record' && <FollowUpRecord task={task} role={role} onSubmit={submitFollowUp} showToast={showToast} />}
       {guardedRoute.name === 'report' && <ClueReport role={role} tasks={visibleTasksForRole(warningTasks, role)} showToast={showToast} />}
       {guardedRoute.name === 'progress' && <ProgressDetail task={task} role={role} onConfirmFeedback={confirmFeedback} showToast={showToast} />}
-      {guardedRoute.name === 'schoolOverview' && <SchoolOverview role={role} roleId={roleId} setRoleId={changeRole} demoMode={demoMode} showToast={showToast} />}
+      {guardedRoute.name === 'schoolOverview' && (
+        <SchoolOverview
+          role={role}
+          roleId={roleId}
+          setRoleId={changeRole}
+          demoMode={demoMode}
+          principalLogs={principalLogs}
+          onOpenPrincipalAction={openPrincipalAction}
+          showToast={showToast}
+        />
+      )}
+      <ConfirmDialogLayer
+        dialog={confirmDialog}
+        tasks={warningTasks}
+        onCancel={() => setConfirmDialog(null)}
+        onSendSupplement={sendSupplementRequest}
+        onSendDirectorReminder={sendDirectorReminder}
+        onSendPrincipalAction={sendPrincipalAction}
+      />
     </MobileShell>
   );
 }
@@ -287,6 +387,7 @@ function Dashboard({
   demoMode,
   navigate,
   showToast,
+  onOpenDirectorReminder,
 }: {
   role: Role;
   roleId: RoleId;
@@ -297,6 +398,7 @@ function Dashboard({
   demoMode: boolean;
   navigate: (hash: string) => void;
   showToast: (message: string) => void;
+  onOpenDirectorReminder: (taskId: string) => void;
 }) {
   const scopedTasks = visibleTasksForRole(tasks, role);
   const statusDefinitions = useMemo(() => homeStatusDefinitions(role), [role]);
@@ -339,7 +441,9 @@ function Dashboard({
 
       <section className="task-list">
         {visibleTasks.length ? (
-          visibleTasks.map((task) => <TaskCard key={task.id} task={task} role={role} navigate={navigate} showToast={showToast} />)
+          visibleTasks.map((task) => (
+            <TaskCard key={task.id} task={task} role={role} navigate={navigate} showToast={showToast} onOpenDirectorReminder={onOpenDirectorReminder} />
+          ))
         ) : (
           <EmptyState />
         )}
@@ -360,12 +464,16 @@ function SchoolOverview({
   roleId,
   setRoleId,
   demoMode,
+  principalLogs,
+  onOpenPrincipalAction,
   showToast,
 }: {
   role: Role;
   roleId: RoleId;
   setRoleId: (roleId: RoleId) => void;
   demoMode: boolean;
+  principalLogs: Record<string, string>;
+  onOpenPrincipalAction: (item: (typeof schoolOverview.attentionItems)[number]) => void;
   showToast: (message: string) => void;
 }) {
   const cards = [
@@ -397,8 +505,10 @@ function SchoolOverview({
 
       <InfoSection title="需立即关注">
         <div className="principal-alert-list">
-          {schoolOverview.attentionItems.map((item) => (
-            <article className="principal-alert-item" key={`${item.subject}-${item.issue}`}>
+          {schoolOverview.attentionItems.map((item) => {
+            const itemKey = `${item.subject}-${item.issue}`;
+            return (
+            <article className="principal-alert-item" key={itemKey}>
               <div>
                 <strong>{item.subject}</strong>
                 <span>{item.riskLevel}</span>
@@ -414,9 +524,10 @@ function SchoolOverview({
                   <dd>{item.notified}</dd>
                 </div>
               </dl>
-              <button className="primary-btn" onClick={() => showToast(`已模拟${item.actionLabel}`)}>{item.actionLabel}</button>
+              <button className="primary-btn" onClick={() => onOpenPrincipalAction(item)}>{item.actionLabel}</button>
+              {principalLogs[itemKey] && <p className="trace-line">{principalLogs[itemKey]}</p>}
             </article>
-          ))}
+          )})}
         </div>
       </InfoSection>
 
@@ -495,13 +606,15 @@ function TaskCard({
   role,
   navigate,
   showToast,
+  onOpenDirectorReminder,
 }: {
   task: WarningTask;
   role: Role;
   navigate: (hash: string) => void;
   showToast: (message: string) => void;
+  onOpenDirectorReminder: (taskId: string) => void;
 }) {
-  const action = taskPrimaryAction(task, role);
+  const action = taskPrimaryAction(task, role, onOpenDirectorReminder);
   const displayName = role.id === 'gradeDirector' ? `${task.className} · 脱敏事项` : task.student;
   const summaryLabel = role.id === 'gradeDirector' ? '查看督办详情' : role.id === 'homeroomTeacher' ? '查看任务' : '查看复核详情';
   const compactCard = role.id === 'homeroomTeacher' || role.id === 'gradeDirector';
@@ -549,6 +662,7 @@ function TaskCard({
               if (action.disabled) return;
               if (action.hash) navigate(action.hash);
               if (action.toast) showToast(action.toast);
+              if (action.onClick) action.onClick();
             }}
           >
             {action.label}
@@ -564,6 +678,7 @@ function TaskDetail({
   task,
   onConfirmFeedback,
   onReturnForSupplement,
+  onOpenDirectorReminder,
   onArrangeRetest,
   onContinueAttention,
   onSuggestReferral,
@@ -574,6 +689,7 @@ function TaskDetail({
   task: WarningTask;
   onConfirmFeedback: (taskId: string) => void;
   onReturnForSupplement: (taskId: string) => void;
+  onOpenDirectorReminder: (taskId: string) => void;
   onArrangeRetest: (taskId: string) => void;
   onContinueAttention: (taskId: string) => void;
   onSuggestReferral: (taskId: string) => void;
@@ -706,7 +822,7 @@ function TaskDetail({
             </div>
           </InfoSection>
         </section>
-        <BottomActionBar actions={detailActions(task, role, onConfirmFeedback, showToast)} showToast={showToast} />
+        <BottomActionBar actions={detailActions(task, role, onConfirmFeedback, showToast, onOpenDirectorReminder)} showToast={showToast} />
       </>
     );
   }
@@ -757,7 +873,7 @@ function TaskDetail({
           {task.records.length ? task.records.map((record) => <SubmittedRecord key={`${record.by}-${record.time}-${record.tag}`} record={record} />) : <p className="muted-text">暂无观察反馈，等待责任人提交首次反馈。</p>}
         </InfoSection>
       </section>
-      <BottomActionBar actions={detailActions(task, role, onConfirmFeedback, showToast)} showToast={showToast} />
+      <BottomActionBar actions={detailActions(task, role, onConfirmFeedback, showToast, onOpenDirectorReminder)} showToast={showToast} />
     </>
   );
 }
@@ -1212,6 +1328,113 @@ function BottomActionBar({ actions, showToast }: { actions: Action[]; showToast?
   );
 }
 
+function ConfirmDialogLayer({
+  dialog,
+  tasks,
+  onCancel,
+  onSendSupplement,
+  onSendDirectorReminder,
+  onSendPrincipalAction,
+}: {
+  dialog: ConfirmDialog | null;
+  tasks: WarningTask[];
+  onCancel: () => void;
+  onSendSupplement: (taskId: string) => void;
+  onSendDirectorReminder: (taskId: string) => void;
+  onSendPrincipalAction: (dialog: Extract<ConfirmDialog, { kind: 'principalAction' }>) => void;
+}) {
+  if (!dialog) return null;
+
+  const task = 'taskId' in dialog ? tasks.find((item) => item.id === dialog.taskId) : undefined;
+  const supplementReasons = ['观察时间不明确', '场景描述不足', '缺少近期行为变化', '需要补充家校沟通情况', '需要确认是否存在紧急变化'];
+  const supplementText = '请补充近 3 天课堂、课间和家校沟通中的具体观察事实，避免主观判断。';
+  const directorMessage = task
+    ? `${task.owner}，您有一条学生观察反馈待办，请于今天 18:00 前进入心理健康小程序完成反馈。`
+    : '您有一条学生观察反馈待办，请于今天 18:00 前进入心理健康小程序完成反馈。';
+  const principalMessage = '陈老师，您有一条心理风险协作督办待处理，请进入心理健康小程序查看并推进相关事项。';
+
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
+      <section className="confirm-sheet" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        {dialog.kind === 'supplement' && task && (
+          <>
+            <div className="sheet-head">
+              <p className="eyebrow">操作确认</p>
+              <h2>请班主任补充反馈</h2>
+            </div>
+            <FormField label="补充原因">
+              <div className="confirm-list">
+                {supplementReasons.map((reason, index) => (
+                  <label key={reason}>
+                    <input type="checkbox" defaultChecked={index < 3} />
+                    {reason}
+                  </label>
+                ))}
+              </div>
+            </FormField>
+            <FormField label="补充说明">
+              <textarea defaultValue={supplementText} />
+            </FormField>
+            <div className="confirm-meta">
+              <MetricLine label="补充时限" value="今天 18:00 前" />
+              <MetricLine label="通知对象" value={`责任班主任：${task.owner}`} />
+              <MetricLine label="通知方式" value="小程序待办 + 短信提醒" />
+            </div>
+            <div className="sheet-actions">
+              <button className="secondary-btn" onClick={onCancel}>取消</button>
+              <button className="primary-btn" onClick={() => onSendSupplement(dialog.taskId)}>发送补充请求</button>
+            </div>
+          </>
+        )}
+
+        {dialog.kind === 'directorReminder' && task && (
+          <>
+            <div className="sheet-head">
+              <p className="eyebrow">督办确认</p>
+              <h2>提醒班主任反馈</h2>
+            </div>
+            <div className="confirm-meta">
+              <MetricLine label="提醒对象" value={task.owner} />
+              <MetricLine label="提醒事项" value={task.status === '需补充' ? '需补充观察反馈' : '观察反馈待提交'} />
+              <MetricLine label="通知方式" value="小程序待办 + 短信提醒" />
+            </div>
+            <FormField label="消息内容预览">
+              <textarea value={directorMessage} readOnly />
+            </FormField>
+            <p className="privacy-line">外部提醒只提示有待办，详情需进入小程序查看，不包含学生姓名、测评原文或具体心理风险原因。</p>
+            <div className="sheet-actions">
+              <button className="secondary-btn" onClick={onCancel}>取消</button>
+              <button className="primary-btn" onClick={() => onSendDirectorReminder(dialog.taskId)}>发送提醒并留痕</button>
+            </div>
+          </>
+        )}
+
+        {dialog.kind === 'principalAction' && (
+          <>
+            <div className="sheet-head">
+              <p className="eyebrow">校级督办确认</p>
+              <h2>{dialog.actionLabel}</h2>
+            </div>
+            <div className="confirm-meta">
+              <MetricLine label="处理对象" value={dialog.target} />
+              <MetricLine label="事项摘要" value={`${dialog.subject}｜${dialog.progress}`} />
+              <MetricLine label="通知方式" value="小程序待办 + 短信提醒" />
+            </div>
+            <FormField label="消息内容预览">
+              <textarea value={principalMessage} readOnly />
+            </FormField>
+            <p className="privacy-line">校级督办只使用脱敏事项摘要，不展示学生姓名、咨询记录、敏感题项和 AI 原始判断。</p>
+            <div className="sheet-actions">
+              <button className="secondary-btn" onClick={onCancel}>取消</button>
+              <button className="primary-btn" onClick={() => onSendPrincipalAction(dialog)}>确认发送</button>
+            </div>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
     <section className="empty-state">
@@ -1293,10 +1516,10 @@ function visibleTimeline(task: WarningTask, role: Role) {
   return [];
 }
 
-function taskPrimaryAction(task: WarningTask, role: Role): Action {
+function taskPrimaryAction(task: WarningTask, role: Role, onOpenDirectorReminder?: (taskId: string) => void): Action {
   if (role.id === 'gradeDirector') {
-    if (task.status === '需补充') return { label: '提醒补充信息', toast: '已模拟提醒补充信息', tone: 'primary' };
-    if (['waitingFeedback', 'overdue'].includes(task.statusKey)) return { label: '提醒班主任反馈', toast: '已模拟提醒班主任反馈', tone: 'primary' };
+    if (task.status === '需补充') return { label: '提醒补充信息', onClick: () => onOpenDirectorReminder?.(task.id), tone: 'primary' };
+    if (['waitingFeedback', 'overdue'].includes(task.statusKey)) return { label: '提醒班主任反馈', onClick: () => onOpenDirectorReminder?.(task.id), tone: 'primary' };
     return { label: '等待心理老师确认', tone: 'primary', disabled: true, hidden: task.statusKey === 'closed' };
   }
   if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
@@ -1344,7 +1567,13 @@ function counselorReviewActions(
   ];
 }
 
-function detailActions(task: WarningTask, role: Role, onConfirmFeedback: (taskId: string) => void, showToast: (message: string) => void): Action[] {
+function detailActions(
+  task: WarningTask,
+  role: Role,
+  onConfirmFeedback: (taskId: string) => void,
+  showToast: (message: string) => void,
+  onOpenDirectorReminder?: (taskId: string) => void,
+): Action[] {
   if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
     return [
       { label: '请班主任补充反馈', tone: 'secondary', toast: '请在反馈确认详情中发起补充' },
@@ -1358,7 +1587,7 @@ function detailActions(task: WarningTask, role: Role, onConfirmFeedback: (taskId
     if (task.statusKey === 'closed') {
       return [{ label: '已完成', tone: 'primary', disabled: true }];
     }
-    return [{ label: task.status === '需补充' ? '提醒补充信息' : '提醒班主任反馈', tone: 'primary', onClick: () => showToast('已模拟发送年级督办提醒') }];
+    return [{ label: task.status === '需补充' ? '提醒补充信息' : '提醒班主任反馈', tone: 'primary', onClick: () => onOpenDirectorReminder?.(task.id) }];
   }
   if (role.id === 'homeroomTeacher' && ['waitingFeedback', 'overdue'].includes(task.statusKey)) {
     return [
