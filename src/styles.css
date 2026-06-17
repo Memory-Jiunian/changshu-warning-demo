@@ -110,25 +110,32 @@ p {
 
 .top-bar h1 {
   margin-top: 2px;
-  font-size: 21px;
+  font-size: 22px;
   line-height: 1.22;
-  font-weight: 650;
+  font-weight: 700;
   text-align: center;
 }
 
 .top-bar .eyebrow {
   text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ui-icon {
+  display: block;
+  flex: 0 0 auto;
 }
 
 .icon-button {
+  display: grid;
+  place-items: center;
   width: 38px;
   height: 38px;
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.76);
   color: var(--color-ink);
-  font-size: 25px;
-  line-height: 1;
 }
 
 .is-hidden {
@@ -139,7 +146,7 @@ p {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 16px 16px 28px;
+  padding: 16px 18px 28px;
 }
 
 .with-bottom-bar {
@@ -163,18 +170,51 @@ p {
 .hero-panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 22px;
+  gap: 12px;
+  padding: 20px 22px;
   border-radius: var(--radius-2xl);
 }
 
-.hero-panel h2,
+.hero-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.hero-main > div {
+  min-width: 0;
+}
+
+.hero-icon-badge {
+  display: grid;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.86), transparent 42%),
+    linear-gradient(135deg, rgba(231, 234, 255, 0.95), rgba(244, 240, 255, 0.88));
+  color: var(--color-brand-600);
+  box-shadow: 0 10px 24px rgba(79, 92, 246, 0.12);
+}
+
+.hero-panel h2 {
+  margin: 6px 0 7px;
+  color: var(--color-ink);
+  font-size: 28px;
+  line-height: 1.18;
+  font-weight: 760;
+}
+
 .detail-head h2,
 .compact-summary h2 {
-  margin: 6px 0 8px;
+  margin: 6px 0 7px;
   color: var(--color-ink);
-  font-size: 27px;
-  line-height: 1.16;
+  font-size: 24px;
+  line-height: 1.22;
   font-weight: 700;
 }
 
@@ -183,13 +223,14 @@ p {
 .compact-summary p,
 .section-block p {
   color: var(--color-body);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.55;
+  font-weight: 400;
 }
 
 .eyebrow {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
   line-height: 1.25;
 }
@@ -204,6 +245,10 @@ p {
   background: rgba(255, 255, 255, 0.58);
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+.segmented {
+  margin-bottom: -4px;
 }
 
 .role-switcher::-webkit-scrollbar,
@@ -221,7 +266,7 @@ p {
   background: transparent;
   color: var(--color-body);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -276,7 +321,8 @@ p {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
-  gap: 8px;
+  gap: 10px;
+  margin-top: -2px;
 }
 
 .stat-card {
@@ -296,28 +342,35 @@ p {
 
 .stat-card strong {
   color: var(--color-ink);
-  font-size: 24px;
+  font-size: 26px;
   line-height: 1;
+  font-weight: 760;
 }
 
 .stat-card span {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .permission-notice {
-  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: rgba(246, 248, 255, 0.72);
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
+  color: var(--color-brand-600);
 }
 
 .permission-notice strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   color: var(--color-ink);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.3;
 }
 
 .permission-notice p {
@@ -333,7 +386,7 @@ p {
 }
 
 .task-card {
-  padding: 16px;
+  padding: 18px;
   background: rgba(255, 255, 255, 0.86);
 }
 
@@ -354,15 +407,17 @@ p {
 .task-card h3,
 .section-block h3 {
   color: var(--color-ink);
-  font-size: 17px;
+  font-size: 19px;
   line-height: 1.35;
+  font-weight: 700;
 }
 
 .task-card p {
   margin-top: 5px;
   color: var(--color-muted);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
 }
 
 .status-badge,
@@ -436,7 +491,7 @@ p {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin: 14px 0;
+  margin: 12px 0;
 }
 
 .meta-grid div {
@@ -452,15 +507,19 @@ p {
 }
 
 dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 dd {
   margin: 4px 0 0;
   color: var(--color-ink);
-  font-size: 14px;
-  font-weight: 650;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .danger-text {
@@ -478,7 +537,7 @@ dd {
 .bottom-action-bar {
   display: grid;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
 
 .card-actions {
@@ -494,7 +553,7 @@ dd {
   min-height: 46px;
   padding: 0 15px;
   border-radius: var(--radius-full);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
 }
@@ -554,6 +613,8 @@ dd {
 
 .section-block h3 {
   margin-bottom: 12px;
+  font-size: 19px;
+  font-weight: 700;
 }
 
 .privacy-line {
@@ -567,7 +628,7 @@ dd {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .chip-list span,
@@ -579,7 +640,7 @@ dd {
   background: rgba(246, 248, 255, 0.78);
   color: var(--color-body);
   font-size: 13px;
-  font-weight: 620;
+  font-weight: 600;
 }
 
 .chip-list.is-compact {
@@ -644,13 +705,15 @@ dd {
 .todo-list span {
   color: var(--color-muted);
   font-size: 13px;
+  font-weight: 500;
 }
 
 .info-list strong,
 .todo-list strong {
   color: var(--color-ink);
-  font-size: 13px;
+  font-size: 14px;
   text-align: right;
+  font-weight: 700;
 }
 
 .timeline {
@@ -733,7 +796,7 @@ dd {
 .form-card {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   padding: 18px;
   background: rgba(255, 255, 255, 0.86);
 }
@@ -741,7 +804,7 @@ dd {
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 8px;
 }
 
 .form-field > span {
@@ -768,10 +831,20 @@ select {
 }
 
 textarea {
-  min-height: 132px;
+  min-height: 124px;
   padding: 12px;
   resize: vertical;
   line-height: 1.55;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  min-width: 18px;
+  padding: 0;
+  accent-color: var(--color-brand-500);
 }
 
 input:focus,
@@ -808,8 +881,9 @@ textarea:focus {
 }
 
 .option-list input {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   accent-color: var(--color-brand-500);
 }
 
@@ -1163,7 +1237,7 @@ textarea:focus {
 
 .confirm-sheet {
   width: min(100vw, 430px);
-  max-height: 86vh;
+  max-height: 84vh;
   overflow-y: auto;
   padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
   border: 1px solid var(--color-border-glass);
@@ -1175,7 +1249,21 @@ textarea:focus {
 }
 
 .sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 14px;
+}
+
+.sheet-icon {
+  display: grid;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-brand-100);
+  color: var(--color-brand-600);
 }
 
 .sheet-head h2 {
@@ -1194,9 +1282,9 @@ textarea:focus {
 .confirm-list label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 8px 10px;
+  gap: 10px;
+  min-height: 46px;
+  padding: 12px;
   border: 1px solid var(--color-hairline-soft);
   border-radius: var(--radius-sm);
   background: rgba(246, 248, 255, 0.78);
@@ -1204,16 +1292,34 @@ textarea:focus {
   font-size: 13px;
 }
 
+.confirm-list input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  min-width: 18px;
+  accent-color: var(--color-brand-500);
+}
+
 .confirm-meta {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
+}
+
+.confirm-meta .metric-line {
+  min-height: 46px;
+  padding: 10px 12px;
 }
 
 .confirm-sheet textarea[readonly] {
   color: var(--color-body);
   background: rgba(246, 248, 255, 0.78);
+}
+
+.confirm-sheet textarea {
+  min-height: 112px;
+  max-height: 128px;
 }
 
 .sheet-actions {
@@ -1222,7 +1328,7 @@ textarea:focus {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin: 14px -16px -18px;
+  margin: 16px -16px -18px;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.94);
   border-top: 1px solid rgba(255, 255, 255, 0.74);

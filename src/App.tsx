@@ -34,6 +34,106 @@ const statusTone: Record<StatusKey, string> = {
   closed: 'closed',
 };
 
+type IconName =
+  | 'arrowLeft'
+  | 'plus'
+  | 'clipboardList'
+  | 'heartPulse'
+  | 'usersRound'
+  | 'shieldAlert'
+  | 'clock'
+  | 'shieldCheck'
+  | 'fileClock'
+  | 'send'
+  | 'triangleAlert';
+
+const iconPaths: Record<IconName, ReactNode> = {
+  arrowLeft: <path d="M15 18l-6-6 6-6M9 12h12" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  clipboardList: (
+    <>
+      <path d="M9 5h6a2 2 0 0 1 2 2v1H7V7a2 2 0 0 1 2-2Z" />
+      <path d="M8 6H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2" />
+      <path d="M8 12h8M8 16h5" />
+    </>
+  ),
+  heartPulse: (
+    <>
+      <path d="M19.5 12.8 12 20l-7.5-7.2A5 5 0 0 1 12 6.4a5 5 0 0 1 7.5 6.4Z" />
+      <path d="M7.5 12h2l1.2-2.5 2.1 5 1.2-2.5h2.5" />
+    </>
+  ),
+  usersRound: (
+    <>
+      <path d="M16 19a4 4 0 0 0-8 0" />
+      <circle cx="12" cy="9" r="3" />
+      <path d="M22 19a3.5 3.5 0 0 0-5-3.2M2 19a3.5 3.5 0 0 1 5-3.2" />
+      <path d="M18 11.5a2.5 2.5 0 0 0 0-5M6 11.5a2.5 2.5 0 0 1 0-5" />
+    </>
+  ),
+  shieldAlert: (
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="M12 8v5M12 16h.01" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+  shieldCheck: (
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  fileClock: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6" />
+      <circle cx="12" cy="15" r="3" />
+      <path d="M12 13.5V15l1 1" />
+    </>
+  ),
+  send: (
+    <>
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </>
+  ),
+  triangleAlert: (
+    <>
+      <path d="m12 3 10 18H2Z" />
+      <path d="M12 9v5M12 17h.01" />
+    </>
+  ),
+};
+
+function Icon({ name, className = '', size = 20 }: { name: IconName; className?: string; size?: number }) {
+  return (
+    <svg className={`ui-icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {iconPaths[name]}
+    </svg>
+  );
+}
+
+function roleHeroIcon(roleId: RoleId): IconName {
+  if (roleId === 'homeroomTeacher') return 'clipboardList';
+  if (roleId === 'counselor') return 'heartPulse';
+  if (roleId === 'gradeDirector') return 'usersRound';
+  return 'shieldAlert';
+}
+
+function HeroIconBadge({ roleId }: { roleId: RoleId }) {
+  return (
+    <span className="hero-icon-badge">
+      <Icon name={roleHeroIcon(roleId)} size={30} />
+    </span>
+  );
+}
+
 export function App() {
   const [roleId, setRoleId] = useState<RoleId>('homeroomTeacher');
   const [warningTasks, setWarningTasks] = useState<WarningTask[]>(initialTasks);
@@ -325,7 +425,7 @@ function MobileShell({
     <main className="phone-shell">
       <header className="top-bar">
         <button className={`icon-button ${showBack ? '' : 'is-hidden'}`} onClick={() => navigate('#/')} aria-label="返回首页">
-          ‹
+          <Icon name="arrowLeft" size={20} />
         </button>
         <div>
           <p className="eyebrow">{role.org}</p>
@@ -333,7 +433,7 @@ function MobileShell({
         </div>
         {canReport ? (
           <button className="icon-button" onClick={() => navigate('#/report')} aria-label={role.id === 'counselor' ? '新增专业记录' : '上报协作线索'}>
-            +
+            <Icon name="plus" size={20} />
           </button>
         ) : (
           <span className="icon-button is-hidden" />
@@ -412,10 +512,13 @@ function Dashboard({
   return (
     <section className="content">
       <section className="hero-panel">
-        <div>
-          <p className="eyebrow">正式预警后的协作跟进</p>
-          <h2>{dashboardTitle(role, openTasks)}</h2>
-          <p>{role.scope}</p>
+        <div className="hero-main">
+          <div>
+            <p className="eyebrow">正式预警后的协作跟进</p>
+            <h2>{dashboardTitle(role, openTasks)}</h2>
+            <p>{role.scope}</p>
+          </div>
+          <HeroIconBadge roleId={role.id} />
         </div>
         <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} demoMode={demoMode} />
       </section>
@@ -486,10 +589,13 @@ function SchoolOverview({
   return (
     <section className="content">
       <section className="hero-panel">
-        <div>
-          <p className="eyebrow">预警督办 / 消息中心</p>
-          <h2>先处理最需要推进的事项</h2>
-          <p>只展示脱敏督办信息，用于判断是否需要协调年级负责人或心理负责人。</p>
+        <div className="hero-main">
+          <div>
+            <p className="eyebrow">预警督办 / 消息中心</p>
+            <h2>先处理最需要推进的事项</h2>
+            <p>只展示脱敏督办信息，用于判断是否需要协调年级负责人或心理负责人。</p>
+          </div>
+          <HeroIconBadge roleId={role.id} />
         </div>
         <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} demoMode={demoMode} />
       </section>
@@ -516,7 +622,7 @@ function SchoolOverview({
               <p>{item.progress}</p>
               <dl>
                 <div>
-                  <dt>时限</dt>
+                  <dt><Icon name="clock" size={16} />时限</dt>
                   <dd className={item.timeStatus.includes('超时') ? 'danger-text' : ''}>{item.timeStatus}</dd>
                 </div>
                 <div>
@@ -572,8 +678,11 @@ function SchoolOverview({
       </details>
 
       <aside className="permission-notice">
-        <strong>隐私边界</strong>
-        <p>校级视角仅展示聚合处置状态与脱敏事项，用于资源调配与流程督办；不展示学生姓名、班级、测评原文、咨询记录、敏感题项和 AI 原始判断。</p>
+        <Icon name="shieldCheck" size={20} />
+        <div>
+          <strong>隐私边界</strong>
+          <p>校级视角仅展示聚合处置状态与脱敏事项，用于资源调配与流程督办；不展示学生姓名、班级、测评原文、咨询记录、敏感题项和 AI 原始判断。</p>
+        </div>
       </aside>
     </section>
   );
@@ -639,7 +748,7 @@ function TaskCard({
           </div>
         )}
         <div>
-          <dt>截止</dt>
+          <dt><Icon name="clock" size={16} />截止</dt>
           <dd className={task.statusKey === 'overdue' ? 'danger-text' : ''}>{task.deadline}</dd>
         </div>
       </dl>
@@ -1169,8 +1278,11 @@ function PermissionNotice({ role }: { role: Role }) {
   };
   return (
     <aside className="permission-notice">
-      <strong>隐私边界</strong>
-      <p>{text[role.id]}</p>
+      <Icon name="shieldCheck" size={20} />
+      <div>
+        <strong>隐私边界</strong>
+        <p>{text[role.id]}</p>
+      </div>
     </aside>
   );
 }
@@ -1359,8 +1471,11 @@ function ConfirmDialogLayer({
         {dialog.kind === 'supplement' && task && (
           <>
             <div className="sheet-head">
-              <p className="eyebrow">操作确认</p>
-              <h2>请班主任补充反馈</h2>
+              <span className="sheet-icon"><Icon name="send" size={20} /></span>
+              <div>
+                <p className="eyebrow">操作确认</p>
+                <h2>请班主任补充反馈</h2>
+              </div>
             </div>
             <FormField label="补充原因">
               <div className="confirm-list">
@@ -1390,8 +1505,11 @@ function ConfirmDialogLayer({
         {dialog.kind === 'directorReminder' && task && (
           <>
             <div className="sheet-head">
-              <p className="eyebrow">督办确认</p>
-              <h2>提醒班主任反馈</h2>
+              <span className="sheet-icon"><Icon name="send" size={20} /></span>
+              <div>
+                <p className="eyebrow">督办确认</p>
+                <h2>提醒班主任反馈</h2>
+              </div>
             </div>
             <div className="confirm-meta">
               <MetricLine label="提醒对象" value={task.owner} />
@@ -1412,8 +1530,11 @@ function ConfirmDialogLayer({
         {dialog.kind === 'principalAction' && (
           <>
             <div className="sheet-head">
-              <p className="eyebrow">校级督办确认</p>
-              <h2>{dialog.actionLabel}</h2>
+              <span className="sheet-icon"><Icon name="fileClock" size={20} /></span>
+              <div>
+                <p className="eyebrow">校级督办确认</p>
+                <h2>{dialog.actionLabel}</h2>
+              </div>
             </div>
             <div className="confirm-meta">
               <MetricLine label="处理对象" value={dialog.target} />
