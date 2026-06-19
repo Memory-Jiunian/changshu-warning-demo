@@ -126,10 +126,10 @@ function roleHeroIcon(roleId: RoleId): IconName {
   return 'shieldAlert';
 }
 
-function HeroIconBadge({ roleId }: { roleId: RoleId }) {
+function RoleHeroIcon({ roleId }: { roleId: RoleId }) {
   return (
     <span className="hero-icon-badge">
-      <Icon name={roleHeroIcon(roleId)} size={30} />
+      <Icon name={roleHeroIcon(roleId)} size={24} />
     </span>
   );
 }
@@ -518,7 +518,7 @@ function Dashboard({
             <h2>{dashboardTitle(role, openTasks)}</h2>
             <p>{role.scope}</p>
           </div>
-          <HeroIconBadge roleId={role.id} />
+          <RoleHeroIcon roleId={role.id} />
         </div>
         <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} demoMode={demoMode} />
       </section>
@@ -556,10 +556,10 @@ function Dashboard({
 }
 
 function dashboardTitle(role: Role, openTasks: number) {
-  if (role.id === 'homeroomTeacher') return `有 ${openTasks} 项观察任务待处理`;
-  if (role.id === 'gradeDirector') return `本年级有 ${openTasks} 项需督办`;
-  if (role.id === 'counselor') return `有 ${openTasks} 项反馈需要确认`;
-  return `今日有 ${openTasks} 项需要关注`;
+  if (role.id === 'homeroomTeacher') return <>有 <span className="hero-number">{openTasks}</span> 项观察任务待处理</>;
+  if (role.id === 'gradeDirector') return <>本年级有 <span className="hero-number">{openTasks}</span> 项需督办</>;
+  if (role.id === 'counselor') return <>有 <span className="hero-number">{openTasks}</span> 项反馈需要确认</>;
+  return <>今日有 <span className="hero-number">{openTasks}</span> 项需要关注</>;
 }
 
 function SchoolOverview({
@@ -595,7 +595,7 @@ function SchoolOverview({
             <h2>先处理最需要推进的事项</h2>
             <p>只展示脱敏督办信息，用于判断是否需要协调年级负责人或心理负责人。</p>
           </div>
-          <HeroIconBadge roleId={role.id} />
+          <RoleHeroIcon roleId={role.id} />
         </div>
         <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} demoMode={demoMode} />
       </section>
@@ -724,9 +724,9 @@ function TaskCard({
   onOpenDirectorReminder: (taskId: string) => void;
 }) {
   const action = taskPrimaryAction(task, role, onOpenDirectorReminder);
-  const displayName = role.id === 'gradeDirector' ? `${task.className} · 脱敏事项` : task.student;
+  const displayName = role.id === 'gradeDirector' ? `${task.className} · 脱敏事项` : role.id === 'counselor' ? `${task.student} · ${task.type}` : task.student;
   const summaryLabel = role.id === 'gradeDirector' ? '查看督办详情' : role.id === 'homeroomTeacher' ? '查看任务' : '查看复核详情';
-  const compactCard = role.id === 'homeroomTeacher' || role.id === 'gradeDirector';
+  const feedbackSummary = role.id === 'counselor' ? task.nextAction : '';
 
   return (
     <article className="task-card">
@@ -736,29 +736,33 @@ function TaskCard({
             <h3>{displayName}</h3>
             <AttentionLevelTag level={task.attention} roleId={role.id} />
           </div>
-          {!compactCard && <p>{task.type}</p>}
         </div>
         <HomeStatusBadge task={task} role={role} />
       </div>
-      <dl className={`meta-grid ${compactCard ? 'is-compact' : ''}`}>
-        {!compactCard && (
-          <div>
+      <dl className="task-meta-list">
+        {role.id === 'counselor' && (
+          <div className="task-meta-row">
             <dt>责任人</dt>
-            <dd>{role.id === 'counselor' ? `${task.owner} / ${task.counselor}` : task.owner}</dd>
+            <dd>{task.owner} / {task.counselor}</dd>
           </div>
         )}
-        <div>
+        <div className="task-meta-row">
           <dt><Icon name="clock" size={16} />截止</dt>
           <dd className={task.statusKey === 'overdue' ? 'danger-text' : ''}>{task.deadline}</dd>
         </div>
+        {role.id === 'counselor' && (
+          <div className="task-meta-row">
+            <dt>反馈</dt>
+            <dd>{feedbackSummary}</dd>
+          </div>
+        )}
       </dl>
       {role.id === 'homeroomTeacher' && (
         <>
           <ChipList items={task.focus.slice(0, 2)} compact />
-          {task.statusKey === 'pendingCounselorConfirm' && <p className="muted-text">已提交给心理老师，等待专业确认</p>}
+          {task.statusKey === 'pendingCounselorConfirm' && <p className="task-summary-line">已提交给心理老师，等待专业确认</p>}
         </>
       )}
-      {!compactCard && <p className="next-action">{task.nextAction}</p>}
       <div className="card-actions">
         <button className="secondary-btn" onClick={() => navigate(`#/task/${task.id}`)}>
           {summaryLabel}
