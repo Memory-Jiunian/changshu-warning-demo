@@ -1,0 +1,96 @@
+.business-risk-tag,
+.business-status-badge {
+  flex: 0 0 auto;
+}
+
+.business-task-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.business-task-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.business-task-card__header h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.business-task-card__header p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.business-task-card__meta {
+  display: grid;
+  gap: 8px;
+}
+
+.business-task-card__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  border-top: 1px solid var(--color-hairline-soft);
+  color: var(--color-body);
+  font-size: 13px;
+}
+
+.business-task-card__line:first-child {
+  border-top: 0;
+}
+
+.business-task-card__line strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.business-task-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.business-task-card__tags span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: 999px;
+  color: var(--color-body);
+  background: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.business-task-card__summary {
+  margin: 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.business-task-card__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.business-task-card__actions:has(.ui-button:only-child) {
+  grid-template-columns: 1fr;
+}
+
