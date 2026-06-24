@@ -1,0 +1,8 @@
+{
+  "name": "校园心理小程序页面导入器 DOM版",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": [
+    "figma"
+  ]
+}

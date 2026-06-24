@@ -1,0 +1,6 @@
+{
+  "name": "测试：创建一个可编辑Frame",
+  "api": "1.0.0",
+  "main": "test-minimal.js",
+  "editorType": ["figma"]
+}

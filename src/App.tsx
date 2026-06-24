@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { StatusBadge as UiStatusBadge } from './components/business/StatusBadge';
+import { Badge as UiBadge } from './components/ui/Badge';
+import { Button as UiButton } from './components/ui/Button';
+import { Card as UiCard } from './components/ui/Card';
+import { FormField as UiFormField } from './components/ui/FormField';
 import {
   flowSteps,
   initialTasks,
@@ -1014,7 +1019,7 @@ function FollowUpRecord({
   return (
     <>
       <section className="content with-bottom-bar">
-        <section className="compact-summary">
+        <UiCard as="section" className="compact-summary" tone="glass">
           <div>
             <p className="eyebrow">观察任务</p>
             <h2>
@@ -1022,42 +1027,45 @@ function FollowUpRecord({
             </h2>
             <p>提交后由 {task.counselor} 确认，本页只记录事实观察，不填写专业判断或处置结论。</p>
           </div>
-          <StatusBadge task={task} />
-        </section>
+          <div className="record-summary-badges">
+            <UiBadge variant="outline">事实观察</UiBadge>
+            <UiStatusBadge statusKey={task.statusKey} status={task.status} />
+          </div>
+        </UiCard>
 
-        <section className="form-card">
-          <FormField label="观察时间段">
+        <UiCard as="section" className="form-card" tone="glass">
+          <UiFormField label="观察时间段">
             <input defaultValue="今天上午 08:00-12:00" />
-          </FormField>
-          <FormField label="观察场景">
+          </UiFormField>
+          <UiFormField label="观察场景">
             <SelectableChips items={['课堂', '课间', '午休', '放学后', '家校沟通', '其他']} defaults={['课堂', '课间']} />
-          </FormField>
-          <FormField label="异常表现">
+          </UiFormField>
+          <UiFormField label="异常表现">
             <SelectableChips items={['课堂回应减少', '出勤变化', '同伴互动减少', '情绪波动', '独处增多', '暂未发现明显异常']} defaults={['课堂回应减少', '独处增多']} />
-          </FormField>
-          <FormField label="发生频率">
+          </UiFormField>
+          <UiFormField label="发生频率">
             <select defaultValue="近两天偶发">
               <option>单次出现</option>
               <option>近两天偶发</option>
               <option>连续多日出现</option>
               <option>频率暂不明确</option>
             </select>
-          </FormField>
-          <FormField label="影响程度">
+          </UiFormField>
+          <UiFormField label="影响程度">
             <select defaultValue="轻度影响课堂参与">
               <option>暂未影响日常学习</option>
               <option>轻度影响课堂参与</option>
               <option>影响出勤或同伴互动</option>
               <option>需要心理老师尽快查看</option>
             </select>
-          </FormField>
-          <FormField label="已采取措施">
+          </UiFormField>
+          <UiFormField label="已采取措施">
             <SelectableChips items={['日常关心', '简短沟通', '联系家长', '调整座位/任务', '暂未处理']} defaults={['日常关心']} />
-          </FormField>
-          <FormField label="事实描述">
+          </UiFormField>
+          <UiFormField label="事实描述">
             <textarea defaultValue="今天上午课堂状态较安静，课间多独处；课后能回应简单关心，暂未发现明显冲突升级。" placeholder="请描述你观察到的具体事实，避免主观判断、标签化和诊断性表达。" />
-          </FormField>
-          <FormField label="是否需要心理老师尽快查看">
+          </UiFormField>
+          <UiFormField label="是否需要心理老师尽快查看">
             <div className="option-list">
               {['是，建议尽快查看', '否，按常规节奏确认'].map((item, index) => (
                 <label key={item}>
@@ -1066,18 +1074,19 @@ function FollowUpRecord({
                 </label>
               ))}
             </div>
-          </FormField>
-        </section>
+          </UiFormField>
+        </UiCard>
 
         <PermissionNotice role={role} />
       </section>
-      <BottomActionBar
-        actions={[
-          { label: '保存草稿', tone: 'secondary', toast: '记录已暂存' },
-          { label: '提交给心理老师', tone: 'primary', onClick: () => onSubmit(task.id) },
-        ]}
-        showToast={showToast}
-      />
+      <div className="bottom-action-bar">
+        <UiButton variant="secondary" fullWidth onClick={() => showToast('记录已暂存')}>
+          保存草稿
+        </UiButton>
+        <UiButton variant="primary" fullWidth onClick={() => onSubmit(task.id)}>
+          提交给心理老师
+        </UiButton>
+      </div>
     </>
   );
 }

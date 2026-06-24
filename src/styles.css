@@ -694,6 +694,13 @@ dd {
   align-self: flex-start;
 }
 
+.record-summary-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .section-block {
   padding: 18px;
 }
