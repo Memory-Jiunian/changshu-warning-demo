@@ -1367,7 +1367,7 @@ textarea:focus {
   font-size: 14px;
 }
 
-.principal-alert-item span {
+.principal-alert-item > div:first-child > span {
   flex: 0 0 auto;
   padding: 4px 8px;
   border-radius: var(--radius-full);
