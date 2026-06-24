@@ -306,6 +306,15 @@
   padding: 0 18px 18px;
 }
 
+.ui-sheet__body .ui-form-field {
+  gap: 9px;
+}
+
+.ui-sheet__body textarea {
+  background: rgba(247, 248, 253, 0.86);
+  border-color: rgba(90, 100, 140, 0.16);
+}
+
 .ui-sheet__footer {
   display: flex;
   gap: 10px;

@@ -5,6 +5,7 @@ import './business.css';
 export interface StatusBadgeProps {
   statusKey?: StatusKey;
   status?: string;
+  label?: string;
 }
 
 const statusLabels: Partial<Record<StatusKey, string>> = {
@@ -29,8 +30,8 @@ const statusVariants: Partial<Record<StatusKey, 'neutral' | 'brand' | 'success' 
   closed: 'success',
 };
 
-export function StatusBadge({ statusKey, status }: StatusBadgeProps) {
-  const label = statusKey ? statusLabels[statusKey] : status;
+export function StatusBadge({ statusKey, status, label: labelOverride }: StatusBadgeProps) {
+  const label = labelOverride || (statusKey ? statusLabels[statusKey] : status);
   const variant = statusKey ? statusVariants[statusKey] : 'neutral';
 
   return (
@@ -39,4 +40,3 @@ export function StatusBadge({ statusKey, status }: StatusBadgeProps) {
     </Badge>
   );
 }
-

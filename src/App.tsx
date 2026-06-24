@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { RiskLevelTag as UiRiskLevelTag } from './components/business/RiskLevelTag';
 import { StatusBadge as UiStatusBadge } from './components/business/StatusBadge';
 import { Badge as UiBadge } from './components/ui/Badge';
 import { Button as UiButton } from './components/ui/Button';
 import { Card as UiCard } from './components/ui/Card';
 import { FormField as UiFormField } from './components/ui/FormField';
+import { Sheet as UiSheet } from './components/ui/Sheet';
 import {
   flowSteps,
   initialTasks,
@@ -27,17 +29,6 @@ type ConfirmDialog =
   | { kind: 'supplement'; taskId: string }
   | { kind: 'directorReminder'; taskId: string }
   | { kind: 'principalAction'; itemKey: string; actionLabel: string; subject: string; progress: string; target: string };
-
-const statusTone: Record<StatusKey, string> = {
-  waitingFeedback: 'pending',
-  overdue: 'overdue',
-  pendingCounselorConfirm: 'confirm',
-  active: 'active',
-  continuousAttention: 'attention',
-  retestPending: 'retest',
-  referral: 'referral',
-  closed: 'closed',
-};
 
 type IconName =
   | 'arrowLeft'
@@ -516,7 +507,7 @@ function Dashboard({
 
   return (
     <section className="content">
-      <section className="hero-panel">
+      <UiCard as="section" className="hero-panel" tone="glass">
         <div className="hero-main">
           <div>
             <p className="eyebrow">正式预警后的协作跟进</p>
@@ -526,7 +517,7 @@ function Dashboard({
           <RoleHeroIcon roleId={role.id} />
         </div>
         <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} demoMode={demoMode} />
-      </section>
+      </UiCard>
 
       {role.id === 'counselor' && counselorOverdueCount > 0 && (
         <aside className="priority-reminder">
@@ -537,7 +528,7 @@ function Dashboard({
 
       <section className="stats-grid" aria-label="任务概览">
         {stats.map(([label, value]) => (
-          <button className="stat-card" key={label} onClick={() => setFilter(String(label))}>
+          <button className={`stat-card ${label === activeFilter ? 'is-active' : ''}`} key={label} onClick={() => setFilter(String(label))}>
             <strong>{value}</strong>
             <span>{label}</span>
           </button>
@@ -593,7 +584,7 @@ function SchoolOverview({
 
   return (
     <section className="content">
-      <section className="hero-panel">
+      <UiCard as="section" className="hero-panel" tone="glass">
         <div className="hero-main">
           <div>
             <p className="eyebrow">预警督办 / 消息中心</p>
@@ -603,14 +594,14 @@ function SchoolOverview({
           <RoleHeroIcon roleId={role.id} />
         </div>
         <DemoRoleEntry roleId={roleId} setRoleId={setRoleId} demoMode={demoMode} />
-      </section>
+      </UiCard>
 
       <section className="overview-grid">
         {cards.map(([label, value]) => (
-          <article className="overview-card" key={label}>
+          <UiCard as="article" className="overview-card" tone="glass" key={label}>
             <strong>{value}</strong>
             <span>{label}</span>
-          </article>
+          </UiCard>
         ))}
       </section>
 
@@ -635,7 +626,7 @@ function SchoolOverview({
                   <dd>{item.notified}</dd>
                 </div>
               </dl>
-              <button className="primary-btn" onClick={() => onOpenPrincipalAction(item)}>{item.actionLabel}</button>
+              <UiButton variant="primary" fullWidth onClick={() => onOpenPrincipalAction(item)}>{item.actionLabel}</UiButton>
               {principalLogs[itemKey] && <p className="trace-line">{principalLogs[itemKey]}</p>}
             </article>
           )})}
@@ -734,7 +725,7 @@ function TaskCard({
   const feedbackSummary = role.id === 'counselor' ? task.nextAction : '';
 
   return (
-    <article className="task-card">
+    <UiCard as="article" className="task-card" tone="glass">
       <div className="card-head">
         <div>
           <div className="title-row">
@@ -769,12 +760,13 @@ function TaskCard({
         </>
       )}
       <div className="card-actions">
-        <button className="secondary-btn" onClick={() => navigate(`#/task/${task.id}`)}>
+        <UiButton variant="secondary" fullWidth onClick={() => navigate(`#/task/${task.id}`)}>
           {summaryLabel}
-        </button>
+        </UiButton>
         {!action.hidden && (
-          <button
-            className="primary-btn"
+          <UiButton
+            variant="primary"
+            fullWidth
             disabled={action.disabled}
             onClick={() => {
               if (action.disabled) return;
@@ -784,10 +776,10 @@ function TaskCard({
             }}
           >
             {action.label}
-          </button>
+          </UiButton>
         )}
       </div>
-    </article>
+    </UiCard>
   );
 }
 
@@ -824,7 +816,7 @@ function TaskDetail({
     return (
       <>
         <section className="content with-bottom-bar">
-          <section className="detail-head">
+          <UiCard as="section" className="detail-head" tone="glass">
             <div>
               <p className="eyebrow">反馈确认详情</p>
               <h2>
@@ -835,7 +827,7 @@ function TaskDetail({
               </p>
             </div>
             <StatusBadge task={task} />
-          </section>
+          </UiCard>
 
           <InfoSection title="学生基础信息">
             <div className="info-list">
@@ -884,7 +876,7 @@ function TaskDetail({
     return (
       <>
         <section className="content with-bottom-bar">
-          <section className="detail-head">
+          <UiCard as="section" className="detail-head" tone="glass">
             <div>
               <p className="eyebrow">本年级协作进度</p>
               <h2>{task.className} · 脱敏督办事项</h2>
@@ -893,7 +885,7 @@ function TaskDetail({
               </p>
             </div>
             <StatusBadge task={task} />
-          </section>
+          </UiCard>
 
           <PermissionNotice role={role} />
 
@@ -948,7 +940,7 @@ function TaskDetail({
   return (
     <>
       <section className="content with-bottom-bar">
-        <section className="detail-head">
+        <UiCard as="section" className="detail-head" tone="glass">
           <div>
             <p className="eyebrow">观察任务详情</p>
             <h2>
@@ -959,7 +951,7 @@ function TaskDetail({
             </p>
           </div>
           <StatusBadge task={task} />
-        </section>
+        </UiCard>
 
         <PermissionNotice role={role} />
 
@@ -1117,16 +1109,19 @@ function ClueReport({ role, tasks, showToast }: { role: Role; tasks: WarningTask
   return (
     <>
       <section className="content with-bottom-bar">
-        <section className="compact-summary">
+        <UiCard as="section" className="compact-summary" tone="glass">
           <div>
             <p className="eyebrow">{counselorMode ? '专业记录' : '线索回流'}</p>
             <h2>{counselorMode ? '新增专业记录' : '上报协作线索'}</h2>
             <p>{counselorMode ? '用于记录心理老师的专业处置动作，班主任和年级主任不可填写。' : '用于补充学生近期状态，提交后将由心理老师确认。'}</p>
           </div>
-        </section>
+          <div className="record-summary-badges">
+            <UiBadge variant="outline">{counselorMode ? '专业处置' : '事实线索'}</UiBadge>
+          </div>
+        </UiCard>
 
-        <section className="form-card">
-          <FormField label={counselorMode ? '选择记录对象' : '选择学生'}>
+        <UiCard as="section" className="form-card" tone="glass">
+          <UiFormField label={counselorMode ? '选择记录对象' : '选择学生'}>
             <select defaultValue={tasks[0] ? `${tasks[0].student} · ${tasks[0].className}` : ''}>
               {tasks.map((task) => (
                 <option key={task.id}>
@@ -1134,29 +1129,34 @@ function ClueReport({ role, tasks, showToast }: { role: Role; tasks: WarningTask
                 </option>
               ))}
             </select>
-          </FormField>
-          <FormField label="发生时间 / 场景">
+          </UiFormField>
+          <UiFormField label="发生时间 / 场景">
             <div className="two-col">
               <input defaultValue="今天 09:40" />
               <input defaultValue="课间 / 走廊" />
             </div>
-          </FormField>
-          <FormField label={counselorMode ? '记录类型' : '线索类型'}>
+          </UiFormField>
+          <UiFormField label={counselorMode ? '记录类型' : '线索类型'}>
             <SelectableChips
               items={counselorMode ? ['反馈确认', '干预记录', '复测安排', '持续关注', '转介沟通', '解除关注'] : ['情绪异常', '行为变化', '人际冲突', '出勤异常', '家庭事件', '其他']}
               defaults={counselorMode ? ['干预记录'] : ['行为变化']}
+              className="feedback-option-chips"
             />
-          </FormField>
-          <FormField label={counselorMode ? '处置阶段' : '紧急程度'}>
-            <SelectableChips items={counselorMode ? ['跟进中', '复测待安排', '持续关注', '转介中', '已闭环'] : ['一般', '需要关注', '尽快确认', '紧急']} defaults={counselorMode ? ['跟进中'] : ['需要关注']} className="urgency" />
-          </FormField>
-          <FormField label={counselorMode ? '专业记录摘要' : '观察描述'}>
+          </UiFormField>
+          <UiFormField label={counselorMode ? '处置阶段' : '紧急程度'}>
+            <SelectableChips
+              items={counselorMode ? ['跟进中', '复测待安排', '持续关注', '转介中', '已闭环'] : ['一般', '需要关注', '尽快确认', '紧急']}
+              defaults={counselorMode ? ['跟进中'] : ['需要关注']}
+              className="feedback-option-chips urgency"
+            />
+          </UiFormField>
+          <UiFormField label={counselorMode ? '专业记录摘要' : '观察描述'}>
             <textarea
               defaultValue={counselorMode ? '已结合班主任反馈完成一次简短访谈，后续进入持续关注并安排复测。' : '学生连续两天课间独处，今天主动回避同伴邀请，暂未发现冲突升级。'}
               placeholder={counselorMode ? '请记录专业处置摘要，完整档案仍以管理端为准。' : '请尽量记录可观察事实。'}
             />
-          </FormField>
-          <FormField label="是否已与学生沟通">
+          </UiFormField>
+          <UiFormField label="是否已与学生沟通">
             <div className="option-list">
               <label>
                 <input type="radio" name="talked" defaultChecked />
@@ -1167,18 +1167,19 @@ function ClueReport({ role, tasks, showToast }: { role: Role; tasks: WarningTask
                 尚未沟通
               </label>
             </div>
-          </FormField>
-        </section>
+          </UiFormField>
+        </UiCard>
 
         <PermissionNotice role={role} />
       </section>
-      <BottomActionBar
-        actions={[
-          { label: '保存草稿', tone: 'secondary', toast: counselorMode ? '专业记录草稿已保存' : '线索草稿已保存' },
-          { label: counselorMode ? '保存专业记录' : '提交线索', tone: 'primary', toast: counselorMode ? '专业记录已保存' : '线索已提交给心理老师确认' },
-        ]}
-        showToast={showToast}
-      />
+      <div className="bottom-action-bar">
+        <UiButton variant="secondary" fullWidth onClick={() => showToast(counselorMode ? '专业记录草稿已保存' : '线索草稿已保存')}>
+          保存草稿
+        </UiButton>
+        <UiButton variant="primary" fullWidth onClick={() => showToast(counselorMode ? '专业记录已保存' : '线索已提交给心理老师确认')}>
+          {counselorMode ? '保存专业记录' : '提交线索'}
+        </UiButton>
+      </div>
     </>
   );
 }
@@ -1203,7 +1204,7 @@ function ProgressDetail({
   return (
     <>
       <section className="content with-bottom-bar">
-        <section className="detail-head">
+        <UiCard as="section" className="detail-head" tone="glass">
           <div>
             <p className="eyebrow">
               {displayName} · {task.className}
@@ -1211,7 +1212,7 @@ function ProgressDetail({
             <h2>{progressHeading(task, role)}</h2>
             <p>{progressDescription(role)}</p>
           </div>
-        </section>
+        </UiCard>
 
         <InfoSection title="闭环流程">
           <div className="stepper">
@@ -1237,7 +1238,9 @@ function ProgressDetail({
             <p>{role.id === 'gradeDirector' ? '本轮流程已闭环，个体敏感细节已隐藏。' : task.finalConclusion}</p>
           </InfoSection>
         ) : (
-          <section className="section-block warning-box">该任务尚未闭环，不能仅以“已通知”作为完成依据。</section>
+          <UiCard as="section" className="section-block warning-box" tone="warning">
+            该任务尚未闭环，不能仅以“已通知”作为完成依据。
+          </UiCard>
         )}
 
         <PermissionNotice role={role} />
@@ -1314,10 +1317,10 @@ function PermissionNotice({ role }: { role: Role }) {
 
 function InfoSection({ title, className = '', children }: { title: string; className?: string; children: ReactNode }) {
   return (
-    <section className={`section-block ${className}`}>
+    <UiCard as="section" className={`section-block ${className}`} tone="glass">
       <h3>{title}</h3>
       {children}
-    </section>
+    </UiCard>
   );
 }
 
@@ -1381,15 +1384,6 @@ function SubmittedRecord({ record }: { record: WarningTask['records'][number] })
   );
 }
 
-function FormField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="form-field">
-      <span>{label}</span>
-      {children}
-    </label>
-  );
-}
-
 function SelectableChips({ items, defaults, className = '' }: { items: string[]; defaults: string[]; className?: string }) {
   const [selected, setSelected] = useState(defaults);
   return (
@@ -1423,23 +1417,32 @@ function ChipList({ items, compact = false }: { items: string[]; compact?: boole
 }
 
 function StatusBadge({ task }: { task: WarningTask }) {
-  return <span className={`status-badge ${statusTone[task.statusKey]}`}>{task.status}</span>;
+  return <UiStatusBadge statusKey={task.statusKey} status={task.status} label={task.status} />;
 }
 
 function HomeStatusBadge({ task, role }: { task: WarningTask; role: Role }) {
-  if (task.statusKey === 'overdue') return <span className="status-badge overdue">逾期</span>;
+  if (task.statusKey === 'overdue') return <UiBadge variant="error">逾期</UiBadge>;
   const label = homeStatusLabel(task, role);
-  return <span className={`status-badge ${statusTone[task.statusKey]}`}>{label}</span>;
+  const variant =
+    task.statusKey === 'closed'
+      ? 'success'
+      : task.statusKey === 'waitingFeedback'
+        ? 'warning'
+        : task.statusKey === 'referral'
+          ? 'error'
+          : task.statusKey === 'active'
+            ? 'info'
+            : 'brand';
+  return <UiBadge variant={variant}>{label}</UiBadge>;
 }
 
 function AttentionLevelTag({ level, roleId }: { level: AttentionLevel; roleId?: RoleId }) {
-  const key = level === '重点关注' ? 'high' : level === '持续关注' ? 'medium' : 'low';
   const teacherLabel: Record<AttentionLevel, string> = {
     重点关注: '协作优先级：高',
     持续关注: '协作优先级：中',
     一般关注: '协作优先级：常规',
   };
-  return <span className={`attention-tag ${key}`}>{roleId === 'homeroomTeacher' ? teacherLabel[level] : level}</span>;
+  return <UiRiskLevelTag level={level} roleId={roleId} label={roleId === 'homeroomTeacher' ? teacherLabel[level] : level} />;
 }
 
 function BottomActionBar({ actions, showToast }: { actions: Action[]; showToast?: (message: string) => void }) {
@@ -1449,8 +1452,9 @@ function BottomActionBar({ actions, showToast }: { actions: Action[]; showToast?
   return (
     <nav className="bottom-action-bar">
       {actions.map((action) => (
-        <button
-          className={action.tone === 'primary' ? 'primary-btn' : 'secondary-btn'}
+        <UiButton
+          variant={action.tone === 'primary' ? 'primary' : 'secondary'}
+          fullWidth
           disabled={action.disabled}
           key={action.label}
           onClick={() => {
@@ -1461,7 +1465,7 @@ function BottomActionBar({ actions, showToast }: { actions: Action[]; showToast?
           }}
         >
           {action.label}
-        </button>
+        </UiButton>
       ))}
     </nav>
   );
@@ -1491,20 +1495,38 @@ function ConfirmDialogLayer({
     ? `${task.owner}，您有一条学生观察反馈待办，请于今天 18:00 前进入心理健康小程序完成反馈。`
     : '您有一条学生观察反馈待办，请于今天 18:00 前进入心理健康小程序完成反馈。';
   const principalMessage = '陈老师，您有一条心理风险协作督办待处理，请进入心理健康小程序查看并推进相关事项。';
+  const sheetTitle =
+    dialog.kind === 'supplement' ? '请班主任补充反馈' : dialog.kind === 'directorReminder' ? '提醒班主任反馈' : dialog.actionLabel;
+  const sheetDescription =
+    dialog.kind === 'supplement' ? '确认补充原因、时限与通知对象后发送。' : dialog.kind === 'directorReminder' ? '提醒只推动协作提交，不改变专业处置状态。' : '校级操作仅使用脱敏事项摘要。';
+  const sheetFooter =
+    dialog.kind === 'supplement' ? (
+      <>
+        <UiButton variant="secondary" fullWidth onClick={onCancel}>取消</UiButton>
+        <UiButton variant="primary" fullWidth onClick={() => onSendSupplement(dialog.taskId)}>发送补充请求</UiButton>
+      </>
+    ) : dialog.kind === 'directorReminder' ? (
+      <>
+        <UiButton variant="secondary" fullWidth onClick={onCancel}>取消</UiButton>
+        <UiButton variant="primary" fullWidth onClick={() => onSendDirectorReminder(dialog.taskId)}>发送提醒并留痕</UiButton>
+      </>
+    ) : (
+      <>
+        <UiButton variant="secondary" fullWidth onClick={onCancel}>取消</UiButton>
+        <UiButton variant="primary" fullWidth onClick={() => onSendPrincipalAction(dialog)}>确认发送</UiButton>
+      </>
+    );
 
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
-      <section className="confirm-sheet" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+    <UiSheet open title={sheetTitle} description={sheetDescription} footer={sheetFooter} onClose={onCancel}>
+      <div className="sheet-context">
+        <UiBadge variant="outline">
+          {dialog.kind === 'supplement' ? '操作确认' : dialog.kind === 'directorReminder' ? '督办确认' : '校级督办确认'}
+        </UiBadge>
+      </div>
         {dialog.kind === 'supplement' && task && (
           <>
-            <div className="sheet-head">
-              <span className="sheet-icon"><Icon name="send" size={20} /></span>
-              <div>
-                <p className="eyebrow">操作确认</p>
-                <h2>请班主任补充反馈</h2>
-              </div>
-            </div>
-            <FormField label="补充原因">
+            <UiFormField label="补充原因">
               <div className="confirm-list">
                 {supplementReasons.map((reason, index) => (
                   <label key={reason}>
@@ -1513,91 +1535,64 @@ function ConfirmDialogLayer({
                   </label>
                 ))}
               </div>
-            </FormField>
-            <FormField label="补充说明">
+            </UiFormField>
+            <UiFormField label="补充说明">
               <textarea defaultValue={supplementText} />
-            </FormField>
+            </UiFormField>
             <div className="confirm-meta">
               <MetricLine label="补充时限" value="今天 18:00 前" />
               <MetricLine label="通知对象" value={`责任班主任：${task.owner}`} />
               <MetricLine label="通知方式" value="小程序待办 + 短信提醒" />
-            </div>
-            <div className="sheet-actions">
-              <button className="secondary-btn" onClick={onCancel}>取消</button>
-              <button className="primary-btn" onClick={() => onSendSupplement(dialog.taskId)}>发送补充请求</button>
             </div>
           </>
         )}
 
         {dialog.kind === 'directorReminder' && task && (
           <>
-            <div className="sheet-head">
-              <span className="sheet-icon"><Icon name="send" size={20} /></span>
-              <div>
-                <p className="eyebrow">督办确认</p>
-                <h2>提醒班主任反馈</h2>
-              </div>
-            </div>
             <div className="confirm-meta">
               <MetricLine label="提醒对象" value={task.owner} />
               <MetricLine label="提醒事项" value={task.status === '需补充' ? '需补充观察反馈' : '观察反馈待提交'} />
               <MetricLine label="通知方式" value="小程序待办 + 短信提醒" />
             </div>
-            <FormField label="消息内容预览">
+            <UiFormField label="消息内容预览">
               <textarea value={directorMessage} readOnly />
-            </FormField>
+            </UiFormField>
             <p className="privacy-line">外部提醒只提示有待办，详情需进入小程序查看，不包含学生姓名、测评原文或具体心理风险原因。</p>
-            <div className="sheet-actions">
-              <button className="secondary-btn" onClick={onCancel}>取消</button>
-              <button className="primary-btn" onClick={() => onSendDirectorReminder(dialog.taskId)}>发送提醒并留痕</button>
-            </div>
           </>
         )}
 
         {dialog.kind === 'principalAction' && (
           <>
-            <div className="sheet-head">
-              <span className="sheet-icon"><Icon name="fileClock" size={20} /></span>
-              <div>
-                <p className="eyebrow">校级督办确认</p>
-                <h2>{dialog.actionLabel}</h2>
-              </div>
-            </div>
             <div className="confirm-meta">
               <MetricLine label="处理对象" value={dialog.target} />
               <MetricLine label="事项摘要" value={`${dialog.subject}｜${dialog.progress}`} />
               <MetricLine label="通知方式" value="小程序待办 + 短信提醒" />
             </div>
-            <FormField label="消息内容预览">
+            <UiFormField label="消息内容预览">
               <textarea value={principalMessage} readOnly />
-            </FormField>
+            </UiFormField>
             <p className="privacy-line">校级督办只使用脱敏事项摘要，不展示学生姓名、咨询记录、敏感题项和 AI 原始判断。</p>
-            <div className="sheet-actions">
-              <button className="secondary-btn" onClick={onCancel}>取消</button>
-              <button className="primary-btn" onClick={() => onSendPrincipalAction(dialog)}>确认发送</button>
-            </div>
           </>
         )}
-      </section>
-    </div>
+    </UiSheet>
   );
 }
 
 function EmptyState() {
   return (
-    <section className="empty-state">
+    <UiCard as="section" className="empty-state" tone="soft">
       <h3>暂无待跟进任务</h3>
       <p>新的正式预警生成后，会在这里显示协作事项。</p>
-    </section>
+    </UiCard>
   );
 }
 
 function PermissionBlock({ title, text }: { title: string; text: string }) {
   return (
-    <section className="empty-state">
+    <UiCard as="section" className="empty-state" tone="soft">
       <h3>{title}</h3>
       <p>{text}</p>
-    </section>
+    </UiCard>
   );
 }
 

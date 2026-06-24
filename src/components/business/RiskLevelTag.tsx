@@ -5,6 +5,7 @@ import './business.css';
 export interface RiskLevelTagProps {
   level: string;
   roleId?: RoleId;
+  label?: string;
 }
 
 function riskVariant(level: string) {
@@ -13,13 +14,12 @@ function riskVariant(level: string) {
   return 'success';
 }
 
-export function RiskLevelTag({ level, roleId }: RiskLevelTagProps) {
+export function RiskLevelTag({ level, roleId, label }: RiskLevelTagProps) {
   const prefix = roleId === 'homeroomTeacher' ? '协作优先级' : '关注等级';
 
   return (
     <Badge className="business-risk-tag" variant={riskVariant(level)}>
-      {prefix}：{level}
+      {label || `${prefix}：${level}`}
     </Badge>
   );
 }
-
