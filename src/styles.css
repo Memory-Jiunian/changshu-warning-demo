@@ -701,6 +701,57 @@ dd {
   align-items: center;
 }
 
+.ui-card.compact-summary {
+  padding: 21px 20px;
+}
+
+.ui-card.form-card {
+  gap: 0;
+  padding: 6px 18px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.ui-card.form-card .ui-form-field {
+  padding: 16px 0 17px;
+  border-bottom: 1px solid rgba(90, 100, 140, 0.1);
+}
+
+.ui-card.form-card .ui-form-field:last-child {
+  border-bottom: 0;
+}
+
+.ui-card.form-card .ui-form-field__label {
+  position: relative;
+  padding-left: 10px;
+}
+
+.ui-card.form-card .ui-form-field__label::before {
+  position: absolute;
+  top: 0.2em;
+  bottom: 0.2em;
+  left: 0;
+  width: 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-300);
+  content: "";
+}
+
+.ui-card.form-card input:not([type="radio"]):not([type="checkbox"]),
+.ui-card.form-card select,
+.ui-card.form-card textarea {
+  border-color: rgba(90, 100, 140, 0.16);
+  background: rgba(247, 248, 253, 0.82);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.ui-card.form-card input:not([type="radio"]):not([type="checkbox"]):focus,
+.ui-card.form-card select:focus,
+.ui-card.form-card textarea:focus {
+  border-color: var(--color-brand-400);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(91, 99, 242, 0.09);
+}
+
 .section-block {
   padding: 18px;
 }
@@ -766,11 +817,12 @@ dd {
   border-color: transparent;
   background: linear-gradient(135deg, #6d73ff 0%, #4f5cf6 100%);
   color: #fff;
+  box-shadow: 0 5px 12px rgba(79, 92, 246, 0.2);
 }
 
 .feedback-option-chips button:not(.is-selected) {
   border-color: rgba(90, 100, 140, 0.18);
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(248, 249, 253, 0.92);
   color: var(--color-muted);
   box-shadow: none;
 }
@@ -779,6 +831,31 @@ dd {
   border-color: var(--color-brand-300);
   background: var(--color-brand-50);
   color: var(--color-body);
+}
+
+.feedback-option-chips button[aria-pressed="true"] {
+  font-weight: 700;
+}
+
+.ui-card.form-card + .permission-notice {
+  gap: 9px;
+  padding: 11px 12px;
+  border-color: rgba(91, 99, 242, 0.12);
+  border-radius: var(--radius-md);
+  background: rgba(243, 245, 255, 0.56);
+  color: var(--color-brand-500);
+}
+
+.ui-card.form-card + .permission-notice strong {
+  color: var(--color-body);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ui-card.form-card + .permission-notice p {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .urgency button:last-child {
@@ -1188,6 +1265,14 @@ textarea:focus {
 
 .bottom-action-bar button {
   min-width: 0;
+}
+
+.bottom-action-bar .ui-button--secondary {
+  box-shadow: none;
+}
+
+.bottom-action-bar .ui-button--primary {
+  min-height: 48px;
 }
 
 .attention-list {

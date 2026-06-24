@@ -5,7 +5,7 @@
   gap: 8px;
   min-width: 0;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 15px;
   font-family: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -61,13 +61,15 @@
 .ui-button--primary {
   color: #fff;
   background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
-  box-shadow: 0 14px 28px rgba(75, 87, 220, 0.22);
+  border-color: rgba(64, 74, 210, 0.24);
+  box-shadow: 0 12px 24px rgba(75, 87, 220, 0.2);
 }
 
 .ui-button--secondary {
-  color: var(--color-ink);
-  background: rgba(255, 255, 255, 0.88);
-  border-color: var(--color-hairline);
+  color: var(--color-body);
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(90, 100, 140, 0.2);
+  box-shadow: 0 4px 12px rgba(38, 45, 85, 0.04);
 }
 
 .ui-button--ghost {
@@ -94,10 +96,12 @@
 }
 
 .ui-card {
-  border: 1px solid var(--color-hairline-soft);
-  border-radius: 20px;
-  background: var(--color-card);
-  box-shadow: 0 18px 42px rgba(38, 45, 85, 0.08);
+  border: 1px solid rgba(90, 100, 140, 0.16);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 12px 30px rgba(38, 45, 85, 0.07);
 }
 
 .ui-card--soft {
@@ -105,8 +109,8 @@
 }
 
 .ui-card--glass {
-  border-color: var(--color-border-glass);
-  background: var(--color-card-glass);
+  border-color: rgba(90, 100, 140, 0.14);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(18px);
 }
 
@@ -158,8 +162,8 @@
   align-items: center;
   justify-content: center;
   width: fit-content;
-  min-height: 24px;
-  padding: 4px 9px;
+  min-height: 26px;
+  padding: 4px 10px;
   border: 1px solid transparent;
   border-radius: 999px;
   font-size: 12px;
@@ -176,6 +180,7 @@
 .ui-badge--brand {
   color: var(--color-brand-700);
   background: var(--color-brand-100);
+  border-color: rgba(91, 99, 242, 0.18);
 }
 
 .ui-badge--success {
@@ -199,20 +204,21 @@
 }
 
 .ui-badge--outline {
-  color: var(--color-ink);
-  background: rgba(255, 255, 255, 0.72);
-  border-color: var(--color-hairline);
+  color: var(--color-muted);
+  background: rgba(255, 255, 255, 0.84);
+  border-color: rgba(90, 100, 140, 0.18);
 }
 
 .ui-form-field {
   display: grid;
-  gap: 8px;
+  gap: 9px;
 }
 
 .ui-form-field__label {
   color: var(--color-ink);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .ui-form-field__hint,
@@ -307,4 +313,3 @@
   border-top: 1px solid var(--color-hairline-soft);
   background: rgba(255, 255, 255, 0.74);
 }
-
