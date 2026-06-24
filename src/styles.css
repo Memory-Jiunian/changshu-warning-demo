@@ -763,8 +763,22 @@ dd {
 }
 
 .chip-list.selectable button.is-selected {
+  border-color: transparent;
   background: linear-gradient(135deg, #6d73ff 0%, #4f5cf6 100%);
   color: #fff;
+}
+
+.feedback-option-chips button:not(.is-selected) {
+  border-color: rgba(90, 100, 140, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--color-muted);
+  box-shadow: none;
+}
+
+.feedback-option-chips button:not(.is-selected):active {
+  border-color: var(--color-brand-300);
+  background: var(--color-brand-50);
+  color: var(--color-body);
 }
 
 .urgency button:last-child {

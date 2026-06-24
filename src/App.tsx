@@ -1038,10 +1038,18 @@ function FollowUpRecord({
             <input defaultValue="今天上午 08:00-12:00" />
           </UiFormField>
           <UiFormField label="观察场景">
-            <SelectableChips items={['课堂', '课间', '午休', '放学后', '家校沟通', '其他']} defaults={['课堂', '课间']} />
+            <SelectableChips
+              items={['课堂', '课间', '午休', '放学后', '家校沟通', '其他']}
+              defaults={['课堂', '课间']}
+              className="feedback-option-chips"
+            />
           </UiFormField>
           <UiFormField label="异常表现">
-            <SelectableChips items={['课堂回应减少', '出勤变化', '同伴互动减少', '情绪波动', '独处增多', '暂未发现明显异常']} defaults={['课堂回应减少', '独处增多']} />
+            <SelectableChips
+              items={['课堂回应减少', '出勤变化', '同伴互动减少', '情绪波动', '独处增多', '暂未发现明显异常']}
+              defaults={['课堂回应减少', '独处增多']}
+              className="feedback-option-chips"
+            />
           </UiFormField>
           <UiFormField label="发生频率">
             <select defaultValue="近两天偶发">
@@ -1060,7 +1068,11 @@ function FollowUpRecord({
             </select>
           </UiFormField>
           <UiFormField label="已采取措施">
-            <SelectableChips items={['日常关心', '简短沟通', '联系家长', '调整座位/任务', '暂未处理']} defaults={['日常关心']} />
+            <SelectableChips
+              items={['日常关心', '简短沟通', '联系家长', '调整座位/任务', '暂未处理']}
+              defaults={['日常关心']}
+              className="feedback-option-chips"
+            />
           </UiFormField>
           <UiFormField label="事实描述">
             <textarea defaultValue="今天上午课堂状态较安静，课间多独处；课后能回应简单关心，暂未发现明显冲突升级。" placeholder="请描述你观察到的具体事实，避免主观判断、标签化和诊断性表达。" />
@@ -1384,7 +1396,9 @@ function SelectableChips({ items, defaults, className = '' }: { items: string[];
     <div className={`chip-list selectable ${className}`}>
       {items.map((item) => (
         <button
+          type="button"
           className={selected.includes(item) ? 'is-selected' : ''}
+          aria-pressed={selected.includes(item)}
           key={item}
           onClick={(event) => {
             event.preventDefault();
