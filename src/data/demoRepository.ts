@@ -8,22 +8,39 @@ import type {
   SupervisionRecord,
 } from '../domain/feedback';
 import { err, ok, type Result } from '../domain/result';
-import type { CollaborationTask, RetestReminderMethod, RetestSchedule } from '../domain/tasks';
+import type { StudentProfile } from '../domain/students';
+import type {
+  CollaborationTask,
+  RetestReminderConfirmationInput,
+  RetestSchedule,
+} from '../domain/tasks';
 import type { DemoUser, UserRole } from '../domain/users';
 import {
   canUserAddSupervision,
   canUserConfirmRetestReminder,
   canUserSubmitObservation,
+  canUserViewStudent,
   canUserViewTask,
 } from '../selectors/permissionSelectors';
+import {
+  getVisibleReportsForUser,
+  getVisibleStudentsForUser,
+} from '../selectors/reportSelectors';
 import { sortTasksForAction } from '../selectors/taskSelectors';
-import { mockObservationRecords, mockRetestSchedules, mockSupervisionRecords } from './mockFeedback';
+import {
+  mockAbnormalReports,
+  mockObservationRecords,
+  mockRetestSchedules,
+  mockSupervisionRecords,
+} from './mockFeedback';
+import { mockStudents } from './mockStudents';
 import { DEMO_NOW_ISO, mockTasks } from './mockTasks';
 import { defaultUserIdByRole, mockUsers } from './mockUsers';
 
 export interface DemoSnapshot {
   currentUser: DemoUser;
   users: DemoUser[];
+  students: StudentProfile[];
   tasks: CollaborationTask[];
   observations: ObservationRecord[];
   abnormalReports: AbnormalReport[];
@@ -47,7 +64,7 @@ interface WriteFailure {
 }
 
 interface PersistedRepositoryState {
-  version: 1;
+  version: 2;
   tasks: CollaborationTask[];
   observations: ObservationRecord[];
   abnormalReports: AbnormalReport[];
@@ -56,7 +73,7 @@ interface PersistedRepositoryState {
   requestIds: string[];
 }
 
-const REPOSITORY_STORAGE_KEY = 'changshu-demo:repository:v1';
+const REPOSITORY_STORAGE_KEY = 'changshu-demo:repository:v2';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -64,9 +81,10 @@ function clone<T>(value: T): T {
 
 export class DemoRepository {
   private users = clone(mockUsers);
+  private students = clone(mockStudents);
   private tasks = clone(mockTasks);
   private observations = clone(mockObservationRecords);
-  private abnormalReports: AbnormalReport[] = [];
+  private abnormalReports = clone(mockAbnormalReports);
   private retestSchedules = clone(mockRetestSchedules);
   private supervisionRecords = clone(mockSupervisionRecords);
   private drafts: Draft[] = [];
@@ -111,6 +129,26 @@ export class DemoRepository {
     return clone(sortTasksForAction(visible, now));
   }
 
+  getVisibleStudents(user = this.requireCurrentUser()) {
+    return clone(getVisibleStudentsForUser(user, this.students));
+  }
+
+  getVisibleAbnormalReports(user = this.requireCurrentUser()) {
+    return clone(getVisibleReportsForUser(user, this.abnormalReports));
+  }
+
+  getAbnormalReportById(
+    reportId: string,
+    user = this.requireCurrentUser(),
+  ): Result<AbnormalReport> {
+    const report = this.abnormalReports.find((item) => item.id === reportId);
+    if (!report) return err('REPORT_NOT_FOUND', '上报记录不存在或已被移除');
+    if (user.role !== 'head_teacher' || report.reporterId !== user.id) {
+      return err('REPORT_FORBIDDEN', '你没有权限查看该上报记录');
+    }
+    return ok(clone(report));
+  }
+
   getTaskById(taskId: string, user = this.requireCurrentUser()): Result<CollaborationTask> {
     const task = this.tasks.find((item) => item.id === taskId);
     if (!task) return err('TASK_NOT_FOUND', '任务不存在或已被移除');
@@ -125,6 +163,7 @@ export class DemoRepository {
 
     const currentUser = this.requireCurrentUser();
     const tasks = this.getVisibleTasks(currentUser);
+    const students = this.getVisibleStudents(currentUser);
     const visibleTaskIds = new Set(tasks.map((task) => task.id));
     const observations =
       currentUser.role === 'grade_director'
@@ -134,12 +173,7 @@ export class DemoRepository {
               visibleTaskIds.has(record.taskId) &&
               (currentUser.role === 'psychologist' || record.authorId === currentUser.id),
           );
-    const abnormalReports =
-      currentUser.role === 'grade_director'
-        ? []
-        : this.abnormalReports.filter(
-            (report) => currentUser.role === 'psychologist' || report.reporterId === currentUser.id,
-          );
+    const abnormalReports = this.getVisibleAbnormalReports(currentUser);
     const supervisionRecords =
       currentUser.role === 'head_teacher'
         ? []
@@ -153,6 +187,7 @@ export class DemoRepository {
       clone({
         currentUser,
         users: this.users,
+        students,
         tasks,
         observations,
         abnormalReports,
@@ -186,19 +221,22 @@ export class DemoRepository {
     await this.wait();
     const user = this.requireCurrentUser();
     if (user.role !== 'head_teacher') return err('ROLE_FORBIDDEN', '只有班主任可以主动上报异常事实');
-    const student = this.tasks.map((task) => task.student).find((item) => item.id === input.studentId);
-    if (!student || !user.classIds?.includes(student.classId)) {
+    const student = this.students.find((item) => item.id === input.studentId);
+    if (!student || !canUserViewStudent(user, student)) {
       return err('STUDENT_FORBIDDEN', '只能上报当前班级中的学生');
     }
     const validation = this.validateFactsInput(input);
     if ('code' in validation) return err(validation.code, validation.message);
+    if (new Date(input.observedAt).getTime() > this.getNow().getTime()) {
+      return err('OBSERVED_AT_IN_FUTURE', '观察时间不能晚于当前时间');
+    }
     const request = this.beginRequest(input.requestId);
     if ('code' in request) return err(request.code, request.message);
 
     const report: AbnormalReport = {
       id: this.nextId('report'),
-      studentId: input.studentId,
       reporterId: user.id,
+      student: clone(student),
       observedAt: input.observedAt,
       scene: input.scene,
       facts: input.facts,
@@ -214,24 +252,37 @@ export class DemoRepository {
 
   async confirmRetestReminder(
     taskId: string,
-    method: RetestReminderMethod,
+    input: RetestReminderConfirmationInput,
   ): Promise<Result<RetestSchedule>> {
     await this.wait();
     const user = this.requireCurrentUser();
     const access = this.getTaskById(taskId, user);
     if ('code' in access) return err(access.code, access.message);
     const task = this.requireTask(taskId);
+    if (!input.requestId.trim()) return err('REQUEST_ID_REQUIRED', '缺少提交请求编号');
+    if (this.requestIds.has(input.requestId)) {
+      return err('DUPLICATE_REQUEST', '该提交已处理，请勿重复提交');
+    }
     if (!canUserConfirmRetestReminder(user, task)) {
       return err('RETEST_CONFIRM_FORBIDDEN', '当前任务不能由该用户确认提醒');
+    }
+    if (!canUserViewStudent(user, task.student)) {
+      return err('STUDENT_FORBIDDEN', '当前用户无权处理该学生的复测提醒');
     }
     const schedule = this.retestSchedules.find((item) => item.taskId === taskId);
     if (!schedule) return err('RETEST_SCHEDULE_NOT_FOUND', '未找到关联复测安排');
     if (schedule.reminderConfirmedAt) return err('RETEST_ALREADY_CONFIRMED', '该复测提醒已确认');
+    if (input.method === 'other' && !input.otherMethod?.trim()) {
+      return err('RETEST_METHOD_REQUIRED', '请填写其他提醒方式');
+    }
+    const request = this.beginRequest(input.requestId);
+    if ('code' in request) return err(request.code, request.message);
 
     schedule.reminderConfirmedAt = this.nowIso;
-    schedule.reminderMethod = method;
-    task.status = 'completed';
-    task.completedAt = this.nowIso;
+    schedule.reminderMethod = input.method;
+    schedule.reminderOtherMethod = input.otherMethod?.trim() || undefined;
+    schedule.reminderConfirmedById = user.id;
+    task.status = 'submitted';
     this.persist();
     return ok(clone(schedule));
   }
@@ -377,7 +428,7 @@ export class DemoRepository {
     try {
       const state = JSON.parse(raw) as Partial<PersistedRepositoryState>;
       if (
-        state.version !== 1 ||
+        state.version !== 2 ||
         !Array.isArray(state.tasks) ||
         !Array.isArray(state.observations) ||
         !Array.isArray(state.abnormalReports) ||
@@ -402,7 +453,7 @@ export class DemoRepository {
   private persist() {
     if (!this.storage) return;
     const state: PersistedRepositoryState = {
-      version: 1,
+      version: 2,
       tasks: this.tasks,
       observations: this.observations,
       abnormalReports: this.abnormalReports,

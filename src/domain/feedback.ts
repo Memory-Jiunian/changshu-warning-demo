@@ -1,3 +1,5 @@
+import type { StudentRef } from './tasks';
+
 export interface ObservationRecord {
   id: string;
   taskId: string;
@@ -62,8 +64,8 @@ export interface ObservationDraft {
 
 export interface AbnormalReport {
   id: string;
-  studentId: string;
   reporterId: string;
+  student: StudentRef;
   observedAt: string;
   scene: string;
   facts: string;
@@ -81,6 +83,24 @@ export interface AbnormalReportInput {
   facts: string;
   supportActions?: string;
   immediateSafetyConcern: boolean;
+}
+
+export interface AbnormalReportFormValues {
+  studentId: string;
+  observedAt: string;
+  scene: ObservationScene | '';
+  otherScene: string;
+  facts: string;
+  supportActions: string;
+  immediateSafetyConcern: boolean | null;
+  offlinePriorityAcknowledged: boolean;
+}
+
+export interface AbnormalReportDraft {
+  version: 1;
+  userId: string;
+  values: AbnormalReportFormValues;
+  updatedAt: string;
 }
 
 export type SupervisionMethod = 'message' | 'phone' | 'in_person' | 'resource_coordination';

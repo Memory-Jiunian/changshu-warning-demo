@@ -5,6 +5,8 @@ export type MvpRouteName =
   | 'teacherTaskDetail'
   | 'teacherFeedback'
   | 'report'
+  | 'reports'
+  | 'reportDetail'
   | 'profile'
   | 'retest'
   | 'supervision'
@@ -17,8 +19,10 @@ export type MvpRouteName =
 export interface MvpRoute {
   name: MvpRouteName;
   taskId?: string;
+  reportId?: string;
   filter?: string;
   highlightRecordId?: string;
+  justSubmitted?: boolean;
 }
 
 function parseHashQuery(hash: string) {
@@ -51,10 +55,31 @@ export function getMvpRoute(): MvpRoute {
     }
     return { name: 'tasks', filter: query.get('filter') ?? undefined };
   }
-  if (parts[0] === 'mvp' && parts[1] === 'report') return { name: 'report' };
+  if (
+    parts[0] === 'mvp' &&
+    (parts[1] === 'report' || (parts[1] === 'teacher' && parts[2] === 'report'))
+  ) {
+    return { name: 'report' };
+  }
+  if (parts[0] === 'mvp' && parts[1] === 'teacher' && parts[2] === 'reports') {
+    if (parts[3]) {
+      return {
+        name: 'reportDetail',
+        reportId: parts[3],
+        justSubmitted: query.get('submitted') === '1',
+      };
+    }
+    return { name: 'reports' };
+  }
   if (parts[0] === 'mvp' && parts[1] === 'profile') return { name: 'profile' };
-  if (parts[0] === 'mvp' && parts[1] === 'retest') {
-    return { name: 'retest', taskId: parts[2] };
+  if (
+    parts[0] === 'mvp' &&
+    (parts[1] === 'retest' || (parts[1] === 'teacher' && parts[2] === 'retest'))
+  ) {
+    return {
+      name: 'retest',
+      taskId: parts[1] === 'teacher' ? parts[3] : parts[2],
+    };
   }
   if (parts[0] === 'mvp' && parts[1] === 'supervision') {
     return {
@@ -75,7 +100,9 @@ export function getActiveNavigation(route: MvpRoute) {
   if (
     ['tasks', 'teacherTaskDetail', 'teacherFeedback', 'legacyTask'].includes(route.name)
   ) return 'tasks';
-  if (route.name === 'report' || route.name === 'legacyReport') return 'report';
+  if (
+    ['report', 'reports', 'reportDetail', 'legacyReport'].includes(route.name)
+  ) return 'report';
   if (route.name === 'supervision') return 'supervision';
   if (route.name === 'profile') return 'profile';
   return 'home';

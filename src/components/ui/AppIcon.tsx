@@ -14,6 +14,7 @@ export type AppIconName =
   | 'users'
   | 'shield'
   | 'alert'
+  | 'check'
   | 'history'
   | 'switch';
 
@@ -86,6 +87,12 @@ const iconPaths: Record<AppIconName, ReactNode> = {
     <>
       <path d="m12 3 10 18H2Z" />
       <path d="M12 9v5M12 17h.01" />
+    </>
+  ),
+  check: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12 2.5 2.5L16 9" />
     </>
   ),
   history: (

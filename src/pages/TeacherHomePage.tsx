@@ -94,7 +94,7 @@ export function TeacherHomePage({
                 key={task.id}
                 task={task}
                 schedule={schedule}
-                onOpen={() => onNavigate(`#/mvp/retest/${task.id}`)}
+                onOpen={() => onNavigate(`#/mvp/teacher/retest/${task.id}`)}
               />
             ))
           ) : (
@@ -139,8 +139,8 @@ export function TeacherHomePage({
         </CardHeader>
         <CardContent>
           <p>提交事实观察，由心理老师进行专业复核。</p>
-          <Button fullWidth onClick={() => onNavigate('#/mvp/report')}>
-            主动上报
+          <Button fullWidth onClick={() => onNavigate('#/mvp/teacher/report')}>
+            提交观察线索
           </Button>
         </CardContent>
       </Card>

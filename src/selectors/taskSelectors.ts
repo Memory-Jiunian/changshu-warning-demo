@@ -1,4 +1,9 @@
-import type { CollaborationTask, TaskDisplayState, TaskUrgency } from '../domain/tasks';
+import type {
+  CollaborationTask,
+  RetestSchedule,
+  TaskDisplayState,
+  TaskUrgency,
+} from '../domain/tasks';
 import type { ObservationRecord } from '../domain/feedback';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -60,7 +65,14 @@ export function getTaskDisplayState(task: CollaborationTask, now: Date): TaskDis
     return { key: 'completed', label: '已完成', isOverdue: false, overdueMs: 0, deadlineLabel, canSubmitObservation: false };
   }
   if (task.status === 'submitted') {
-    return { key: 'submitted', label: '已提交', isOverdue: false, overdueMs: 0, deadlineLabel, canSubmitObservation: false };
+    return {
+      key: 'submitted',
+      label: task.type === 'retest_reminder' ? '已提醒' : '已提交',
+      isOverdue: false,
+      overdueMs: 0,
+      deadlineLabel,
+      canSubmitObservation: false,
+    };
   }
   if (task.status === 'returned') {
     const overdue = isTaskOverdue(task, now);
@@ -76,12 +88,33 @@ export function getTaskDisplayState(task: CollaborationTask, now: Date): TaskDis
 
   const overdue = isTaskOverdue(task, now);
   if (overdue) {
-    return { key: 'overdue', label: '已超时', isOverdue: true, overdueMs, deadlineLabel, canSubmitObservation: canTaskAcceptObservation(task) };
+    return {
+      key: 'overdue',
+      label: task.type === 'retest_reminder' ? '待提醒 · 已超时' : '已超时',
+      isOverdue: true,
+      overdueMs,
+      deadlineLabel,
+      canSubmitObservation: canTaskAcceptObservation(task),
+    };
   }
   if (isTaskDueToday(task, now)) {
-    return { key: 'due_today', label: '今日到期', isOverdue: false, overdueMs: 0, deadlineLabel, canSubmitObservation: canTaskAcceptObservation(task) };
+    return {
+      key: 'due_today',
+      label: task.type === 'retest_reminder' ? '今日提醒' : '今日到期',
+      isOverdue: false,
+      overdueMs: 0,
+      deadlineLabel,
+      canSubmitObservation: canTaskAcceptObservation(task),
+    };
   }
-  return { key: 'pending', label: '待反馈', isOverdue: false, overdueMs: 0, deadlineLabel, canSubmitObservation: canTaskAcceptObservation(task) };
+  return {
+    key: 'pending',
+    label: task.type === 'retest_reminder' ? '待提醒' : '待反馈',
+    isOverdue: false,
+    overdueMs: 0,
+    deadlineLabel,
+    canSubmitObservation: canTaskAcceptObservation(task),
+  };
 }
 
 const urgencyRank: Record<TaskUrgency, number> = {
@@ -113,13 +146,26 @@ export interface TaskCounts {
   todayNew: number;
 }
 
-export function getTaskCounts(tasks: CollaborationTask[], now: Date): TaskCounts {
+export function getTaskCounts(
+  tasks: CollaborationTask[],
+  now: Date,
+  schedules: RetestSchedule[] = [],
+): TaskCounts {
   return tasks.reduce<TaskCounts>(
     (counts, task) => {
       const display = getTaskDisplayState(task, now);
       if (['pending', 'returned'].includes(task.status)) counts.pending += 1;
       if (display.isOverdue) counts.overdue += 1;
-      if (task.type === 'retest_reminder' && task.status === 'pending' && isTaskDueToday(task, now)) counts.todayReminders += 1;
+      const schedule = schedules.find((item) => item.taskId === task.id);
+      const reminderDate = schedule ? new Date(schedule.scheduledAt) : task.dueAt ? new Date(task.dueAt) : null;
+      if (
+        task.type === 'retest_reminder' &&
+        task.status === 'pending' &&
+        reminderDate &&
+        isSameLocalDate(reminderDate, now)
+      ) {
+        counts.todayReminders += 1;
+      }
       if (isSameLocalDate(new Date(task.createdAt), now)) counts.todayNew += 1;
       return counts;
     },

@@ -1,5 +1,9 @@
 import type { CollaborationTask, RetestSchedule } from '../../domain/tasks';
 import { formatCompactDateTime } from '../../selectors/homeSelectors';
+import {
+  getRetestReminderDisplayState,
+  getRetestReminderStatusLabel,
+} from '../../selectors/retestSelectors';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/Card';
@@ -14,6 +18,7 @@ export function RetestReminderCard({
   schedule: RetestSchedule;
   onOpen: () => void;
 }) {
+  const displayState = getRetestReminderDisplayState(task, schedule);
   return (
     <Card as="article" className="mvp-retest-card" tone="soft">
       <CardHeader>
@@ -22,8 +27,16 @@ export function RetestReminderCard({
             <span className="mvp-card-kicker">{task.student.className}</span>
             <CardTitle>{task.student.name}</CardTitle>
           </div>
-          <Badge variant={schedule.reminderConfirmedAt ? 'success' : 'warning'}>
-            {schedule.reminderConfirmedAt ? '已提醒' : '待提醒'}
+          <Badge
+            variant={
+              displayState === 'pending'
+                ? 'warning'
+                : displayState === 'cancelled'
+                  ? 'neutral'
+                  : 'success'
+            }
+          >
+            {getRetestReminderStatusLabel(task, schedule)}
           </Badge>
         </div>
       </CardHeader>

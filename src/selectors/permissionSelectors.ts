@@ -1,5 +1,6 @@
 import type { DemoUser } from '../domain/users';
 import type { CollaborationTask } from '../domain/tasks';
+import type { StudentProfile } from '../domain/students';
 import { canTaskAcceptObservation, isTaskOverdue } from './taskSelectors';
 
 export function canUserViewTask(user: DemoUser, task: CollaborationTask, now: Date) {
@@ -13,6 +14,10 @@ export function canUserViewTask(user: DemoUser, task: CollaborationTask, now: Da
 
 export function canUserSubmitObservation(user: DemoUser, task: CollaborationTask) {
   return user.role === 'head_teacher' && task.assigneeId === user.id && canTaskAcceptObservation(task);
+}
+
+export function canUserViewStudent(user: DemoUser, student: StudentProfile) {
+  return user.role === 'head_teacher' && Boolean(user.classIds?.includes(student.classId));
 }
 
 export function canUserConfirmRetestReminder(user: DemoUser, task: CollaborationTask) {

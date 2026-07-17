@@ -53,7 +53,13 @@ export interface CollaborationTask {
   warningStatusSnapshot?: WarningStatus;
 }
 
-export type RetestReminderMethod = 'in_person' | 'class_message' | 'phone';
+export type RetestReminderMethod = 'in_person' | 'class_message' | 'phone' | 'other';
+
+export interface RetestReminderConfirmationInput {
+  requestId: string;
+  method: RetestReminderMethod;
+  otherMethod?: string;
+}
 
 export interface RetestSchedule {
   id: string;
@@ -63,6 +69,8 @@ export interface RetestSchedule {
   instructions: string;
   reminderConfirmedAt?: string;
   reminderMethod?: RetestReminderMethod;
+  reminderOtherMethod?: string;
+  reminderConfirmedById?: string;
   studentCompletedAt?: string;
 }
 

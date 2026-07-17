@@ -8,7 +8,8 @@
     "build": "vite build --configLoader runner",
     "preview": "vite preview --configLoader runner --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
-    "verify:phase3": "node scripts/verify-phase3.mjs"
+    "verify:phase3": "node scripts/verify-phase3.mjs",
+    "verify:phase4": "node scripts/verify-phase4.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

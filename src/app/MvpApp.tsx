@@ -4,13 +4,16 @@ import { AppIcon } from '../components/ui/AppIcon';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import type { UserRole } from '../domain/users';
-import { formatCompactDateTime } from '../selectors/homeSelectors';
 import { useDemo } from '../state/DemoProvider';
+import { AbnormalReportPage } from '../pages/AbnormalReportPage';
 import { DirectorHomePage } from '../pages/DirectorHomePage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { ProfilePage } from '../pages/ProfilePage';
+import { RetestReminderPage } from '../pages/RetestReminderPage';
 import { RoleSelectPage } from '../pages/RoleSelectPage';
 import { TeacherHomePage } from '../pages/TeacherHomePage';
+import { TeacherReportDetailPage } from '../pages/TeacherReportDetailPage';
+import { TeacherReportListPage } from '../pages/TeacherReportListPage';
 import { ObservationFeedbackPage } from '../pages/ObservationFeedbackPage';
 import { TeacherTaskDetailPage } from '../pages/TeacherTaskDetailPage';
 import { TeacherTaskListPage } from '../pages/TeacherTaskListPage';
@@ -51,15 +54,20 @@ export function MvpApp({
   const {
     currentRole,
     currentUser,
+    students,
     tasks,
     observations,
+    abnormalReports,
     now,
     loading,
     switchDemoRole,
     getTaskById,
+    getAbnormalReportById,
     markTaskRead,
     submitObservation,
     submitObservationRevision,
+    submitAbnormalReport,
+    confirmRetestReminder,
     simulateNextWriteFailure,
     retestSchedules,
     error,
@@ -218,6 +226,58 @@ export function MvpApp({
     );
   }
 
+  const reportAccess =
+    route.name === 'reportDetail' && route.reportId
+      ? getAbnormalReportById(route.reportId)
+      : null;
+
+  if (
+    route.name === 'reportDetail' &&
+    (!route.reportId || !reportAccess?.ok)
+  ) {
+    return (
+      <AccessState
+        title="无权查看该上报记录"
+        description={
+          reportAccess && !reportAccess.ok
+            ? reportAccess.message
+            : '记录不存在或当前角色无权查看。'
+        }
+        actionLabel="返回我的上报"
+        onAction={() => navigate('#/mvp/teacher/reports')}
+      />
+    );
+  }
+
+  const retestTaskAccess =
+    route.name === 'retest' && route.taskId
+      ? getTaskById(route.taskId)
+      : null;
+  const retestTask = retestTaskAccess?.ok ? retestTaskAccess.data : null;
+  const retestSchedule = retestTask
+    ? retestSchedules.find((item) => item.taskId === retestTask.id)
+    : null;
+
+  if (
+    route.name === 'retest' &&
+    (!retestTask ||
+      retestTask.type !== 'retest_reminder' ||
+      !retestSchedule)
+  ) {
+    return (
+      <AccessState
+        title="无权查看该复测提醒"
+        description={
+          retestTaskAccess && !retestTaskAccess.ok
+            ? retestTaskAccess.message
+            : '未找到当前角色可见的复测提醒。'
+        }
+        actionLabel="返回任务列表"
+        onAction={() => navigate(taskListHash())}
+      />
+    );
+  }
+
   if (
     route.name === 'teacherFeedback' &&
     phase3TaskAccess?.ok &&
@@ -266,7 +326,7 @@ export function MvpApp({
           onOpen={(task) =>
             navigate(
               task.type === 'retest_reminder'
-                ? `#/mvp/retest/${task.id}`
+                ? `#/mvp/teacher/retest/${task.id}`
                 : `#/mvp/teacher/tasks/${task.id}`,
             )
           }
@@ -305,13 +365,37 @@ export function MvpApp({
         />
       ) : null}
       {route.name === 'report' ? (
-        <PlaceholderPage
-          title="主动上报"
-          phase="Phase 4"
-          description="新版上报写入将在 Phase 4 接入统一 Repository，本轮不创建第二套状态。"
-          detail="当前可进入旧页面查看既有表单结构。"
-          icon="report"
-          action={{ label: '进入旧版上报页', onClick: () => navigate('#/report') }}
+        <AbnormalReportPage
+          currentUser={currentUser}
+          students={students}
+          now={now}
+          loading={loading}
+          onBack={() => navigate('#/mvp/home')}
+          onSubmitted={(reportId) =>
+            navigateReplace(
+              `#/mvp/teacher/reports/${reportId}?submitted=1`,
+            )
+          }
+          submitAbnormalReport={submitAbnormalReport}
+        />
+      ) : null}
+      {route.name === 'reports' ? (
+        <TeacherReportListPage
+          currentUser={currentUser}
+          reports={abnormalReports}
+          onBack={() => navigate('#/mvp/profile')}
+          onCreate={() => navigate('#/mvp/teacher/report')}
+          onOpen={(reportId) =>
+            navigate(`#/mvp/teacher/reports/${reportId}`)
+          }
+        />
+      ) : null}
+      {route.name === 'reportDetail' && reportAccess?.ok ? (
+        <TeacherReportDetailPage
+          report={reportAccess.data}
+          justSubmitted={Boolean(route.justSubmitted)}
+          onBack={() => navigate('#/mvp/teacher/reports')}
+          onHome={() => navigate('#/mvp/home')}
         />
       ) : null}
       {route.name === 'supervision' ? (
@@ -323,13 +407,19 @@ export function MvpApp({
           icon="supervision"
         />
       ) : null}
-      {route.name === 'profile' ? <ProfilePage onSwitchRole={resetRole} /> : null}
-      {route.name === 'retest' ? (
-        <RetestPlaceholder
-          taskId={route.taskId}
-          onBack={() => navigate('#/mvp/home')}
-          getTaskById={getTaskById}
-          schedules={retestSchedules}
+      {route.name === 'profile' ? (
+        <ProfilePage onSwitchRole={resetRole} onNavigate={navigate} />
+      ) : null}
+      {route.name === 'retest' && retestTask && retestSchedule ? (
+        <RetestReminderPage
+          task={retestTask}
+          schedule={retestSchedule}
+          currentUser={currentUser}
+          now={now}
+          loading={loading}
+          onBack={() => navigate(taskListHash())}
+          markTaskRead={markTaskRead}
+          confirmRetestReminder={confirmRetestReminder}
         />
       ) : null}
       {route.name === 'notFound' ? (
@@ -351,50 +441,19 @@ function getRouteAccessError(route: MvpRoute, role: MvpRole) {
   }
   if (
     role === 'grade_director' &&
-    ['tasks', 'teacherTaskDetail', 'teacherFeedback', 'report', 'retest'].includes(route.name)
+    [
+      'tasks',
+      'teacherTaskDetail',
+      'teacherFeedback',
+      'report',
+      'reports',
+      'reportDetail',
+      'retest',
+    ].includes(route.name)
   ) {
     return '该页面属于班主任协作范围。';
   }
   return null;
-}
-
-function RetestPlaceholder({
-  taskId,
-  onBack,
-  getTaskById,
-  schedules,
-}: {
-  taskId?: string;
-  onBack: () => void;
-  getTaskById: ReturnType<typeof useDemo>['getTaskById'];
-  schedules: ReturnType<typeof useDemo>['retestSchedules'];
-}) {
-  const access = taskId ? getTaskById(taskId) : null;
-  const task = access?.ok ? access.data : null;
-  const schedule = task ? schedules.find((item) => item.taskId === task.id) : null;
-
-  if (!task || task.type !== 'retest_reminder' || !schedule) {
-    return (
-      <PlaceholderPage
-        title="无权查看该提醒"
-        phase="权限提示"
-        description={access && !access.ok ? access.message : '未找到当前角色可见的复测提醒。'}
-        icon="alert"
-        action={{ label: '返回首页', onClick: onBack }}
-      />
-    );
-  }
-
-  return (
-    <PlaceholderPage
-      title={`${task.student.name} · 复测提醒`}
-      phase="Phase 4 只读占位"
-      description={`${task.student.className}，安排时间 ${formatCompactDateTime(schedule.scheduledAt)}。`}
-      detail={`${schedule.instructions} 本轮不提供确认操作。`}
-      icon="calendar"
-      action={{ label: '返回首页', onClick: onBack }}
-    />
-  );
 }
 
 function LoadingState({ text }: { text: string }) {

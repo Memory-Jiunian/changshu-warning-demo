@@ -103,11 +103,11 @@ export async function verifyPhase1(): Promise<Phase1VerificationResult> {
   );
   assert(
     retestConfirmedTask.type === 'retest_reminder' &&
-      retestConfirmedTask.status === 'completed' &&
+      retestConfirmedTask.status === 'submitted' &&
       mockRetestSchedules.some(
         (schedule) => schedule.taskId === retestConfirmedTask.id && schedule.reminderConfirmedAt,
       ),
-    'confirmed retest reminder must include confirmation data',
+    'confirmed retest reminder must remain submitted and include confirmation data',
   );
   assert(
     supervisionTask.type === 'grade_supervision' &&

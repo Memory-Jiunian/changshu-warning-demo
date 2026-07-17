@@ -11,7 +11,7 @@ export interface BottomNavigationItem {
 const teacherItems: BottomNavigationItem[] = [
   { key: 'home', label: '首页', hash: '#/mvp/home', icon: 'home' },
   { key: 'tasks', label: '任务', hash: '#/mvp/teacher/tasks', icon: 'tasks' },
-  { key: 'report', label: '上报', hash: '#/mvp/report', icon: 'report' },
+  { key: 'report', label: '上报', hash: '#/mvp/teacher/report', icon: 'report' },
   { key: 'profile', label: '我的', hash: '#/mvp/profile', icon: 'profile' },
 ];
 

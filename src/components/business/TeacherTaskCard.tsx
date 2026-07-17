@@ -41,7 +41,7 @@ export function TeacherTaskCard({
           trailingIcon={<AppIcon name="arrowRight" size={17} />}
           onClick={onOpen}
         >
-          查看任务
+          {task.type === 'retest_reminder' ? '查看提醒' : '查看任务'}
         </Button>
       </CardFooter>
     </Card>

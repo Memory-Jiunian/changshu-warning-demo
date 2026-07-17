@@ -15,7 +15,12 @@ import type {
   SupervisionRecord,
 } from '../domain/feedback';
 import type { Result } from '../domain/result';
-import type { CollaborationTask, RetestReminderMethod, RetestSchedule } from '../domain/tasks';
+import type { StudentProfile } from '../domain/students';
+import type {
+  CollaborationTask,
+  RetestReminderConfirmationInput,
+  RetestSchedule,
+} from '../domain/tasks';
 import type { DemoUser, UserRole } from '../domain/users';
 import { createDemoRepository, type DemoSnapshot } from '../data/demoRepository';
 import { toLegacyWarningTasks } from '../data/legacyAdapter';
@@ -26,8 +31,10 @@ interface DemoContextValue {
   currentRole: UserRole;
   currentUser: DemoUser;
   users: DemoUser[];
+  students: StudentProfile[];
   tasks: CollaborationTask[];
   observations: ObservationRecord[];
+  abnormalReports: AbnormalReport[];
   retestSchedules: RetestSchedule[];
   supervisionRecords: SupervisionRecord[];
   legacyTasks: WarningTask[];
@@ -40,11 +47,15 @@ interface DemoContextValue {
   error: string | null;
   switchDemoRole: (role: UserRole) => Result<DemoUser>;
   getTaskById: (taskId: string) => Result<CollaborationTask>;
+  getAbnormalReportById: (reportId: string) => Result<AbnormalReport>;
   markTaskRead: (taskId: string) => Promise<Result<CollaborationTask>>;
   submitObservation: (taskId: string, input: ObservationInput) => Promise<Result<ObservationRecord>>;
   submitObservationRevision: (taskId: string, input: ObservationInput) => Promise<Result<ObservationRecord>>;
   submitAbnormalReport: (input: AbnormalReportInput) => Promise<Result<AbnormalReport>>;
-  confirmRetestReminder: (taskId: string, method: RetestReminderMethod) => Promise<Result<RetestSchedule>>;
+  confirmRetestReminder: (
+    taskId: string,
+    input: RetestReminderConfirmationInput,
+  ) => Promise<Result<RetestSchedule>>;
   addSupervisionRecord: (taskId: string, input: SupervisionInput) => Promise<Result<SupervisionRecord>>;
   simulateNextWriteFailure: () => void;
   reload: () => void;
@@ -103,8 +114,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   );
 
   const counts = useMemo(
-    () => getTaskCounts(snapshot.tasks, new Date(snapshot.now)),
-    [snapshot.now, snapshot.tasks],
+    () => getTaskCounts(snapshot.tasks, new Date(snapshot.now), snapshot.retestSchedules),
+    [snapshot.now, snapshot.retestSchedules, snapshot.tasks],
   );
   const legacyTasks = useMemo(() => toLegacyWarningTasks(snapshot), [snapshot]);
   const pendingCount =
@@ -117,8 +128,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       currentRole: snapshot.currentUser.role,
       currentUser: snapshot.currentUser,
       users: snapshot.users,
+      students: snapshot.students,
       tasks: snapshot.tasks,
       observations: snapshot.observations,
+      abnormalReports: snapshot.abnormalReports,
       retestSchedules: snapshot.retestSchedules,
       supervisionRecords: snapshot.supervisionRecords,
       legacyTasks,
@@ -131,13 +144,15 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       error,
       switchDemoRole,
       getTaskById: (taskId) => repository.getTaskById(taskId, snapshot.currentUser),
+      getAbnormalReportById: (reportId) =>
+        repository.getAbnormalReportById(reportId, snapshot.currentUser),
       markTaskRead: (taskId) => runWrite(() => repository.markTaskRead(taskId)),
       submitObservation: (taskId, input) => runWrite(() => repository.submitObservation(taskId, input)),
       submitObservationRevision: (taskId, input) =>
         runWrite(() => repository.submitObservationRevision(taskId, input)),
       submitAbnormalReport: (input) => runWrite(() => repository.submitAbnormalReport(input)),
-      confirmRetestReminder: (taskId, method) =>
-        runWrite(() => repository.confirmRetestReminder(taskId, method)),
+      confirmRetestReminder: (taskId, input) =>
+        runWrite(() => repository.confirmRetestReminder(taskId, input)),
       addSupervisionRecord: (taskId, input) =>
         runWrite(() => repository.addSupervisionRecord(taskId, input)),
       simulateNextWriteFailure: () => repository.simulateNextWriteFailure(),
@@ -155,9 +170,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       repository,
       runWrite,
       snapshot.currentUser,
+      snapshot.abnormalReports,
       snapshot.now,
       snapshot.observations,
       snapshot.retestSchedules,
+      snapshot.students,
       snapshot.supervisionRecords,
       snapshot.tasks,
       snapshot.users,

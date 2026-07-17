@@ -11,8 +11,10 @@ import { useDemo } from '../state/DemoProvider';
 
 export function ProfilePage({
   onSwitchRole,
+  onNavigate,
 }: {
   onSwitchRole: () => void;
+  onNavigate: (hash: string) => void;
 }) {
   const { currentUser, tasks, now } = useDemo();
   const isDirector = currentUser.role === 'grade_director';
@@ -44,9 +46,26 @@ export function ProfilePage({
         </CardHeader>
         <CardContent>
           <p className="mvp-muted-copy">该功能将在后续阶段迁移。</p>
-          {!isDirector ? <p className="mvp-muted-copy">我的上报记录也将在 Phase 4 统一接入。</p> : null}
         </CardContent>
       </Card>
+      {!isDirector ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>我的上报</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mvp-muted-copy">查看本人提交的异常情况事实记录，不展示专业复核结论。</p>
+            <Button
+              variant="secondary"
+              fullWidth
+              trailingIcon={<AppIcon name="arrowRight" size={17} />}
+              onClick={() => onNavigate('#/mvp/teacher/reports')}
+            >
+              查看我的上报
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
       <Card tone="soft">
         <CardHeader>
           <CardTitle>隐私与使用说明</CardTitle>
