@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { MvpApp } from './app/MvpApp';
 import { RiskLevelTag as UiRiskLevelTag } from './components/business/RiskLevelTag';
 import { StatusBadge as UiStatusBadge } from './components/business/StatusBadge';
 import { Badge as UiBadge } from './components/ui/Badge';
@@ -6,20 +7,19 @@ import { Button as UiButton } from './components/ui/Button';
 import { Card as UiCard } from './components/ui/Card';
 import { FormField as UiFormField } from './components/ui/FormField';
 import { Sheet as UiSheet } from './components/ui/Sheet';
+import type { ObservationInput } from './domain/feedback';
+import type { UserRole } from './domain/users';
 import {
   flowSteps,
-  initialTasks,
   rolePermissions,
   roles,
   schoolOverview,
   type AttentionLevel,
-  type FollowUpRecord,
-  type HandlingTimelineItem,
   type Role,
   type RoleId,
-  type StatusKey,
   type WarningTask,
 } from './mockData';
+import { useDemo } from './state/DemoProvider';
 
 type RouteName = 'home' | 'task' | 'record' | 'report' | 'progress' | 'schoolOverview';
 type Route = { name: RouteName; taskId?: string };
@@ -131,14 +131,39 @@ function RoleHeroIcon({ roleId }: { roleId: RoleId }) {
 }
 
 export function App() {
-  const [roleId, setRoleId] = useState<RoleId>('homeroomTeacher');
-  const [warningTasks, setWarningTasks] = useState<WarningTask[]>(initialTasks);
+  return (
+    <MvpApp
+      renderLegacy={(roleId) => (
+        <LegacyApp key={roleId} initialRoleId={roleId} allowRoleSwitcher={false} />
+      )}
+    />
+  );
+}
+
+function LegacyApp({
+  initialRoleId,
+  allowRoleSwitcher,
+}: {
+  initialRoleId: RoleId;
+  allowRoleSwitcher: boolean;
+}) {
+  const {
+    currentUser,
+    legacyTasks: warningTasks,
+    switchDemoRole,
+    getTaskById,
+    markTaskRead,
+    submitObservation,
+    submitObservationRevision,
+    addSupervisionRecord,
+  } = useDemo();
+  const [roleId, setRoleId] = useState<RoleId>(initialRoleId);
   const [filter, setFilter] = useState('待反馈');
   const [route, setRoute] = useState<Route>(getRoute());
   const [toast, setToast] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
   const [principalLogs, setPrincipalLogs] = useState<Record<string, string>>({});
-  const demoMode = isDemoMode();
+  const demoMode = allowRoleSwitcher && isDemoMode();
 
   useEffect(() => {
     const handleHashChange = () => setRoute(getRoute());
@@ -153,12 +178,26 @@ export function App() {
   }, [toast]);
 
   const role = roles.find((item) => item.id === roleId) ?? roles[0];
-  const task = warningTasks.find((item) => item.id === route.taskId) ?? warningTasks[0];
+  const task = warningTasks.find((item) => item.id === route.taskId);
+  const taskAccess = route.taskId ? getTaskById(route.taskId) : null;
   const navigate = (hash: string) => {
     window.location.hash = hash;
   };
   const showToast = (message: string) => setToast(message);
   const changeRole = (nextRoleId: RoleId) => {
+    const domainRole: Partial<Record<RoleId, UserRole>> = {
+      counselor: 'psychologist',
+      homeroomTeacher: 'head_teacher',
+      gradeDirector: 'grade_director',
+    };
+    const nextDomainRole = domainRole[nextRoleId];
+    if (nextDomainRole) {
+      const result = switchDemoRole(nextDomainRole);
+      if (!result.ok) {
+        showToast(result.message);
+        return;
+      }
+    }
     setRoleId(nextRoleId);
     const nextRole = roles.find((item) => item.id === nextRoleId) ?? roles[0];
     setFilter(homeStatusDefinitions(nextRole)[0]?.label ?? '');
@@ -166,131 +205,57 @@ export function App() {
     if (nextRoleId !== 'principal' && route.name === 'schoolOverview') navigate('#/');
   };
 
-  const submitFollowUp = (taskId: string) => {
-    setWarningTasks((current) =>
-      current.map((item) => {
-        if (item.id !== taskId) return item;
-        const now = '刚刚';
-        const record: FollowUpRecord = {
-          by: role.teacherName ?? '班主任',
-          role: '班主任',
-          time: now,
-          text: '观察时间段：今天上午；观察场景：课堂与课间；异常表现：课堂回应较少，课间多独处；发生频率：近两天偶发；影响程度：轻度影响课堂参与；已采取措施：完成一次低压力关心；事实描述：能回应简单询问，暂未发现冲突升级；需要心理老师尽快查看：是。',
-          tag: '已反馈待确认',
-        };
-        const timeline: HandlingTimelineItem = {
-          id: `feedback-${Date.now()}`,
-          time: now,
-          role: '班主任',
-          action: '班主任提交观察反馈',
-          status: '已反馈待确认',
-          note: '班主任提交事实观察反馈，当前内容仅作为协作线索，等待心理老师确认。',
-          audience: ['all'],
-        };
-        return {
-          ...item,
-          status: '已反馈待确认',
-          statusKey: 'pendingCounselorConfirm',
-          nextAction: '查看已提交反馈',
-          records: [...item.records, record],
-          timeline: [...item.timeline, timeline],
-        };
-      }),
-    );
+  useEffect(() => {
+    if (route.name === 'task' && route.taskId && taskAccess?.ok) {
+      void markTaskRead(route.taskId);
+    }
+  }, [currentUser.id, route.name, route.taskId]);
+
+  const submitFollowUp = async (taskId: string, input: ObservationInput) => {
+    const access = getTaskById(taskId);
+    if (!access.ok) {
+      showToast(access.message);
+      return;
+    }
+    const result =
+      access.data.status === 'returned'
+        ? await submitObservationRevision(taskId, input)
+        : await submitObservation(taskId, input);
+    if (!result.ok) {
+      showToast(result.message);
+      return;
+    }
     showToast('已提交给心理老师。当前内容仅作为观察线索，后续由心理老师结合访谈、测评和既有记录进行专业判断。');
     navigate(`#/task/${taskId}`);
   };
 
-  const applyCounselorAction = (
-    taskId: string,
-    action: string,
-    status: string,
-    statusKey: StatusKey,
-    result: WarningTask['result'],
-    nextAction: string,
-    note: string,
-  ) => {
-    setWarningTasks((current) =>
-      current.map((item) => {
-        if (item.id !== taskId) return item;
-        const timeline: HandlingTimelineItem = {
-          id: `counselor-${Date.now()}`,
-          time: '刚刚',
-          role: '心理老师',
-          action,
-          status,
-          note,
-          audience: ['all'],
-        };
-        return {
-          ...item,
-          status,
-          statusKey,
-          result,
-          nextAction,
-          timeline: [...item.timeline, timeline],
-          records: item.records.map((record) => (record.tag === '已反馈待确认' ? { ...record, tag: '心理老师已确认' } : record)),
-        };
-      }),
-    );
-    showToast(`${action}已记录，处置状态已同步更新`);
+  const showManagementTerminalBoundary = () => {
+    showToast('该专业操作需前往管理终端处理，小程序仅展示协作进度摘要。');
   };
 
-  const confirmFeedback = (taskId: string) =>
-    applyCounselorAction(taskId, '确认进入干预', '跟进中', 'active', '持续关注', '已进入干预处理', '确认班主任反馈后进入干预跟进，由心理老师继续判断后续处置。');
+  const confirmFeedback = (_taskId: string) => showManagementTerminalBoundary();
 
-  const requestSupplement = (taskId: string) => setConfirmDialog({ kind: 'supplement', taskId });
+  const requestSupplement = (_taskId: string) => showManagementTerminalBoundary();
 
-  const sendSupplementRequest = (taskId: string) => {
-    setWarningTasks((current) =>
-      current.map((item) => {
-        if (item.id !== taskId) return item;
-        const timeline: HandlingTimelineItem = {
-          id: `supplement-${Date.now()}`,
-          time: '刚刚',
-          role: '心理老师',
-          action: '心理老师发送补充请求',
-          status: '需补充',
-          note:
-            `发送对象：${item.owner}；补充原因：观察时间不明确、场景描述不足、缺少近期行为变化；` +
-            '补充说明：请补充近 3 天课堂、课间和家校沟通中的具体观察事实，避免主观判断。；补充时限：今天 18:00 前；通知方式：小程序待办 + 短信提醒。',
-          audience: ['all'],
-        };
-        return {
-          ...item,
-          status: '需补充',
-          statusKey: 'waitingFeedback',
-          nextAction: '补充观察反馈',
-          timeline: [...item.timeline, timeline],
-        };
-      }),
-    );
+  const sendSupplementRequest = (_taskId: string) => {
     setConfirmDialog(null);
-    showToast('已发送补充请求，并记录到处置时间线');
+    showManagementTerminalBoundary();
   };
 
   const openDirectorReminder = (taskId: string) => setConfirmDialog({ kind: 'directorReminder', taskId });
 
-  const sendDirectorReminder = (taskId: string) => {
-    setWarningTasks((current) =>
-      current.map((item) => {
-        if (item.id !== taskId) return item;
-        const message = `${item.owner}，您有一条学生观察反馈待办，请于今天 18:00 前进入心理健康小程序完成反馈。`;
-        const timeline: HandlingTimelineItem = {
-          id: `director-reminder-${Date.now()}`,
-          time: '刚刚',
-          role: '年级主任',
-          action: '年级主任发送督办提醒',
-          status: item.status,
-          note: `提醒对象：${item.owner}；通知方式：小程序待办 + 短信提醒；消息内容：${message}；发送时间：刚刚。`,
-          audience: ['director', 'counselor'],
-        };
-        return {
-          ...item,
-          timeline: [...item.timeline, timeline],
-        };
-      }),
-    );
+  const sendDirectorReminder = async (taskId: string) => {
+    const item = warningTasks.find((taskItem) => taskItem.id === taskId);
+    const message = `${item?.owner ?? '责任班主任'}，您有一条学生观察反馈待办，请进入心理健康小程序查看并处理。`;
+    const result = await addSupervisionRecord(taskId, {
+      requestId: `supervision-${taskId}-${Date.now()}`,
+      method: 'message',
+      summary: message,
+    });
+    if (!result.ok) {
+      showToast(result.message);
+      return;
+    }
     setConfirmDialog(null);
     showToast('已发送提醒，并记录到督办留痕');
   };
@@ -316,19 +281,19 @@ export function App() {
     showToast('已发送督办提醒，并完成留痕');
   };
 
-  const arrangeRetest = (taskId: string) =>
-    applyCounselorAction(taskId, '安排复测', '复测待安排', 'retestPending', '复测待安排', '查看复测计划', '结合反馈和既有记录，安排下一次复测计划。');
+  const arrangeRetest = (_taskId: string) => showManagementTerminalBoundary();
+  const continueAttention = (_taskId: string) => showManagementTerminalBoundary();
+  const suggestReferral = (_taskId: string) => showManagementTerminalBoundary();
+  const closeAttention = (_taskId: string) => showManagementTerminalBoundary();
 
-  const continueAttention = (taskId: string) =>
-    applyCounselorAction(taskId, '持续关注', '持续关注', 'continuousAttention', '持续关注', '查看关注计划', '确认继续保持持续关注，并制定后续观察与沟通节奏。');
-
-  const suggestReferral = (taskId: string) =>
-    applyCounselorAction(taskId, '转介建议', '转介中', 'referral', '转介中', '查看转介进度', '建议启动专业资源转介流程，转介细节按权限展示。');
-
-  const closeAttention = (taskId: string) =>
-    applyCounselorAction(taskId, '解除关注', '已闭环', 'closed', '已闭环', '查看闭环详情', '确认本轮关注解除，流程进入闭环留痕。');
-
-  const guardedRoute = role.id === 'principal' ? { name: 'schoolOverview' as const } : route;
+  const guardedRoute: Route = role.id === 'principal' ? { name: 'schoolOverview' } : route;
+  const routeNeedsTask = ['task', 'record', 'progress'].includes(guardedRoute.name);
+  const taskRouteError =
+    routeNeedsTask && (!guardedRoute.taskId || !taskAccess?.ok || !task)
+      ? taskAccess && !taskAccess.ok
+        ? taskAccess
+        : { ok: false as const, code: 'TASK_NOT_FOUND', message: '任务不存在或当前角色无权查看' }
+      : null;
 
   return (
     <MobileShell route={guardedRoute} role={role} toast={toast} navigate={navigate}>
@@ -346,7 +311,13 @@ export function App() {
           onOpenDirectorReminder={openDirectorReminder}
         />
       )}
-      {guardedRoute.name === 'task' && (
+      {taskRouteError && (
+        <PermissionBlock
+          title={taskRouteError.code === 'TASK_FORBIDDEN' ? '无权查看该任务' : '未找到任务'}
+          text={taskRouteError.message}
+        />
+      )}
+      {!taskRouteError && guardedRoute.name === 'task' && task && (
         <TaskDetail
           role={role}
           task={task}
@@ -360,10 +331,17 @@ export function App() {
           showToast={showToast}
         />
       )}
-      {guardedRoute.name === 'record' && <FollowUpRecord task={task} role={role} onSubmit={submitFollowUp} showToast={showToast} />}
-      {guardedRoute.name === 'report' && <ClueReport role={role} tasks={visibleTasksForRole(warningTasks, role)} showToast={showToast} />}
-      {guardedRoute.name === 'progress' && <ProgressDetail task={task} role={role} onConfirmFeedback={confirmFeedback} showToast={showToast} />}
-      {guardedRoute.name === 'schoolOverview' && (
+      {!taskRouteError && guardedRoute.name === 'record' && task && (
+        <FollowUpRecord task={task} role={role} onSubmit={submitFollowUp} showToast={showToast} />
+      )}
+      {guardedRoute.name === 'report' && <ClueReport role={role} tasks={warningTasks} showToast={showToast} />}
+      {!taskRouteError && guardedRoute.name === 'progress' && task && (
+        <ProgressDetail task={task} role={role} onConfirmFeedback={confirmFeedback} showToast={showToast} />
+      )}
+      {guardedRoute.name === 'schoolOverview' && role.id !== 'principal' && (
+        <PermissionBlock title="无权进入校级页面" text="校级页面属于 legacy 演示，不在当前小程序角色权限范围内。" />
+      )}
+      {guardedRoute.name === 'schoolOverview' && role.id === 'principal' && (
         <SchoolOverview
           role={role}
           roleId={roleId}
@@ -496,7 +474,8 @@ function Dashboard({
   showToast: (message: string) => void;
   onOpenDirectorReminder: (taskId: string) => void;
 }) {
-  const scopedTasks = visibleTasksForRole(tasks, role);
+  // Phase 1: tasks are already filtered by the shared permission selector in DemoRepository.
+  const scopedTasks = tasks;
   const statusDefinitions = useMemo(() => homeStatusDefinitions(role), [role]);
   const activeFilter = statusDefinitions.some((item) => item.label === filter) ? filter : statusDefinitions[0]?.label;
   const activeDefinition = statusDefinitions.find((item) => item.label === activeFilter);
@@ -996,9 +975,17 @@ function FollowUpRecord({
 }: {
   task: WarningTask;
   role: Role;
-  onSubmit: (taskId: string) => void;
+  onSubmit: (taskId: string, input: ObservationInput) => void | Promise<void>;
   showToast: (message: string) => void;
 }) {
+  const [observedAt, setObservedAt] = useState('2026-07-17T09:00');
+  const [scenes, setScenes] = useState(['课堂', '课间']);
+  const [behaviors, setBehaviors] = useState(['课堂回应减少', '独处增多']);
+  const [frequency, setFrequency] = useState('近两天偶发');
+  const [impact, setImpact] = useState('轻度影响课堂参与');
+  const [supportActions, setSupportActions] = useState(['日常关心']);
+  const [facts, setFacts] = useState('今天上午课堂状态较安静，课间多独处；课后能回应简单关心，暂未发现明显冲突升级。');
+  const [requestExpeditedReview, setRequestExpeditedReview] = useState(true);
   const canSubmit = rolePermissions[role.id].canSubmitFollowUp && ['waitingFeedback', 'overdue'].includes(task.statusKey);
   if (!canSubmit) {
     return (
@@ -1027,12 +1014,18 @@ function FollowUpRecord({
 
         <UiCard as="section" className="form-card" tone="glass">
           <UiFormField label="观察时间段">
-            <input defaultValue="今天上午 08:00-12:00" />
+            <input
+              type="datetime-local"
+              value={observedAt}
+              onChange={(event) => setObservedAt(event.target.value)}
+            />
           </UiFormField>
           <UiFormField label="观察场景">
             <SelectableChips
               items={['课堂', '课间', '午休', '放学后', '家校沟通', '其他']}
               defaults={['课堂', '课间']}
+              value={scenes}
+              onChange={setScenes}
               className="feedback-option-chips"
             />
           </UiFormField>
@@ -1040,11 +1033,13 @@ function FollowUpRecord({
             <SelectableChips
               items={['课堂回应减少', '出勤变化', '同伴互动减少', '情绪波动', '独处增多', '暂未发现明显异常']}
               defaults={['课堂回应减少', '独处增多']}
+              value={behaviors}
+              onChange={setBehaviors}
               className="feedback-option-chips"
             />
           </UiFormField>
           <UiFormField label="发生频率">
-            <select defaultValue="近两天偶发">
+            <select value={frequency} onChange={(event) => setFrequency(event.target.value)}>
               <option>单次出现</option>
               <option>近两天偶发</option>
               <option>连续多日出现</option>
@@ -1052,7 +1047,7 @@ function FollowUpRecord({
             </select>
           </UiFormField>
           <UiFormField label="影响程度">
-            <select defaultValue="轻度影响课堂参与">
+            <select value={impact} onChange={(event) => setImpact(event.target.value)}>
               <option>暂未影响日常学习</option>
               <option>轻度影响课堂参与</option>
               <option>影响出勤或同伴互动</option>
@@ -1063,17 +1058,28 @@ function FollowUpRecord({
             <SelectableChips
               items={['日常关心', '简短沟通', '联系家长', '调整座位/任务', '暂未处理']}
               defaults={['日常关心']}
+              value={supportActions}
+              onChange={setSupportActions}
               className="feedback-option-chips"
             />
           </UiFormField>
           <UiFormField label="事实描述">
-            <textarea defaultValue="今天上午课堂状态较安静，课间多独处；课后能回应简单关心，暂未发现明显冲突升级。" placeholder="请描述你观察到的具体事实，避免主观判断、标签化和诊断性表达。" />
+            <textarea
+              value={facts}
+              onChange={(event) => setFacts(event.target.value)}
+              placeholder="请描述你观察到的具体事实，避免主观判断、标签化和诊断性表达。"
+            />
           </UiFormField>
           <UiFormField label="是否需要心理老师尽快查看">
             <div className="option-list">
               {['是，建议尽快查看', '否，按常规节奏确认'].map((item, index) => (
                 <label key={item}>
-                  <input type="radio" name="urgentReview" defaultChecked={index === 0} />
+                  <input
+                    type="radio"
+                    name="urgentReview"
+                    checked={requestExpeditedReview === (index === 0)}
+                    onChange={() => setRequestExpeditedReview(index === 0)}
+                  />
                   {item}
                 </label>
               ))}
@@ -1087,7 +1093,24 @@ function FollowUpRecord({
         <UiButton variant="secondary" fullWidth onClick={() => showToast('记录已暂存')}>
           保存草稿
         </UiButton>
-        <UiButton variant="primary" fullWidth onClick={() => onSubmit(task.id)}>
+        <UiButton
+          variant="primary"
+          fullWidth
+          onClick={() =>
+            onSubmit(task.id, {
+              requestId: `observation-${task.id}-${Date.now()}`,
+              observedAt: new Date(observedAt).toISOString(),
+              scene: scenes.join('、'),
+              facts: `${facts.trim()}${behaviors.length ? `；异常表现选项：${behaviors.join('、')}` : ''}`,
+              frequency,
+              duration: '本次填写的观察时点',
+              impact,
+              supportActions,
+              immediateSafetyConcern: false,
+              requestExpeditedReview,
+            })
+          }
+        >
           提交给心理老师
         </UiButton>
       </div>
@@ -1384,8 +1407,22 @@ function SubmittedRecord({ record }: { record: WarningTask['records'][number] })
   );
 }
 
-function SelectableChips({ items, defaults, className = '' }: { items: string[]; defaults: string[]; className?: string }) {
-  const [selected, setSelected] = useState(defaults);
+function SelectableChips({
+  items,
+  defaults,
+  value,
+  onChange,
+  className = '',
+}: {
+  items: string[];
+  defaults: string[];
+  value?: string[];
+  onChange?: (value: string[]) => void;
+  className?: string;
+}) {
+  const [internalSelected, setInternalSelected] = useState(defaults);
+  const selected = value ?? internalSelected;
+  const updateSelected = onChange ?? setInternalSelected;
   return (
     <div className={`chip-list selectable ${className}`}>
       {items.map((item) => (
@@ -1396,7 +1433,11 @@ function SelectableChips({ items, defaults, className = '' }: { items: string[];
           key={item}
           onClick={(event) => {
             event.preventDefault();
-            setSelected((current) => (current.includes(item) ? current.filter((value) => value !== item) : [...current, item]));
+            updateSelected(
+              selected.includes(item)
+                ? selected.filter((valueItem) => valueItem !== item)
+                : [...selected, item],
+            );
           }}
         >
           {item}
@@ -1645,13 +1686,6 @@ function homeStatusLabel(task: WarningTask, role: Role) {
   return homeStatusDefinitions(role).find((item) => item.match(task))?.label ?? task.status;
 }
 
-function visibleTasksForRole(tasks: WarningTask[], role: Role) {
-  if (role.id === 'counselor') return tasks;
-  if (role.id === 'homeroomTeacher') return tasks.filter((task) => task.owner === role.teacherName);
-  if (role.id === 'gradeDirector') return tasks.filter((task) => task.grade === role.grade);
-  return [];
-}
-
 function visibleTimeline(task: WarningTask, role: Role) {
   if (role.id === 'counselor') return task.timeline;
   if (role.id === 'homeroomTeacher') return task.timeline.filter((item) => item.audience.includes('all') || item.audience.includes('teacher'));
@@ -1677,12 +1711,12 @@ function taskPrimaryAction(task: WarningTask, role: Role, onOpenDirectorReminder
 
 function counselorReviewActions(
   task: WarningTask,
-  onConfirmFeedback: (taskId: string) => void,
-  onReturnForSupplement: (taskId: string) => void,
-  onArrangeRetest: (taskId: string) => void,
-  onContinueAttention: (taskId: string) => void,
-  onSuggestReferral: (taskId: string) => void,
-  onCloseAttention: (taskId: string) => void,
+  _onConfirmFeedback: (taskId: string) => void,
+  _onReturnForSupplement: (taskId: string) => void,
+  _onArrangeRetest: (taskId: string) => void,
+  _onContinueAttention: (taskId: string) => void,
+  _onSuggestReferral: (taskId: string) => void,
+  _onCloseAttention: (taskId: string) => void,
 ): Action[] {
   if (task.statusKey === 'closed') {
     return [
@@ -1690,38 +1724,30 @@ function counselorReviewActions(
       { label: '已闭环', tone: 'primary', toast: '本轮流程已闭环', disabled: true },
     ];
   }
-  if (task.statusKey === 'pendingCounselorConfirm') {
-    return [
-      { label: '请班主任补充反馈', tone: 'secondary', onClick: () => onReturnForSupplement(task.id) },
-      { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
-    ];
-  }
-  if (task.statusKey === 'waitingFeedback' || task.statusKey === 'overdue') {
-    return [
-      { label: '返回首页', hash: '#/', tone: 'secondary' },
-      { label: task.status === '需补充' || task.statusKey === 'overdue' ? '等待补充反馈' : '等待观察反馈', tone: 'primary', disabled: true },
-    ];
-  }
   return [
-    { label: '安排复测', tone: 'secondary', onClick: () => onArrangeRetest(task.id) },
-    { label: '持续关注', tone: 'secondary', onClick: () => onContinueAttention(task.id) },
-    { label: '转介建议', tone: 'secondary', onClick: () => onSuggestReferral(task.id) },
-    { label: '解除关注', tone: 'primary', onClick: () => onCloseAttention(task.id) },
+    { label: '返回首页', hash: '#/', tone: 'secondary' },
+    {
+      label:
+        task.statusKey === 'waitingFeedback' || task.statusKey === 'overdue'
+          ? task.status === '需补充' || task.statusKey === 'overdue'
+            ? '等待补充反馈'
+            : '等待观察反馈'
+          : '请前往管理终端处理',
+      tone: 'primary',
+      disabled: true,
+    },
   ];
 }
 
 function detailActions(
   task: WarningTask,
   role: Role,
-  onConfirmFeedback: (taskId: string) => void,
-  showToast: (message: string) => void,
+  _onConfirmFeedback: (taskId: string) => void,
+  _showToast: (message: string) => void,
   onOpenDirectorReminder?: (taskId: string) => void,
 ): Action[] {
-  if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
-    return [
-      { label: '请班主任补充反馈', tone: 'secondary', toast: '请在反馈确认详情中发起补充' },
-      { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
-    ];
+  if (role.id === 'counselor') {
+    return [{ label: '请前往管理终端处理', tone: 'primary', disabled: true }];
   }
   if (role.id === 'gradeDirector') {
     if (task.statusKey === 'pendingCounselorConfirm') {
@@ -1744,11 +1770,11 @@ function detailActions(
   ];
 }
 
-function progressActions(task: WarningTask, role: Role, onConfirmFeedback: (taskId: string) => void, showToast: (message: string) => void): Action[] {
-  if (role.id === 'counselor' && task.statusKey === 'pendingCounselorConfirm') {
+function progressActions(task: WarningTask, role: Role, _onConfirmFeedback: (taskId: string) => void, showToast: (message: string) => void): Action[] {
+  if (role.id === 'counselor') {
     return [
       { label: '返回详情', hash: `#/task/${task.id}`, tone: 'secondary' },
-      { label: '确认进入干预', tone: 'primary', onClick: () => onConfirmFeedback(task.id) },
+      { label: '请前往管理终端处理', tone: 'primary', disabled: true },
     ];
   }
   if (role.id === 'gradeDirector') {

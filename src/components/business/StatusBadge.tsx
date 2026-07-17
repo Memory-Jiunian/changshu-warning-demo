@@ -1,14 +1,14 @@
-import type { StatusKey } from '../../mockData';
+import type { LegacyStatusKey } from '../../mockData';
 import { Badge } from '../ui/Badge';
 import './business.css';
 
 export interface StatusBadgeProps {
-  statusKey?: StatusKey;
+  statusKey?: LegacyStatusKey;
   status?: string;
   label?: string;
 }
 
-const statusLabels: Partial<Record<StatusKey, string>> = {
+const statusLabels: Partial<Record<LegacyStatusKey, string>> = {
   waitingFeedback: '待反馈',
   overdue: '逾期',
   pendingCounselorConfirm: '已提交',
@@ -19,7 +19,7 @@ const statusLabels: Partial<Record<StatusKey, string>> = {
   closed: '已完成',
 };
 
-const statusVariants: Partial<Record<StatusKey, 'neutral' | 'brand' | 'success' | 'warning' | 'error' | 'info'>> = {
+const statusVariants: Partial<Record<LegacyStatusKey, 'neutral' | 'brand' | 'success' | 'warning' | 'error' | 'info'>> = {
   waitingFeedback: 'warning',
   overdue: 'error',
   pendingCounselorConfirm: 'brand',

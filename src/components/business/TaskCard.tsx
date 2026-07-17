@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { RoleId, StatusKey } from '../../mockData';
+import type { LegacyStatusKey, RoleId } from '../../mockData';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { RiskLevelTag } from './RiskLevelTag';
@@ -21,7 +21,7 @@ export interface TaskCardProps {
   title: string;
   subtitle?: string;
   roleId?: RoleId;
-  statusKey?: StatusKey;
+  statusKey?: LegacyStatusKey;
   status?: string;
   riskLevel?: string;
   deadline?: string;
@@ -99,4 +99,3 @@ export function TaskCard({
     </Card>
   );
 }
-
