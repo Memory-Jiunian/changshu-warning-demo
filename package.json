@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite --configLoader runner --host 127.0.0.1",
     "build": "vite build --configLoader runner",
-    "preview": "vite preview --host 127.0.0.1",
-    "typecheck": "tsc --noEmit"
+    "preview": "vite preview --configLoader runner --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "verify:phase3": "node scripts/verify-phase3.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

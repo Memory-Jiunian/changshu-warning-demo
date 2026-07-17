@@ -20,7 +20,7 @@ import type { DemoUser, UserRole } from '../domain/users';
 import { createDemoRepository, type DemoSnapshot } from '../data/demoRepository';
 import { toLegacyWarningTasks } from '../data/legacyAdapter';
 import type { WarningTask } from '../mockData';
-import { getTaskCounts } from '../selectors/taskSelectors';
+import { getTaskCounts, getTeacherPendingTaskCount } from '../selectors/taskSelectors';
 
 interface DemoContextValue {
   currentRole: UserRole;
@@ -46,6 +46,7 @@ interface DemoContextValue {
   submitAbnormalReport: (input: AbnormalReportInput) => Promise<Result<AbnormalReport>>;
   confirmRetestReminder: (taskId: string, method: RetestReminderMethod) => Promise<Result<RetestSchedule>>;
   addSupervisionRecord: (taskId: string, input: SupervisionInput) => Promise<Result<SupervisionRecord>>;
+  simulateNextWriteFailure: () => void;
   reload: () => void;
 }
 
@@ -57,7 +58,11 @@ function requireSnapshot(result: Result<DemoSnapshot>) {
 }
 
 export function DemoProvider({ children }: { children: ReactNode }) {
-  const [repository] = useState(() => createDemoRepository());
+  const [repository] = useState(() =>
+    createDemoRepository({
+      storage: typeof window === 'undefined' ? undefined : window.sessionStorage,
+    }),
+  );
   const [snapshot, setSnapshot] = useState(() => requireSnapshot(repository.getViewSnapshot()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +84,6 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       try {
         const result = await operation();
         if (result.ok) refresh();
-        else setError(result.message);
         return result;
       } finally {
         setLoading(false);
@@ -103,6 +107,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     [snapshot.now, snapshot.tasks],
   );
   const legacyTasks = useMemo(() => toLegacyWarningTasks(snapshot), [snapshot]);
+  const pendingCount =
+    snapshot.currentUser.role === 'head_teacher'
+      ? getTeacherPendingTaskCount(snapshot.tasks)
+      : counts.pending;
 
   const value = useMemo<DemoContextValue>(
     () => ({
@@ -115,7 +123,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       supervisionRecords: snapshot.supervisionRecords,
       legacyTasks,
       now: snapshot.now,
-      pendingCount: counts.pending,
+      pendingCount,
       overdueCount: counts.overdue,
       todayReminderCount: counts.todayReminders,
       todayNewCount: counts.todayNew,
@@ -132,16 +140,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         runWrite(() => repository.confirmRetestReminder(taskId, method)),
       addSupervisionRecord: (taskId, input) =>
         runWrite(() => repository.addSupervisionRecord(taskId, input)),
+      simulateNextWriteFailure: () => repository.simulateNextWriteFailure(),
       reload: refresh,
     }),
     [
       counts.overdue,
-      counts.pending,
       counts.todayReminders,
       counts.todayNew,
       error,
       legacyTasks,
       loading,
+      pendingCount,
       refresh,
       repository,
       runWrite,

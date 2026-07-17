@@ -27,6 +27,292 @@
   padding: 18px;
 }
 
+.mvp-page-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.mvp-page-header > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.mvp-page-header > div > span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.mvp-page-header h1 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 22px;
+  font-weight: 760;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.mvp-filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-inline: -18px;
+  padding: 0 18px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mvp-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mvp-filter-tabs button {
+  min-height: 40px;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 999px;
+  color: var(--color-body);
+  background: rgba(255, 255, 255, 0.76);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.mvp-filter-tabs button.is-active {
+  border-color: rgba(91, 99, 242, 0.3);
+  color: var(--color-brand-700);
+  background: var(--color-brand-100);
+}
+
+.mvp-list-count {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.mvp-loading-state,
+.mvp-empty-inline {
+  padding: 22px 16px;
+  border: 1px dashed var(--color-hairline);
+  border-radius: var(--radius-lg);
+  color: var(--color-muted);
+  background: var(--color-card-soft);
+  font-size: 13px;
+  text-align: center;
+}
+
+.mvp-teacher-task-card .ui-card__content {
+  padding-top: 14px;
+}
+
+.mvp-teacher-task-card .ui-card__footer {
+  padding-top: 0;
+}
+
+.mvp-detail-metrics,
+.mvp-student-compact,
+.mvp-record-details,
+.mvp-confirm-summary {
+  display: grid;
+  margin: 0;
+}
+
+.mvp-detail-metrics > div,
+.mvp-student-compact > div,
+.mvp-record-details > div,
+.mvp-confirm-summary > div {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+
+.mvp-detail-metrics > div:first-child,
+.mvp-student-compact > div:first-child,
+.mvp-record-details > div:first-child,
+.mvp-confirm-summary > div:first-child {
+  padding-top: 0;
+}
+
+.mvp-detail-metrics > div:last-child,
+.mvp-student-compact > div:last-child,
+.mvp-record-details > div:last-child,
+.mvp-confirm-summary > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.mvp-detail-metrics dt,
+.mvp-student-compact dt,
+.mvp-record-details dt,
+.mvp-confirm-summary dt {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.mvp-detail-metrics dd,
+.mvp-student-compact dd,
+.mvp-record-details dd,
+.mvp-confirm-summary dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.mvp-copy-block,
+.mvp-record-facts {
+  display: grid;
+  gap: 7px;
+}
+
+.mvp-copy-block > span,
+.mvp-record-facts > span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.mvp-copy-block p,
+.mvp-record-facts p,
+.mvp-record-link {
+  margin: 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.mvp-focus-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mvp-privacy-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  border-left: 3px solid var(--color-brand-400);
+  border-radius: 8px 12px 12px 8px;
+  color: var(--color-brand-700);
+  background: var(--color-brand-50);
+}
+
+.mvp-privacy-notice .app-icon {
+  flex: 0 0 18px;
+  margin-top: 1px;
+}
+
+.mvp-privacy-notice p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.mvp-observation-record {
+  scroll-margin-block: 100px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.mvp-observation-record.is-highlighted {
+  border-color: rgba(91, 99, 242, 0.5);
+  box-shadow: 0 0 0 4px rgba(91, 99, 242, 0.1), var(--shadow-card-soft);
+}
+
+.mvp-record-link {
+  padding-top: 10px;
+  border-top: 1px solid var(--color-hairline-soft);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.mvp-form-stack {
+  gap: 20px;
+}
+
+.mvp-writing-guide {
+  display: grid;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-md);
+  color: var(--color-body);
+  background: var(--color-soft);
+}
+
+.mvp-writing-guide strong {
+  color: var(--color-ink);
+  font-size: 13px;
+}
+
+.mvp-writing-guide ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mvp-writing-guide p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.mvp-alert--danger {
+  border-color: rgba(217, 83, 79, 0.26);
+  color: var(--color-error);
+  background: var(--color-error-soft);
+}
+
+.mvp-bottom-action-bar {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: calc(70px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(calc(100% - 28px), 402px);
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+}
+
+.mvp-bottom-action-bar > .ui-button:only-child {
+  grid-column: 1 / -1;
+}
+
+.mvp-feedback-page,
+.mvp-task-detail-page {
+  padding-bottom: calc(180px + env(safe-area-inset-bottom));
+  scroll-padding-bottom: calc(180px + env(safe-area-inset-bottom));
+}
+
+.mvp-confirm-summary dd {
+  font-weight: 600;
+}
+
 .mvp-role-header {
   display: flex;
   align-items: flex-start;
@@ -525,5 +811,19 @@
 
   .mvp-card-heading {
     gap: 8px;
+  }
+
+  .mvp-filter-tabs {
+    margin-inline: -14px;
+    padding-inline: 14px;
+  }
+
+  .mvp-page-header {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .mvp-page-header h1 {
+    font-size: 20px;
   }
 }

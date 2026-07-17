@@ -55,7 +55,7 @@ export function getRecentTeacherTasks(tasks: CollaborationTask[], now: Date) {
     tasks.filter(
       (task) =>
         task.type !== 'retest_reminder' &&
-        !['completed', 'cancelled'].includes(task.status),
+        ['pending', 'returned'].includes(task.status),
     ),
     now,
   ).slice(0, 3);

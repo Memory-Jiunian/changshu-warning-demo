@@ -11,6 +11,10 @@ import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { RoleSelectPage } from '../pages/RoleSelectPage';
 import { TeacherHomePage } from '../pages/TeacherHomePage';
+import { ObservationFeedbackPage } from '../pages/ObservationFeedbackPage';
+import { TeacherTaskDetailPage } from '../pages/TeacherTaskDetailPage';
+import { TeacherTaskListPage } from '../pages/TeacherTaskListPage';
+import { canTaskAcceptObservation } from '../selectors/taskSelectors';
 import { getActiveNavigation, getMvpRoute, type MvpRoute } from './routes';
 import './mvp.css';
 
@@ -46,8 +50,17 @@ export function MvpApp({
 }) {
   const {
     currentRole,
+    currentUser,
+    tasks,
+    observations,
+    now,
+    loading,
     switchDemoRole,
     getTaskById,
+    markTaskRead,
+    submitObservation,
+    submitObservationRevision,
+    simulateNextWriteFailure,
     retestSchedules,
     error,
   } = useDemo();
@@ -68,8 +81,33 @@ export function MvpApp({
     if (selectedRole && currentRole !== selectedRole) switchDemoRole(selectedRole);
   }, [currentRole, route.name, selectedRole, switchDemoRole]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('failNextWrite') !== '1') return;
+    simulateNextWriteFailure();
+    params.delete('failNextWrite');
+    const search = params.toString();
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`,
+    );
+  }, [simulateNextWriteFailure]);
+
   const navigate = (hash: string) => {
     window.location.hash = hash;
+  };
+
+  const navigateReplace = (hash: string) => {
+    replaceHash(hash);
+    setRoute(getMvpRoute());
+  };
+
+  const taskListHash = () => {
+    const filter = window.sessionStorage.getItem('changshu-demo:teacher-task-last-filter');
+    return filter && filter !== 'all'
+      ? `#/mvp/teacher/tasks?filter=${encodeURIComponent(filter)}`
+      : '#/mvp/teacher/tasks';
   };
 
   const selectRole = (role: MvpRole) => {
@@ -157,6 +195,50 @@ export function MvpApp({
     );
   }
 
+  const phase3TaskAccess =
+    ['teacherTaskDetail', 'teacherFeedback'].includes(route.name) && route.taskId
+      ? getTaskById(route.taskId)
+      : null;
+
+  if (
+    ['teacherTaskDetail', 'teacherFeedback'].includes(route.name) &&
+    (!route.taskId || !phase3TaskAccess?.ok)
+  ) {
+    return (
+      <AccessState
+        title="无权查看该任务"
+        description={
+          phase3TaskAccess && !phase3TaskAccess.ok
+            ? phase3TaskAccess.message
+            : '任务不存在或当前角色无权查看。'
+        }
+        actionLabel="返回任务列表"
+        onAction={() => navigate(taskListHash())}
+      />
+    );
+  }
+
+  if (
+    route.name === 'teacherFeedback' &&
+    phase3TaskAccess?.ok &&
+    !canTaskAcceptObservation(phase3TaskAccess.data)
+  ) {
+    return (
+      <AccessState
+        title="当前任务不可提交"
+        description={
+          phase3TaskAccess.data.status === 'completed'
+            ? '任务已完成，只能查看历史记录。'
+            : phase3TaskAccess.data.status === 'cancelled'
+              ? '任务已取消，草稿不能继续提交。'
+              : '该任务当前处于只读状态。'
+        }
+        actionLabel="返回任务详情"
+        onAction={() => navigateReplace(`#/mvp/teacher/tasks/${phase3TaskAccess.data.id}`)}
+      />
+    );
+  }
+
   const activeNavigation = getActiveNavigation(route);
   return (
     <AppShell role={selectedRole} activeNavigation={activeNavigation} onNavigate={navigate}>
@@ -167,12 +249,59 @@ export function MvpApp({
         <DirectorHomePage onNavigate={navigate} />
       ) : null}
       {route.name === 'tasks' ? (
-        <PlaceholderPage
-          title="任务列表"
-          phase="Phase 3"
-          description="这里将统一承接班主任的待处理、已超时和历史协作任务。"
-          detail={filterIntentLabel(route.filter)}
-          icon="tasks"
+        <TeacherTaskListPage
+          userId={currentUser.id}
+          tasks={tasks}
+          now={now}
+          filter={route.filter}
+          loading={loading}
+          onBack={() => navigate('#/mvp/home')}
+          onFilter={(filter) =>
+            navigate(
+              filter === 'all'
+                ? '#/mvp/teacher/tasks'
+                : `#/mvp/teacher/tasks?filter=${filter}`,
+            )
+          }
+          onOpen={(task) =>
+            navigate(
+              task.type === 'retest_reminder'
+                ? `#/mvp/retest/${task.id}`
+                : `#/mvp/teacher/tasks/${task.id}`,
+            )
+          }
+        />
+      ) : null}
+      {route.name === 'teacherTaskDetail' && phase3TaskAccess?.ok ? (
+        <TeacherTaskDetailPage
+          task={phase3TaskAccess.data}
+          observations={observations}
+          now={now}
+          highlightRecordId={route.highlightRecordId}
+          onBack={() => navigate(taskListHash())}
+          onFeedback={() =>
+            navigate(`#/mvp/teacher/tasks/${phase3TaskAccess.data.id}/feedback`)
+          }
+          markTaskRead={markTaskRead}
+        />
+      ) : null}
+      {route.name === 'teacherFeedback' && phase3TaskAccess?.ok ? (
+        <ObservationFeedbackPage
+          task={phase3TaskAccess.data}
+          currentUserId={currentUser.id}
+          observations={observations}
+          now={now}
+          loading={loading}
+          onBack={() =>
+            navigateReplace(`#/mvp/teacher/tasks/${phase3TaskAccess.data.id}`)
+          }
+          onSubmitted={(recordId) =>
+            navigateReplace(
+              `#/mvp/teacher/tasks/${phase3TaskAccess.data.id}?highlight=${recordId}`,
+            )
+          }
+          submitObservation={submitObservation}
+          submitObservationRevision={submitObservationRevision}
         />
       ) : null}
       {route.name === 'report' ? (
@@ -222,7 +351,7 @@ function getRouteAccessError(route: MvpRoute, role: MvpRole) {
   }
   if (
     role === 'grade_director' &&
-    ['tasks', 'report', 'retest'].includes(route.name)
+    ['tasks', 'teacherTaskDetail', 'teacherFeedback', 'report', 'retest'].includes(route.name)
   ) {
     return '该页面属于班主任协作范围。';
   }

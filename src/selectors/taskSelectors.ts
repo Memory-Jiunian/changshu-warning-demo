@@ -1,4 +1,5 @@
 import type { CollaborationTask, TaskDisplayState, TaskUrgency } from '../domain/tasks';
+import type { ObservationRecord } from '../domain/feedback';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -124,4 +125,63 @@ export function getTaskCounts(tasks: CollaborationTask[], now: Date): TaskCounts
     },
     { pending: 0, overdue: 0, todayReminders: 0, todayNew: 0 },
   );
+}
+
+export function getTeacherPendingTaskCount(tasks: CollaborationTask[]) {
+  return tasks.filter(
+    (task) => task.status === 'pending' && task.type !== 'retest_reminder',
+  ).length;
+}
+
+export type TeacherTaskFilter =
+  | 'all'
+  | 'pending'
+  | 'overdue'
+  | 'returned'
+  | 'retest'
+  | 'submitted'
+  | 'completed';
+
+export const teacherTaskFilterLabels: Record<TeacherTaskFilter, string> = {
+  all: '全部',
+  pending: '待反馈',
+  overdue: '已超时',
+  returned: '待补充',
+  retest: '复测提醒',
+  submitted: '已提交',
+  completed: '已完成',
+};
+
+export function normalizeTeacherTaskFilter(value?: string): TeacherTaskFilter {
+  return value && value in teacherTaskFilterLabels
+    ? (value as TeacherTaskFilter)
+    : 'all';
+}
+
+export function filterTeacherTasks(
+  tasks: CollaborationTask[],
+  filter: TeacherTaskFilter,
+  now: Date,
+) {
+  const filtered = tasks.filter((task) => {
+    if (filter === 'all') return true;
+    if (filter === 'overdue') return isTaskOverdue(task, now);
+    if (filter === 'pending') {
+      return task.status === 'pending' && task.type !== 'retest_reminder';
+    }
+    if (filter === 'returned') return task.status === 'returned';
+    if (filter === 'retest') return task.type === 'retest_reminder';
+    if (filter === 'submitted') return task.status === 'submitted';
+    return task.status === 'completed';
+  });
+  return sortTasksForAction(filtered, now);
+}
+
+export function getTaskObservationRecords(records: ObservationRecord[], taskId: string) {
+  return records
+    .filter((record) => record.taskId === taskId)
+    .sort(
+      (left, right) =>
+        new Date(left.submittedAt).getTime() - new Date(right.submittedAt).getTime(),
+    );
 }

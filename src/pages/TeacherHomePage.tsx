@@ -57,11 +57,11 @@ export function TeacherHomePage({
           </div>
         </div>
         <div className="mvp-stat-grid">
-          <button type="button" onClick={() => onNavigate('#/mvp/tasks?filter=pending')}>
+          <button type="button" onClick={() => onNavigate('#/mvp/teacher/tasks?filter=pending')}>
             <strong>{pendingCount}</strong>
             <span>待处理</span>
           </button>
-          <button type="button" onClick={() => onNavigate('#/mvp/tasks?filter=overdue')}>
+          <button type="button" onClick={() => onNavigate('#/mvp/teacher/tasks?filter=overdue')}>
             <strong>{overdueCount}</strong>
             <span>已超时</span>
           </button>
@@ -113,7 +113,7 @@ export function TeacherHomePage({
             <span>按处理优先级排序</span>
             <h2 id="teacher-tasks-title">最近待办</h2>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => onNavigate('#/mvp/tasks')}>
+          <Button variant="ghost" size="sm" onClick={() => onNavigate('#/mvp/teacher/tasks')}>
             查看全部
           </Button>
         </div>
@@ -124,7 +124,7 @@ export function TeacherHomePage({
               task={task}
               now={demoNow}
               mode="teacher"
-              onOpen={() => onNavigate(`#/task/${task.id}`)}
+              onOpen={() => onNavigate(`#/mvp/teacher/tasks/${task.id}`)}
             />
           ))}
         </div>

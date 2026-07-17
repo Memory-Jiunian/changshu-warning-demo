@@ -14,14 +14,13 @@ export function FormField({ label, children, hint, error, required = false, html
   const helper = error || hint;
 
   return (
-    <label className="ui-form-field" htmlFor={htmlFor}>
-      <span className="ui-form-field__label">
+    <div className="ui-form-field">
+      <label className="ui-form-field__label" htmlFor={htmlFor}>
         {label}
         {required ? <span aria-hidden="true"> *</span> : null}
-      </span>
+      </label>
       {children}
       {helper ? <span className={error ? 'ui-form-field__error' : 'ui-form-field__hint'}>{helper}</span> : null}
-    </label>
+    </div>
   );
 }
-

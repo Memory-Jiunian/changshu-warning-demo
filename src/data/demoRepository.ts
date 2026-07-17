@@ -38,12 +38,25 @@ export interface DemoRepositoryOptions {
   delayMs?: number;
   initialRole?: UserRole;
   failReads?: boolean;
+  storage?: Storage;
 }
 
 interface WriteFailure {
   code: string;
   message: string;
 }
+
+interface PersistedRepositoryState {
+  version: 1;
+  tasks: CollaborationTask[];
+  observations: ObservationRecord[];
+  abnormalReports: AbnormalReport[];
+  retestSchedules: RetestSchedule[];
+  supervisionRecords: SupervisionRecord[];
+  requestIds: string[];
+}
+
+const REPOSITORY_STORAGE_KEY = 'changshu-demo:repository:v1';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -62,6 +75,7 @@ export class DemoRepository {
   private readonly nowIso: string;
   private readonly delayMs: number;
   private readonly failReads: boolean;
+  private readonly storage?: Storage;
   private nextWriteFailure: WriteFailure | null = null;
   private idSequence = 0;
 
@@ -71,6 +85,8 @@ export class DemoRepository {
     this.nowIso = options.now ?? DEMO_NOW_ISO;
     this.delayMs = options.delayMs ?? 360;
     this.failReads = options.failReads ?? false;
+    this.storage = options.storage;
+    this.restore();
   }
 
   getNow() {
@@ -154,6 +170,7 @@ export class DemoRepository {
     if (!access.ok) return access;
     const task = this.requireTask(taskId);
     if (!task.readAt) task.readAt = this.nowIso;
+    this.persist();
     return ok(clone(task));
   }
 
@@ -191,6 +208,7 @@ export class DemoRepository {
       submittedAt: this.nowIso,
     };
     this.abnormalReports.push(report);
+    this.persist();
     return ok(clone(report));
   }
 
@@ -214,6 +232,7 @@ export class DemoRepository {
     schedule.reminderMethod = method;
     task.status = 'completed';
     task.completedAt = this.nowIso;
+    this.persist();
     return ok(clone(schedule));
   }
 
@@ -242,6 +261,7 @@ export class DemoRepository {
       createdAt: this.nowIso,
     };
     this.supervisionRecords.push(record);
+    this.persist();
     return ok(clone(record));
   }
 
@@ -297,11 +317,13 @@ export class DemoRepository {
       supportActions: input.supportActions ? [...input.supportActions] : undefined,
       immediateSafetyConcern: input.immediateSafetyConcern,
       requestExpeditedReview: input.requestExpeditedReview,
+      additionalNotes: input.additionalNotes?.trim() || undefined,
       submittedAt: this.nowIso,
       revisionOfRecordId: previous?.id,
     };
     this.observations.push(record);
     task.status = 'submitted';
+    this.persist();
     return ok(clone(record));
   }
 
@@ -345,6 +367,50 @@ export class DemoRepository {
   private wait() {
     if (this.delayMs <= 0) return Promise.resolve();
     return new Promise<void>((resolve) => globalThis.setTimeout(resolve, this.delayMs));
+  }
+
+  private restore() {
+    if (!this.storage) return;
+    const raw = this.storage.getItem(REPOSITORY_STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+      const state = JSON.parse(raw) as Partial<PersistedRepositoryState>;
+      if (
+        state.version !== 1 ||
+        !Array.isArray(state.tasks) ||
+        !Array.isArray(state.observations) ||
+        !Array.isArray(state.abnormalReports) ||
+        !Array.isArray(state.retestSchedules) ||
+        !Array.isArray(state.supervisionRecords) ||
+        !Array.isArray(state.requestIds)
+      ) {
+        this.storage.removeItem(REPOSITORY_STORAGE_KEY);
+        return;
+      }
+      this.tasks = clone(state.tasks);
+      this.observations = clone(state.observations);
+      this.abnormalReports = clone(state.abnormalReports);
+      this.retestSchedules = clone(state.retestSchedules);
+      this.supervisionRecords = clone(state.supervisionRecords);
+      state.requestIds.forEach((requestId) => this.requestIds.add(requestId));
+    } catch {
+      this.storage.removeItem(REPOSITORY_STORAGE_KEY);
+    }
+  }
+
+  private persist() {
+    if (!this.storage) return;
+    const state: PersistedRepositoryState = {
+      version: 1,
+      tasks: this.tasks,
+      observations: this.observations,
+      abnormalReports: this.abnormalReports,
+      retestSchedules: this.retestSchedules,
+      supervisionRecords: this.supervisionRecords,
+      requestIds: [...this.requestIds],
+    };
+    this.storage.setItem(REPOSITORY_STORAGE_KEY, JSON.stringify(state));
   }
 }
 

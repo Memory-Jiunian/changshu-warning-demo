@@ -96,7 +96,7 @@ export const mockTasks: CollaborationTask[] = [
     title: '补充观察时间和场景',
     purpose: '原反馈信息不足，需要补充明确的时间、场景和近期变化。',
     createdAt: '2026-07-15T09:30:00+08:00',
-    dueAt: '2026-07-17T16:00:00+08:00',
+    dueAt: '2026-07-17T09:00:00+08:00',
     returnedAt: '2026-07-16T09:20:00+08:00',
     returnReason: '观察时间不明确，且缺少课间和家校沟通场景。',
     urgency: 'important',

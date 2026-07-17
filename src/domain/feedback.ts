@@ -12,6 +12,7 @@ export interface ObservationRecord {
   supportActions?: string[];
   immediateSafetyConcern: boolean;
   requestExpeditedReview?: boolean;
+  additionalNotes?: string;
   submittedAt: string;
   revisionOfRecordId?: string;
 }
@@ -27,6 +28,36 @@ export interface ObservationInput {
   supportActions?: string[];
   immediateSafetyConcern: boolean;
   requestExpeditedReview?: boolean;
+  additionalNotes?: string;
+}
+
+export type ObservationScene =
+  | 'classroom'
+  | 'break'
+  | 'dormitory'
+  | 'activity'
+  | 'communication'
+  | 'other';
+
+export type ObservationFrequency = '' | '首次' | '偶尔' | '多次' | '持续';
+
+export interface ObservationFormValues {
+  observedAt: string;
+  scene: ObservationScene | '';
+  otherScene: string;
+  facts: string;
+  frequency: ObservationFrequency;
+  duration: string;
+  immediateSafetyConcern: boolean | null;
+  additionalNotes: string;
+}
+
+export interface ObservationDraft {
+  version: 1;
+  userId: string;
+  taskId: string;
+  values: ObservationFormValues;
+  updatedAt: string;
 }
 
 export interface AbnormalReport {

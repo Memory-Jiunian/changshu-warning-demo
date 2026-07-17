@@ -2,6 +2,8 @@ export type MvpRouteName =
   | 'roleSelect'
   | 'home'
   | 'tasks'
+  | 'teacherTaskDetail'
+  | 'teacherFeedback'
   | 'report'
   | 'profile'
   | 'retest'
@@ -16,6 +18,7 @@ export interface MvpRoute {
   name: MvpRouteName;
   taskId?: string;
   filter?: string;
+  highlightRecordId?: string;
 }
 
 function parseHashQuery(hash: string) {
@@ -31,7 +34,21 @@ export function getMvpRoute(): MvpRoute {
   if (parts.length === 0) return { name: 'home' };
   if (parts[0] === 'select-role') return { name: 'roleSelect' };
   if (parts[0] === 'mvp' && parts[1] === 'home') return { name: 'home' };
-  if (parts[0] === 'mvp' && parts[1] === 'tasks') {
+  if (
+    parts[0] === 'mvp' &&
+    (parts[1] === 'tasks' || (parts[1] === 'teacher' && parts[2] === 'tasks'))
+  ) {
+    const taskId = parts[1] === 'teacher' ? parts[3] : undefined;
+    if (taskId && parts[4] === 'feedback') {
+      return { name: 'teacherFeedback', taskId };
+    }
+    if (taskId) {
+      return {
+        name: 'teacherTaskDetail',
+        taskId,
+        highlightRecordId: query.get('highlight') ?? undefined,
+      };
+    }
     return { name: 'tasks', filter: query.get('filter') ?? undefined };
   }
   if (parts[0] === 'mvp' && parts[1] === 'report') return { name: 'report' };
@@ -55,7 +72,9 @@ export function getMvpRoute(): MvpRoute {
 }
 
 export function getActiveNavigation(route: MvpRoute) {
-  if (route.name === 'tasks' || route.name === 'legacyTask') return 'tasks';
+  if (
+    ['tasks', 'teacherTaskDetail', 'teacherFeedback', 'legacyTask'].includes(route.name)
+  ) return 'tasks';
   if (route.name === 'report' || route.name === 'legacyReport') return 'report';
   if (route.name === 'supervision') return 'supervision';
   if (route.name === 'profile') return 'profile';
