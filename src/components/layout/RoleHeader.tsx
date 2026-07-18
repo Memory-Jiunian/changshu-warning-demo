@@ -10,17 +10,21 @@ const roleLabels: Record<UserRole, string> = {
 export function RoleHeader({
   user,
   scopeLabel,
+  compact = false,
 }: {
   user: DemoUser;
   scopeLabel: string;
+  compact?: boolean;
 }) {
   const isDirector = user.role === 'grade_director';
   return (
-    <header className="mvp-role-header">
+    <header className={`mvp-role-header ${compact ? 'mvp-role-header--compact' : ''}`}>
       <div className="mvp-role-header__copy">
-        <span className="mvp-role-header__eyebrow">当前身份</span>
-        <h1>{user.name}，你好</h1>
-        <p>{roleLabels[user.role]} · {scopeLabel}</p>
+        <span className="mvp-role-header__eyebrow">
+          {compact ? `${roleLabels[user.role]} · ${scopeLabel}` : '当前身份'}
+        </span>
+        <h1>{compact ? user.name : `${user.name}，你好`}</h1>
+        {!compact ? <p>{roleLabels[user.role]} · {scopeLabel}</p> : null}
       </div>
       <span className="mvp-role-header__icon" aria-hidden="true">
         <AppIcon name={isDirector ? 'users' : 'clipboard'} size={25} />

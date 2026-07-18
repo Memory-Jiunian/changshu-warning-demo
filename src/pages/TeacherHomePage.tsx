@@ -36,10 +36,11 @@ export function TeacherHomePage({
   };
 
   return (
-    <div className="mvp-page">
+    <div className="mvp-page mvp-v2-page mvp-v2-home-page">
       <RoleHeader
         user={currentUser}
         scopeLabel={getTeacherClassLabel(currentUser, tasks)}
+        compact
       />
 
       {overdueCount > 0 ? (
@@ -59,17 +60,28 @@ export function TeacherHomePage({
             查看全部
           </Button>
         </div>
-        <div className="mvp-card-list">
+        <div className="mvp-v2-home-task-stack">
           {recentTasks.length > 0 ? (
-            recentTasks.map((task) => (
+            <>
               <HomeTaskCard
-                key={task.id}
-                task={task}
+                key={recentTasks[0].id}
+                task={recentTasks[0]}
                 now={demoNow}
                 mode="teacher"
-                onOpen={() => onNavigate(`#/mvp/teacher/tasks/${task.id}`)}
+                density="featured"
+                onOpen={() => onNavigate(`#/mvp/teacher/tasks/${recentTasks[0].id}`)}
               />
-            ))
+              {recentTasks.slice(1, 3).map((task) => (
+                <HomeTaskCard
+                  key={task.id}
+                  task={task}
+                  now={demoNow}
+                  mode="teacher"
+                  density="compact"
+                  onOpen={() => onNavigate(`#/mvp/teacher/tasks/${task.id}`)}
+                />
+              ))}
+            </>
           ) : (
             <div className="mvp-empty-inline">当前没有需要处理的观察任务。</div>
           )}

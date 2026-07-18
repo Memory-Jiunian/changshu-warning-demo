@@ -1,28 +1,44 @@
 import { useEffect } from 'react';
 import { TeacherTaskCard } from '../components/business/TeacherTaskCard';
-import { AppIcon } from '../components/ui/AppIcon';
-import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import type { CollaborationTask } from '../domain/tasks';
 import {
-  filterTeacherTasks,
-  normalizeTeacherTaskFilter,
+  filterTeacherTasksForView,
+  normalizeTeacherTaskView,
+  normalizeTeacherTaskViewFilter,
   teacherTaskFilterLabels,
-  type TeacherTaskFilter,
+  type TeacherTaskView,
+  type TeacherTaskViewFilter,
 } from '../selectors/taskSelectors';
 
-const standardFilters: TeacherTaskFilter[] = [
-  'all',
+const actionFilters: TeacherTaskViewFilter[] = [
+  'action',
   'pending',
   'returned',
   'overdue',
   'retest',
+];
+
+const historyFilters: TeacherTaskViewFilter[] = [
+  'history',
   'submitted',
   'completed',
 ];
 
-const emptyCopy: Record<TeacherTaskFilter, { title: string; description: string }> = {
-  all: { title: '暂无协作任务', description: '新的协作任务会在管理终端完成分发后显示在这里。' },
+const filterLabels: Record<TeacherTaskViewFilter, string> = {
+  action: '全部待处理',
+  history: '全部历史',
+  pending: teacherTaskFilterLabels.pending,
+  returned: teacherTaskFilterLabels.returned,
+  overdue: teacherTaskFilterLabels.overdue,
+  retest: teacherTaskFilterLabels.retest,
+  submitted: teacherTaskFilterLabels.submitted,
+  completed: teacherTaskFilterLabels.completed,
+};
+
+const emptyCopy: Record<TeacherTaskViewFilter, { title: string; description: string }> = {
+  action: { title: '当前没有待处理任务', description: '新的协作任务会在分发后显示在这里。' },
+  history: { title: '暂时没有历史记录', description: '已提交、已完成或已取消的任务会保留在这里。' },
   pending: { title: '当前没有需要填写观察反馈的任务', description: '可以查看其他筛选中的历史任务。' },
   overdue: { title: '当前没有已超时任务', description: '可以查看其他筛选中的协作任务。' },
   returned: { title: '当前没有被退回等待补充的任务', description: '需要补充时，原反馈仍会保留。' },
@@ -31,8 +47,8 @@ const emptyCopy: Record<TeacherTaskFilter, { title: string; description: string 
   completed: { title: '暂时没有已完成的协作任务', description: '已结束任务只保留只读记录。' },
 };
 
-function scrollKey(userId: string, filter: TeacherTaskFilter) {
-  return `changshu-demo:teacher-task-scroll:${userId}:${filter}`;
+function scrollKey(userId: string, view: TeacherTaskView, filter: TeacherTaskViewFilter) {
+  return `changshu-demo:teacher-task-scroll:${userId}:${view}:${filter}`;
 }
 
 export function TeacherTaskListPage({
@@ -40,8 +56,9 @@ export function TeacherTaskListPage({
   tasks,
   now,
   filter: rawFilter,
+  view: rawView,
   loading,
-  onBack,
+  onView,
   onFilter,
   onOpen,
 }: {
@@ -49,52 +66,65 @@ export function TeacherTaskListPage({
   tasks: CollaborationTask[];
   now: string;
   filter?: string;
+  view?: string;
   loading: boolean;
-  onBack: () => void;
-  onFilter: (filter: TeacherTaskFilter) => void;
+  onView: (view: TeacherTaskView) => void;
+  onFilter: (view: TeacherTaskView, filter: TeacherTaskViewFilter) => void;
   onOpen: (task: CollaborationTask) => void;
 }) {
-  const filter = normalizeTeacherTaskFilter(rawFilter);
-  const filteredTasks = filterTeacherTasks(tasks, filter, new Date(now));
+  const view = normalizeTeacherTaskView(rawView);
+  const filter = normalizeTeacherTaskViewFilter(view, rawFilter);
+  const filters = view === 'history' ? historyFilters : actionFilters;
+  const filteredTasks = filterTeacherTasksForView(tasks, view, filter, new Date(now));
 
   useEffect(() => {
-    const saved = Number(window.sessionStorage.getItem(scrollKey(userId, filter)) ?? 0);
+    const saved = Number(window.sessionStorage.getItem(scrollKey(userId, view, filter)) ?? 0);
     const frame = window.requestAnimationFrame(() => window.scrollTo({ top: saved }));
     return () => window.cancelAnimationFrame(frame);
-  }, [filter, userId]);
+  }, [filter, userId, view]);
 
   const openTask = (task: CollaborationTask) => {
-    window.sessionStorage.setItem(scrollKey(userId, filter), String(window.scrollY));
+    window.sessionStorage.setItem(scrollKey(userId, view, filter), String(window.scrollY));
+    window.sessionStorage.setItem('changshu-demo:teacher-task-last-view', view);
     window.sessionStorage.setItem('changshu-demo:teacher-task-last-filter', filter);
     onOpen(task);
   };
 
   return (
-    <div className="mvp-page mvp-task-list-page" aria-busy={loading}>
-      <header className="mvp-page-header">
-        <Button variant="secondary" size="icon" aria-label="返回首页" onClick={onBack}>
-          <AppIcon name="arrowLeft" size={20} />
-        </Button>
-        <div>
-          <h1>我的任务</h1>
-        </div>
+    <div className="mvp-page mvp-v2-page mvp-v2-task-list-page" aria-busy={loading}>
+      <header className="mvp-v2-primary-header">
+        <h1>我的任务</h1>
       </header>
 
-      <nav className="mvp-filter-tabs" aria-label="任务筛选">
-        {standardFilters.map((item) => (
+      <nav className="mvp-v2-view-switch" aria-label="任务记录类型">
+        {(['action', 'history'] as TeacherTaskView[]).map((item) => (
+          <button
+            key={item}
+            type="button"
+            className={view === item ? 'is-active' : ''}
+            aria-current={view === item ? 'page' : undefined}
+            onClick={() => onView(item)}
+          >
+            {item === 'action' ? '待处理' : '历史记录'}
+          </button>
+        ))}
+      </nav>
+
+      <nav className="mvp-v2-filter-chips" aria-label="任务筛选">
+        {filters.map((item) => (
           <button
             key={item}
             type="button"
             className={filter === item ? 'is-active' : ''}
             aria-current={filter === item ? 'page' : undefined}
-            onClick={() => onFilter(item)}
+            onClick={() => onFilter(view, item)}
           >
-            {teacherTaskFilterLabels[item]}
+            {filterLabels[item]}
           </button>
         ))}
       </nav>
 
-      <section className="mvp-task-results" aria-label={`${teacherTaskFilterLabels[filter]}任务`}>
+      <section className="mvp-task-results" aria-label={`${filterLabels[filter]}任务`}>
         <p className="mvp-list-summary" aria-live="polite">
           {filteredTasks.length} 项结果
         </p>

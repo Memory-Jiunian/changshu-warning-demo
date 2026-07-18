@@ -7,20 +7,24 @@ export function AppShell({
   activeNavigation,
   children,
   onNavigate,
+  showBottomNavigation = true,
 }: {
   role: UserRole;
   activeNavigation: string;
   children: ReactNode;
   onNavigate: (hash: string) => void;
+  showBottomNavigation?: boolean;
 }) {
   return (
-    <main className="mvp-app-shell">
+    <main className={`mvp-app-shell ${showBottomNavigation ? 'has-bottom-navigation' : 'has-no-bottom-navigation'}`}>
       <div className="mvp-app-shell__content">{children}</div>
-      <BottomNavigation
-        role={role}
-        activeKey={activeNavigation}
-        onNavigate={onNavigate}
-      />
+      {showBottomNavigation ? (
+        <BottomNavigation
+          role={role}
+          activeKey={activeNavigation}
+          onNavigate={onNavigate}
+        />
+      ) : null}
     </main>
   );
 }

@@ -21,6 +21,7 @@ export interface MvpRoute {
   taskId?: string;
   reportId?: string;
   filter?: string;
+  view?: string;
   highlightRecordId?: string;
   justSubmitted?: boolean;
 }
@@ -53,7 +54,11 @@ export function getMvpRoute(): MvpRoute {
         highlightRecordId: query.get('highlight') ?? undefined,
       };
     }
-    return { name: 'tasks', filter: query.get('filter') ?? undefined };
+    return {
+      name: 'tasks',
+      filter: query.get('filter') ?? undefined,
+      view: query.get('view') ?? undefined,
+    };
   }
   if (
     parts[0] === 'mvp' &&

@@ -62,9 +62,9 @@ assert(
 checks.push('page header back actions share the central navigation guard');
 
 assert(
-  appSource.includes(
-    '<AppShell role={selectedRole} activeNavigation={activeNavigation} onNavigate={navigate}>',
-  ) &&
+  appSource.includes('<AppShell') &&
+    appSource.includes('onNavigate={navigate}') &&
+    appSource.includes('showBottomNavigation={') &&
     appSource.includes(
       'const navigate = useCallback(',
     ),

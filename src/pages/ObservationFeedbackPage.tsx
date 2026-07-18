@@ -227,8 +227,8 @@ export function ObservationFeedbackPage({
   };
 
   return (
-    <div className="mvp-page mvp-feedback-page">
-      <header className="mvp-page-header">
+    <div className="mvp-page mvp-v2-page mvp-v2-feedback-page mvp-feedback-page">
+      <header className="mvp-page-header mvp-v2-feedback-header">
         <Button variant="secondary" size="icon" aria-label="返回任务详情" onClick={onBack}>
           <AppIcon name="arrowLeft" size={20} />
         </Button>
@@ -272,11 +272,9 @@ export function ObservationFeedbackPage({
         </>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>观察内容</CardTitle>
-        </CardHeader>
-        <CardContent className="mvp-form-stack">
+      <section className="mvp-v2-form-surface" aria-label="观察内容">
+        <div className="mvp-v2-form-group">
+          <h2>时间与场景</h2>
           <FormField
             label="观察时间"
             htmlFor="observedAt"
@@ -312,7 +310,10 @@ export function ObservationFeedbackPage({
               />
             </FormField>
           ) : null}
+        </div>
 
+        <div className="mvp-v2-form-group mvp-v2-form-group--primary">
+          <h2>事实观察</h2>
           <FormField
             label="事实观察"
             htmlFor="facts"
@@ -345,7 +346,10 @@ export function ObservationFeedbackPage({
               <p>7 月 15 日午休时独自趴在座位约 40 分钟，两次拒绝同学邀请，回应声音较小。</p>
             </div>
           </details>
+        </div>
 
+        <div className="mvp-v2-form-group">
+          <h2>补充信息</h2>
           <FormField label="出现频率" error={errors.frequency}>
             <RadioGroup
               name="frequency"
@@ -370,6 +374,25 @@ export function ObservationFeedbackPage({
             />
           </FormField>
 
+          <FormField
+            label="补充说明"
+            htmlFor="additionalNotes"
+            error={errors.additionalNotes}
+            hint={`${values.additionalNotes.length}/300 字，可选`}
+          >
+            <Textarea
+              id="additionalNotes"
+              value={values.additionalNotes}
+              maxLength={300}
+              rows={4}
+              placeholder="补充与本次事实观察相关的信息"
+              onChange={(event) => update('additionalNotes', event.target.value)}
+            />
+          </FormField>
+        </div>
+
+        <div className="mvp-v2-form-group">
+          <h2>即时安全风险</h2>
           <FormField
             label="是否存在需要立即线下处理的安全风险"
             required
@@ -398,24 +421,8 @@ export function ObservationFeedbackPage({
               <p>请优先按照学校现有线下应急流程进行当面报告或联系。提交本记录不能替代线下应急处置。</p>
             </div>
           ) : null}
-
-          <FormField
-            label="补充说明"
-            htmlFor="additionalNotes"
-            error={errors.additionalNotes}
-            hint={`${values.additionalNotes.length}/300 字，可选`}
-          >
-            <Textarea
-              id="additionalNotes"
-              value={values.additionalNotes}
-              maxLength={300}
-              rows={4}
-              placeholder="补充与本次事实观察相关的信息"
-              onChange={(event) => update('additionalNotes', event.target.value)}
-            />
-          </FormField>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <BottomActionBar>
         <Button variant="secondary" fullWidth onClick={onBack}>返回</Button>

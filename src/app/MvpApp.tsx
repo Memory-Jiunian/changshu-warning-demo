@@ -199,9 +199,12 @@ export function MvpApp({
 
   const taskListHash = () => {
     const filter = window.sessionStorage.getItem('changshu-demo:teacher-task-last-filter');
-    return filter && filter !== 'all'
-      ? `#/mvp/teacher/tasks?filter=${encodeURIComponent(filter)}`
-      : '#/mvp/teacher/tasks';
+    const view = window.sessionStorage.getItem('changshu-demo:teacher-task-last-view');
+    const params = new URLSearchParams();
+    if (view === 'history') params.set('view', 'history');
+    if (filter && !['action', 'history'].includes(filter)) params.set('filter', filter);
+    const query = params.toString();
+    return query ? `#/mvp/teacher/tasks?${query}` : '#/mvp/teacher/tasks';
   };
 
   const selectRole = (role: MvpRole) => {
@@ -407,7 +410,14 @@ export function MvpApp({
 
   const activeNavigation = getActiveNavigation(route);
   return (
-    <AppShell role={selectedRole} activeNavigation={activeNavigation} onNavigate={navigate}>
+    <AppShell
+      role={selectedRole}
+      activeNavigation={activeNavigation}
+      onNavigate={navigate}
+      showBottomNavigation={
+        route.name !== 'teacherTaskDetail' && route.name !== 'teacherFeedback'
+      }
+    >
       {route.name === 'home' && selectedRole === 'head_teacher' ? (
         <TeacherHomePage onNavigate={navigate} />
       ) : null}
@@ -420,15 +430,22 @@ export function MvpApp({
           tasks={tasks}
           now={now}
           filter={route.filter}
+          view={route.view}
           loading={loading}
-          onBack={() => navigate('#/mvp/home')}
-          onFilter={(filter) =>
+          onView={(view) =>
             navigate(
-              filter === 'all'
-                ? '#/mvp/teacher/tasks'
-                : `#/mvp/teacher/tasks?filter=${filter}`,
+              view === 'history'
+                ? '#/mvp/teacher/tasks?view=history'
+                : '#/mvp/teacher/tasks',
             )
           }
+          onFilter={(view, filter) => {
+            const params = new URLSearchParams();
+            if (view === 'history') params.set('view', 'history');
+            if (!['action', 'history'].includes(filter)) params.set('filter', filter);
+            const query = params.toString();
+            navigate(query ? `#/mvp/teacher/tasks?${query}` : '#/mvp/teacher/tasks');
+          }}
           onOpen={(task) =>
             navigate(
               task.type === 'retest_reminder'

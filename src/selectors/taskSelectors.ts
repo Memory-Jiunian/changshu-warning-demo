@@ -196,6 +196,17 @@ export type TeacherTaskFilter =
   | 'submitted'
   | 'completed';
 
+export type TeacherTaskView = 'action' | 'history';
+export type TeacherTaskViewFilter =
+  | 'action'
+  | 'pending'
+  | 'returned'
+  | 'overdue'
+  | 'retest'
+  | 'history'
+  | 'submitted'
+  | 'completed';
+
 export const teacherTaskFilterLabels: Record<TeacherTaskFilter, string> = {
   all: '全部',
   pending: '待反馈',
@@ -210,6 +221,40 @@ export function normalizeTeacherTaskFilter(value?: string): TeacherTaskFilter {
   return value && value in teacherTaskFilterLabels
     ? (value as TeacherTaskFilter)
     : 'all';
+}
+
+export function normalizeTeacherTaskView(value?: string): TeacherTaskView {
+  return value === 'history' ? 'history' : 'action';
+}
+
+export function normalizeTeacherTaskViewFilter(
+  view: TeacherTaskView,
+  value?: string,
+): TeacherTaskViewFilter {
+  const allowed =
+    view === 'history'
+      ? ['history', 'submitted', 'completed']
+      : ['action', 'pending', 'returned', 'overdue', 'retest'];
+  return value && allowed.includes(value)
+    ? (value as TeacherTaskViewFilter)
+    : view;
+}
+
+export function filterTeacherTasksForView(
+  tasks: CollaborationTask[],
+  view: TeacherTaskView,
+  filter: TeacherTaskViewFilter,
+  now: Date,
+) {
+  const inView = tasks.filter((task) =>
+    view === 'history'
+      ? ['submitted', 'completed', 'cancelled'].includes(task.status)
+      : ['pending', 'returned'].includes(task.status),
+  );
+  if (filter === 'action' || filter === 'history') {
+    return sortTasksForAction(inView, now);
+  }
+  return filterTeacherTasks(inView, filter as TeacherTaskFilter, now);
 }
 
 export function filterTeacherTasks(

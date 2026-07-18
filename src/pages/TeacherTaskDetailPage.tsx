@@ -32,6 +32,8 @@ export function TeacherTaskDetailPage({
   const requestedRead = useRef(false);
   const records = getTaskObservationRecords(observations, task.id);
   const display = getTaskDisplayState(task, new Date(now));
+  const statusBadge = <TaskStatusBadge task={task} now={new Date(now)} />;
+  const hasAction = task.status === 'pending' || task.status === 'returned';
 
   useEffect(() => {
     if (task.readAt || requestedRead.current) return;
@@ -50,8 +52,101 @@ export function TeacherTaskDetailPage({
     return () => window.cancelAnimationFrame(frame);
   }, [highlightRecordId, records.length]);
 
+  if (task.status === 'pending') {
+    return (
+      <div className="mvp-page mvp-v2-page mvp-v2-task-detail-page mvp-task-detail-page has-bottom-action">
+        <header className="mvp-page-header mvp-v2-detail-header">
+          <Button variant="secondary" size="icon" aria-label="返回任务列表" onClick={onBack}>
+            <AppIcon name="arrowLeft" size={20} />
+          </Button>
+          <div>
+            <span>协作任务</span>
+            <h1>任务详情</h1>
+          </div>
+        </header>
+
+        <section className="mvp-v2-status-summary" aria-label="任务状态">
+          <div>
+            <span>当前状态</span>
+            <strong>{taskTypeLabels[task.type]}</strong>
+          </div>
+          {statusBadge}
+          <dl>
+            <div>
+              <dt>创建</dt>
+              <dd>{formatCompactDateTime(task.createdAt)}</dd>
+            </div>
+            <div>
+              <dt>截止</dt>
+              <dd>{display.deadlineLabel}</dd>
+            </div>
+          </dl>
+          {display.isOverdue ? (
+            <p className="mvp-v2-status-summary__warning">
+              <AppIcon name="alert" size={17} />
+              已超过截止时间，请优先完成事实反馈。
+            </p>
+          ) : null}
+        </section>
+
+        <section className="mvp-v2-detail-surface" aria-labelledby="task-purpose-title">
+          <div className="mvp-v2-student-line">
+            <div>
+              <span>{task.student.gradeName} · {task.student.className}</span>
+              <h2>{task.student.name}</h2>
+            </div>
+          </div>
+
+          <div className="mvp-v2-detail-block">
+            <h2 id="task-purpose-title">任务目的</h2>
+            <p>{task.purpose}</p>
+          </div>
+
+          <div className="mvp-v2-detail-block">
+            <h2>本次观察重点</h2>
+            <div className="mvp-focus-tags">
+              {(task.observationFocus?.length ? task.observationFocus : ['按任务说明观察']).map((item) => (
+                <Badge key={item} variant="outline">{item}</Badge>
+              ))}
+            </div>
+            <p className="mvp-v2-fact-note">
+              请记录实际看到或听到的事实，不需要进行心理判断。
+            </p>
+          </div>
+        </section>
+
+        {records.length > 0 ? (
+          <section className="mvp-section" aria-labelledby="v2-observation-history-title">
+            <div className="mvp-section-heading">
+              <div>
+                <span>历史记录只读</span>
+                <h2 id="v2-observation-history-title">我的反馈记录</h2>
+              </div>
+              <span className="mvp-list-count">{records.length} 条</span>
+            </div>
+            <div className="mvp-card-list">
+              {records.map((record) => (
+                <div id={`observation-${record.id}`} key={record.id}>
+                  <ObservationRecordCard
+                    record={record}
+                    linkedRecord={records.find((item) => item.id === record.revisionOfRecordId)}
+                    highlighted={record.id === highlightRecordId}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <BottomActionBar>
+          <Button fullWidth onClick={onFeedback}>填写观察反馈</Button>
+        </BottomActionBar>
+      </div>
+    );
+  }
+
   return (
-    <div className={`mvp-page mvp-task-detail-page ${task.status === 'pending' || task.status === 'returned' ? 'has-bottom-action' : ''}`}>
+    <div className={`mvp-page mvp-task-detail-page ${hasAction ? 'has-bottom-action' : ''}`}>
       <header className="mvp-page-header">
         <Button variant="secondary" size="icon" aria-label="返回任务列表" onClick={onBack}>
           <AppIcon name="arrowLeft" size={20} />
@@ -68,7 +163,7 @@ export function TeacherTaskDetailPage({
               <span className="mvp-card-kicker">当前状态</span>
               <CardTitle>{taskTypeLabels[task.type]}</CardTitle>
             </div>
-            <TaskStatusBadge task={task} now={new Date(now)} />
+            {statusBadge}
           </div>
         </CardHeader>
         <CardContent>
@@ -114,7 +209,7 @@ export function TeacherTaskDetailPage({
         </CardContent>
       </Card>
 
-      {task.status === 'returned' ? (
+      {hasAction ? (
         <Card tone="warning">
           <CardHeader>
             <CardTitle>退回原因</CardTitle>
@@ -151,13 +246,9 @@ export function TeacherTaskDetailPage({
         )}
       </section>
 
-      {task.status === 'pending' || task.status === 'returned' ? (
+      {task.status === 'returned' ? (
         <BottomActionBar>
-          {task.status === 'pending' ? (
-          <Button fullWidth onClick={onFeedback}>填写观察反馈</Button>
-          ) : (
           <Button fullWidth onClick={onFeedback}>补充反馈</Button>
-          )}
         </BottomActionBar>
       ) : null}
     </div>

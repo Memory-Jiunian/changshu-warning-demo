@@ -1,8 +1,9 @@
 import type { CollaborationTask } from '../../domain/tasks';
-import { taskTypeLabels, urgencyLabels } from '../../selectors/homeSelectors';
-import { getTaskDisplayState } from '../../selectors/taskSelectors';
+import { taskTypeLabels } from '../../selectors/homeSelectors';
+import { formatTaskDeadline, getTaskDisplayState } from '../../selectors/taskSelectors';
 import { Badge } from '../ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { AppIcon } from '../ui/AppIcon';
 import { DeadlineBadge } from './DeadlineBadge';
 
 export function HomeTaskCard({
@@ -12,6 +13,7 @@ export function HomeTaskCard({
   assigneeName,
   latestSupervision,
   onOpen,
+  density = 'default',
 }: {
   task: CollaborationTask;
   now: Date;
@@ -19,6 +21,7 @@ export function HomeTaskCard({
   assigneeName?: string;
   latestSupervision?: string;
   onOpen: () => void;
+  density?: 'default' | 'featured' | 'compact';
 }) {
   const display = getTaskDisplayState(task, now);
   const statusVariant = display.isOverdue
@@ -32,7 +35,7 @@ export function HomeTaskCard({
   return (
     <Card
       as="article"
-      className="mvp-home-task-card mvp-clickable-card"
+      className={`mvp-home-task-card mvp-clickable-card mvp-home-task-card--${density}`}
       role="link"
       tabIndex={0}
       aria-label={mode === 'director' ? '查看督办事项' : `查看${task.student.name}的任务`}
@@ -60,11 +63,12 @@ export function HomeTaskCard({
       <CardContent>
         {mode === 'teacher' ? (
           <>
-            <div className="mvp-task-type-line">
-              <Badge variant="brand">{taskTypeLabels[task.type]}</Badge>
-              <Badge variant="outline">{urgencyLabels[task.urgency]}</Badge>
-            </div>
+            <p className="mvp-v2-task-card__type">{taskTypeLabels[task.type]}</p>
             <p className="mvp-task-purpose">{task.purpose}</p>
+            <p className="mvp-v2-task-card__time">
+              <AppIcon name="clock" size={15} />
+              <span>{formatTaskDeadline(task, now)}</span>
+            </p>
           </>
         ) : (
           <div className="mvp-task-meta-list">
@@ -72,7 +76,7 @@ export function HomeTaskCard({
             <div><span>最近督办</span><strong>{latestSupervision ?? '暂无督办记录'}</strong></div>
           </div>
         )}
-        <DeadlineBadge task={task} now={now} />
+        {mode === 'director' ? <DeadlineBadge task={task} now={now} /> : null}
       </CardContent>
     </Card>
   );

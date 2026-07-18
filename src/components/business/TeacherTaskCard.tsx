@@ -1,8 +1,8 @@
 import type { CollaborationTask } from '../../domain/tasks';
 import { taskTypeLabels } from '../../selectors/homeSelectors';
-import { Badge } from '../ui/Badge';
+import { formatTaskDeadline } from '../../selectors/taskSelectors';
+import { AppIcon } from '../ui/AppIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
-import { DeadlineBadge } from './DeadlineBadge';
 import { TaskStatusBadge } from './TaskStatusBadge';
 
 export function TeacherTaskCard({
@@ -39,11 +39,12 @@ export function TeacherTaskCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mvp-task-type-line">
-          <Badge variant="outline">{taskTypeLabels[task.type]}</Badge>
-        </div>
+        <p className="mvp-v2-task-card__type">{taskTypeLabels[task.type]}</p>
         <p className="mvp-task-purpose">{task.purpose}</p>
-        <DeadlineBadge task={task} now={now} />
+        <p className="mvp-v2-task-card__time">
+          <AppIcon name="clock" size={15} />
+          <span>{formatTaskDeadline(task, now)}</span>
+        </p>
       </CardContent>
     </Card>
   );
