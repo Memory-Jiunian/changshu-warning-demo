@@ -1,6 +1,6 @@
 import { AppIcon, type AppIconName } from '../components/ui/AppIcon';
 import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/Card';
+import { Card, CardContent, CardFooter, CardHeader } from '../components/ui/Card';
 
 export function PlaceholderPage({
   title,
@@ -20,7 +20,7 @@ export function PlaceholderPage({
           <span className="mvp-placeholder-card__icon">
             <AppIcon name={icon} size={24} />
           </span>
-          <CardTitle>{title}</CardTitle>
+          <h1 className="ui-card__title">{title}</h1>
         </CardHeader>
         <CardContent>
           <p>{description}</p>

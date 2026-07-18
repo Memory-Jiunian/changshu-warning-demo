@@ -2,9 +2,7 @@ import type { CollaborationTask } from '../../domain/tasks';
 import { taskTypeLabels, urgencyLabels } from '../../selectors/homeSelectors';
 import { getTaskDisplayState } from '../../selectors/taskSelectors';
 import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/Card';
-import { AppIcon } from '../ui/AppIcon';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { DeadlineBadge } from './DeadlineBadge';
 
 export function HomeTaskCard({
@@ -32,7 +30,20 @@ export function HomeTaskCard({
         : 'neutral';
 
   return (
-    <Card as="article" className="mvp-home-task-card">
+    <Card
+      as="article"
+      className="mvp-home-task-card mvp-clickable-card"
+      role="link"
+      tabIndex={0}
+      aria-label={mode === 'director' ? '查看督办事项' : `查看${task.student.name}的任务`}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <CardHeader>
         <div className="mvp-card-heading">
           <div>
@@ -63,16 +74,6 @@ export function HomeTaskCard({
         )}
         <DeadlineBadge task={task} now={now} />
       </CardContent>
-      <CardFooter>
-        <Button
-          variant="secondary"
-          fullWidth
-          trailingIcon={<AppIcon name="arrowRight" size={17} />}
-          onClick={onOpen}
-        >
-          {mode === 'director' ? '查看督办' : '查看任务'}
-        </Button>
-      </CardFooter>
     </Card>
   );
 }

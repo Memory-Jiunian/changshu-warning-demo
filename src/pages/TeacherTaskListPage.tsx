@@ -15,6 +15,7 @@ const standardFilters: TeacherTaskFilter[] = [
   'all',
   'pending',
   'returned',
+  'overdue',
   'retest',
   'submitted',
   'completed',
@@ -55,8 +56,6 @@ export function TeacherTaskListPage({
 }) {
   const filter = normalizeTeacherTaskFilter(rawFilter);
   const filteredTasks = filterTeacherTasks(tasks, filter, new Date(now));
-  const filters: TeacherTaskFilter[] =
-    filter === 'overdue' ? ['overdue', ...standardFilters] : standardFilters;
 
   useEffect(() => {
     const saved = Number(window.sessionStorage.getItem(scrollKey(userId, filter)) ?? 0);
@@ -77,13 +76,12 @@ export function TeacherTaskListPage({
           <AppIcon name="arrowLeft" size={20} />
         </Button>
         <div>
-          <span>班主任协作</span>
           <h1>我的任务</h1>
         </div>
       </header>
 
       <nav className="mvp-filter-tabs" aria-label="任务筛选">
-        {filters.map((item) => (
+        {standardFilters.map((item) => (
           <button
             key={item}
             type="button"
@@ -96,15 +94,10 @@ export function TeacherTaskListPage({
         ))}
       </nav>
 
-      <section className="mvp-section" aria-labelledby="teacher-task-list-title">
-        <div className="mvp-section-heading">
-          <div>
-            <span>按行动优先级排序</span>
-            <h2 id="teacher-task-list-title">{teacherTaskFilterLabels[filter]}任务</h2>
-          </div>
-          <span className="mvp-list-count">{filteredTasks.length} 项</span>
-        </div>
-
+      <section className="mvp-task-results" aria-label={`${teacherTaskFilterLabels[filter]}任务`}>
+        <p className="mvp-list-summary" aria-live="polite">
+          {filteredTasks.length} 项结果
+        </p>
         {loading && filteredTasks.length === 0 ? (
           <div className="mvp-loading-state" role="status">正在加载任务…</div>
         ) : filteredTasks.length > 0 ? (

@@ -1,13 +1,10 @@
 import { AppIcon } from '../components/ui/AppIcon';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import type { AbnormalReport } from '../domain/feedback';
-import {
-  abnormalReportStatusLabel,
-  getVisibleReportsForUser,
-} from '../selectors/reportSelectors';
+import { getVisibleReportsForUser } from '../selectors/reportSelectors';
 import type { DemoUser } from '../domain/users';
 import { formatCompactDateTime } from '../selectors/homeSelectors';
 
@@ -42,7 +39,21 @@ export function TeacherReportListPage({
       {visibleReports.length > 0 ? (
         <div className="mvp-card-list">
           {visibleReports.map((report) => (
-            <Card as="article" key={report.id}>
+            <Card
+              as="article"
+              key={report.id}
+              className="mvp-clickable-card"
+              role="link"
+              tabIndex={0}
+              aria-label={`查看${report.student.name}的上报记录`}
+              onClick={() => onOpen(report.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onOpen(report.id);
+                }
+              }}
+            >
               <CardHeader>
                 <div className="mvp-card-heading">
                   <div>
@@ -57,19 +68,8 @@ export function TeacherReportListPage({
                   <div><dt>观察时间</dt><dd>{formatCompactDateTime(report.observedAt)}</dd></div>
                   <div><dt>提交时间</dt><dd>{formatCompactDateTime(report.submittedAt)}</dd></div>
                   <div><dt>观察场景</dt><dd>{report.scene}</dd></div>
-                  <div><dt>状态</dt><dd>{abnormalReportStatusLabel}</dd></div>
                 </dl>
               </CardContent>
-              <CardFooter>
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  trailingIcon={<AppIcon name="arrowRight" size={17} />}
-                  onClick={() => onOpen(report.id)}
-                >
-                  查看记录
-                </Button>
-              </CardFooter>
             </Card>
           ))}
         </div>

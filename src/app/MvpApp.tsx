@@ -503,6 +503,9 @@ export function MvpApp({
           report={reportAccess.data}
           justSubmitted={Boolean(route.justSubmitted)}
           onBack={() => navigate('#/mvp/teacher/reports')}
+          onViewRecord={() =>
+            navigateReplace(`#/mvp/teacher/reports/${reportAccess.data.id}`)
+          }
           onHome={() => navigate('#/mvp/home')}
         />
       ) : null}

@@ -2,9 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DraftSaveStatus } from '../components/business/DraftSaveStatus';
 import { BottomActionBar } from '../components/layout/BottomActionBar';
 import { AppIcon } from '../components/ui/AppIcon';
-import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { Card, CardContent } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormField } from '../components/ui/FormField';
 import { Input } from '../components/ui/Input';
@@ -263,211 +262,177 @@ export function AbnormalReportPage({
         <DraftSaveStatus status={autoDraft.status} savedAt={autoDraft.savedAt} />
       </header>
 
-      <Card tone="soft">
-        <CardHeader>
-          <CardTitle>只记录事实，不进行风险判断</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mvp-muted-copy">
-            这条记录会提交给心理老师专业复核，不会自动形成正式预警或协作任务。
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <span className="mvp-card-kicker">观察对象</span>
-          <CardTitle>选择本人负责班级的学生</CardTitle>
-        </CardHeader>
+      <Card className="mvp-report-form-card">
         <CardContent className="mvp-form-stack">
-          <FormField
-            label="选择学生"
-            htmlFor="reportStudent"
-            required
-            error={errors.studentId}
-          >
-            <Select
-              id="reportStudent"
-              value={values.studentId}
-              onChange={(event) => update('studentId', event.target.value)}
-            >
-              <option value="">请选择学生</option>
-              {students.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.name} · {student.gradeName} · {student.className}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <span className="mvp-card-kicker">什么时候、在哪里</span>
-          <CardTitle>观察场景</CardTitle>
-        </CardHeader>
-        <CardContent className="mvp-form-stack">
-          <FormField
-            label="观察时间"
-            htmlFor="reportObservedAt"
-            required
-            error={errors.observedAt}
-            hint="观察时间不能晚于现在"
-          >
-            <Input
-              id="reportObservedAt"
-              type="datetime-local"
-              value={values.observedAt}
-              max={toLocalInputValue(now)}
-              onChange={(event) => update('observedAt', event.target.value)}
-            />
-          </FormField>
-          <FormField label="观察场景" required error={errors.scene}>
-            <RadioGroup
-              name="reportScene"
-              value={values.scene}
-              options={sceneOptions}
-              onChange={(value) => update('scene', value)}
-            />
-          </FormField>
-          {values.scene === 'other' ? (
+          <section className="mvp-form-section" aria-labelledby="report-student-title">
+            <h2 id="report-student-title">学生</h2>
             <FormField
-              label="其他场景"
-              htmlFor="reportOtherScene"
+              label="选择学生"
+              htmlFor="reportStudent"
               required
-              error={errors.otherScene}
+              error={errors.studentId}
+            >
+              <Select
+                id="reportStudent"
+                value={values.studentId}
+                onChange={(event) => update('studentId', event.target.value)}
+              >
+                <option value="">请选择学生</option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} · {student.gradeName} · {student.className}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </section>
+
+          <section className="mvp-form-section" aria-labelledby="report-time-title">
+            <h2 id="report-time-title">时间与场景</h2>
+            <FormField
+              label="观察时间"
+              htmlFor="reportObservedAt"
+              required
+              error={errors.observedAt}
+              hint="观察时间不能晚于现在"
             >
               <Input
-                id="reportOtherScene"
-                value={values.otherScene}
-                maxLength={40}
-                placeholder="例如：家访、校门口沟通"
-                onChange={(event) => update('otherScene', event.target.value)}
+                id="reportObservedAt"
+                type="datetime-local"
+                value={values.observedAt}
+                max={toLocalInputValue(now)}
+                onChange={(event) => update('observedAt', event.target.value)}
               />
             </FormField>
-          ) : null}
-        </CardContent>
-      </Card>
+            <FormField label="观察场景" required error={errors.scene}>
+              <RadioGroup
+                name="reportScene"
+                value={values.scene}
+                options={sceneOptions}
+                onChange={(value) => update('scene', value)}
+              />
+            </FormField>
+            {values.scene === 'other' ? (
+              <FormField
+                label="其他场景"
+                htmlFor="reportOtherScene"
+                required
+                error={errors.otherScene}
+              >
+                <Input
+                  id="reportOtherScene"
+                  value={values.otherScene}
+                  maxLength={40}
+                  placeholder="例如：家访、校门口沟通"
+                  onChange={(event) => update('otherScene', event.target.value)}
+                />
+              </FormField>
+            ) : null}
+          </section>
 
-      <Card>
-        <CardHeader>
-          <span className="mvp-card-kicker">你实际看到或听到了什么</span>
-          <CardTitle>事实描述</CardTitle>
-        </CardHeader>
-        <CardContent className="mvp-form-stack">
-          <FormField
-            label="事实描述"
-            htmlFor="reportFacts"
-            required
-            error={errors.facts}
-            hint={`${values.facts.trim().length}/500 字`}
-          >
-            <Textarea
-              id="reportFacts"
-              value={values.facts}
-              maxLength={500}
-              rows={7}
-              placeholder="请描述实际看到或听到的行为、发生时间和场景。"
-              onChange={(event) => update('facts', event.target.value)}
-            />
-          </FormField>
-          <div className="mvp-writing-guide">
-            <strong>事实表达示例</strong>
-            <p>
-              7 月 16 日下午课堂提问时，该生连续三次没有回应；课后沟通时表示最近睡眠较少，讲话声音较轻。
-            </p>
-            <p>避免填写心理诊断、风险等级或人格评价。</p>
-          </div>
-          <FormField
-            label="已采取的线下沟通或支持"
-            htmlFor="reportSupport"
-            error={errors.supportActions}
-            hint={`${values.supportActions.length}/300 字，可选`}
-          >
-            <Textarea
-              id="reportSupport"
-              value={values.supportActions}
-              maxLength={300}
-              rows={4}
-              placeholder="只记录已经发生的关心、沟通或支持"
-              onChange={(event) => update('supportActions', event.target.value)}
-            />
-          </FormField>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <span className="mvp-card-kicker">是否需要立即线下处理</span>
-          <CardTitle>安全风险确认</CardTitle>
-        </CardHeader>
-        <CardContent className="mvp-form-stack">
-          <FormField
-            label="是否存在需要立即线下处理的安全风险"
-            required
-            error={errors.immediateSafetyConcern}
-          >
-            <RadioGroup
-              name="reportSafety"
-              value={
-                values.immediateSafetyConcern === null
-                  ? ''
-                  : values.immediateSafetyConcern
-                    ? 'yes'
-                    : 'no'
-              }
-              options={[
-                { value: 'yes', label: '是' },
-                { value: 'no', label: '否' },
-              ]}
-              onChange={(value) =>
-                update('immediateSafetyConcern', value === 'yes')
-              }
-            />
-          </FormField>
-          {values.immediateSafetyConcern ? (
-            <div className="mvp-alert mvp-alert--danger" role="alert">
-              <AppIcon name="alert" size={20} />
-              <div>
+          <section className="mvp-form-section" aria-labelledby="report-facts-title">
+            <h2 id="report-facts-title">事实和已采取支持</h2>
+            <FormField
+              label="事实描述"
+              htmlFor="reportFacts"
+              required
+              error={errors.facts}
+              hint={`${values.facts.trim().length}/500 字`}
+            >
+              <Textarea
+                id="reportFacts"
+                value={values.facts}
+                maxLength={500}
+                rows={7}
+                placeholder="请描述实际看到或听到的行为、发生时间和场景。"
+                onChange={(event) => update('facts', event.target.value)}
+              />
+            </FormField>
+            <p className="mvp-field-note">请记录可观察事实，避免填写心理诊断或人格评价。</p>
+            <details className="mvp-disclosure mvp-disclosure--compact">
+              <summary>查看填写示例</summary>
+              <div className="mvp-writing-guide">
                 <p>
-                  请优先按照学校现有线下应急流程进行当面报告或联系。提交本记录不能替代线下应急处置。
+                  7 月 16 日下午课堂提问时，该生连续三次没有回应；课后沟通时表示最近睡眠较少，讲话声音较轻。
                 </p>
-                <label className="mvp-confirm-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={values.offlinePriorityAcknowledged}
-                    onChange={(event) =>
-                      update(
-                        'offlinePriorityAcknowledged',
-                        event.target.checked,
-                      )
-                    }
-                  />
-                  <span>我已知晓线下应急处置优先</span>
-                </label>
-                {errors.offlinePriorityAcknowledged ? (
-                  <span className="ui-form-field__error">
-                    {errors.offlinePriorityAcknowledged}
-                  </span>
-                ) : null}
               </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            </details>
+            <FormField
+              label="已采取的线下沟通或支持"
+              htmlFor="reportSupport"
+              error={errors.supportActions}
+              hint={`${values.supportActions.length}/300 字，可选`}
+            >
+              <Textarea
+                id="reportSupport"
+                value={values.supportActions}
+                maxLength={300}
+                rows={4}
+                placeholder="只记录已经发生的关心、沟通或支持"
+                onChange={(event) => update('supportActions', event.target.value)}
+              />
+            </FormField>
+          </section>
 
-      <Card tone="soft">
-        <CardHeader>
-          <span className="mvp-card-kicker">提交人确认</span>
-          <CardTitle>提交人信息</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="mvp-detail-metrics">
-            <div><dt>提交人</dt><dd>{currentUser.name} · 班主任</dd></div>
-            <div><dt>负责范围</dt><dd>{classLabels || '当前负责班级'}</dd></div>
-            <div><dt>当前选择</dt><dd>{selectedStudent ? `${selectedStudent.name} · ${selectedStudent.className}` : '尚未选择学生'}</dd></div>
-          </dl>
+          <section className="mvp-form-section" aria-labelledby="report-safety-title">
+            <h2 id="report-safety-title">即时安全风险</h2>
+            <FormField
+              label="是否存在需要立即线下处理的安全风险"
+              required
+              error={errors.immediateSafetyConcern}
+            >
+              <RadioGroup
+                name="reportSafety"
+                value={
+                  values.immediateSafetyConcern === null
+                    ? ''
+                    : values.immediateSafetyConcern
+                      ? 'yes'
+                      : 'no'
+                }
+                options={[
+                  { value: 'yes', label: '是' },
+                  { value: 'no', label: '否' },
+                ]}
+                onChange={(value) =>
+                  update('immediateSafetyConcern', value === 'yes')
+                }
+              />
+            </FormField>
+            {values.immediateSafetyConcern ? (
+              <div className="mvp-alert mvp-alert--danger" role="alert">
+                <AppIcon name="alert" size={20} />
+                <div>
+                  <p>
+                    请优先按照学校现有线下应急流程进行当面报告或联系。提交本记录不能替代线下应急处置。
+                  </p>
+                  <label className="mvp-confirm-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={values.offlinePriorityAcknowledged}
+                      onChange={(event) =>
+                        update(
+                          'offlinePriorityAcknowledged',
+                          event.target.checked,
+                        )
+                      }
+                    />
+                    <span>我已知晓线下应急处置优先</span>
+                  </label>
+                  {errors.offlinePriorityAcknowledged ? (
+                    <span className="ui-form-field__error">
+                      {errors.offlinePriorityAcknowledged}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="mvp-form-section mvp-form-section--submitter" aria-labelledby="report-submitter-title">
+            <h2 id="report-submitter-title">提交人</h2>
+            <p>{currentUser.name} · 班主任 · {classLabels || '当前负责班级'}</p>
+          </section>
         </CardContent>
       </Card>
 

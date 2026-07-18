@@ -118,13 +118,12 @@ export function RetestReminderPage({
     : '尚未确认';
 
   return (
-    <div className="mvp-page mvp-retest-detail-page">
+    <div className={`mvp-page mvp-retest-detail-page ${displayState === 'pending' ? 'has-bottom-action' : ''}`}>
       <header className="mvp-page-header">
         <Button variant="secondary" size="icon" aria-label="返回" onClick={onBack}>
           <AppIcon name="arrowLeft" size={20} />
         </Button>
         <div>
-          <span>班主任移动提醒</span>
           <h1>复测提醒详情</h1>
         </div>
         <Badge
@@ -150,7 +149,6 @@ export function RetestReminderPage({
             <div><dt>年级 / 班级</dt><dd>{task.student.gradeName} · {task.student.className}</dd></div>
             <div><dt>{getRetestScheduleTimeLabel(task)}</dt><dd>{formatCompactDateTime(schedule.scheduledAt)}</dd></div>
             <div><dt>方式或地点</dt><dd>{schedule.location}</dd></div>
-            <div><dt>当前状态</dt><dd>{statusLabel}</dd></div>
           </dl>
         </CardContent>
       </Card>
@@ -204,7 +202,7 @@ export function RetestReminderPage({
         <Card tone="soft">
           <CardHeader>
             <span className="mvp-card-kicker">班主任操作记录</span>
-            <CardTitle>已完成提醒</CardTitle>
+            <CardTitle>提醒记录</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="mvp-detail-metrics">
@@ -221,7 +219,7 @@ export function RetestReminderPage({
 
       {displayState === 'cancelled' ? (
         <Card>
-          <CardHeader><CardTitle>复测提醒已取消</CardTitle></CardHeader>
+          <CardHeader><CardTitle>取消说明</CardTitle></CardHeader>
           <CardContent>
             <p className="mvp-task-purpose">{task.cancelReason}</p>
             <p className="mvp-muted-copy">取消时间：{formatCompactDateTime(task.cancelledAt)}</p>
@@ -229,26 +227,13 @@ export function RetestReminderPage({
         </Card>
       ) : null}
 
-      {displayState === 'reminded' ? (
-        <div className="mvp-alert" role="status">
-          <AppIcon name="clock" size={19} />
-          <p>已提醒，等待学生完成复测。学生完成状态由系统同步，班主任无需操作。</p>
-        </div>
-      ) : null}
-
-      <BottomActionBar>
-        {displayState === 'pending' ? (
+      {displayState === 'pending' ? (
+        <BottomActionBar>
           <Button fullWidth disabled={loading} onClick={openConfirm}>
             确认已提醒学生
           </Button>
-        ) : displayState === 'reminded' ? (
-          <Button fullWidth disabled>已提醒，等待学生完成复测</Button>
-        ) : displayState === 'student_completed' ? (
-          <Button fullWidth disabled>学生已完成复测</Button>
-        ) : (
-          <Button fullWidth disabled>提醒已取消</Button>
-        )}
-      </BottomActionBar>
+        </BottomActionBar>
+      ) : null}
 
       <ConfirmDialog
         open={dialogOpen}

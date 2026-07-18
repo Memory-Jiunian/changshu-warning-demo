@@ -1,9 +1,7 @@
 import type { CollaborationTask } from '../../domain/tasks';
 import { taskTypeLabels } from '../../selectors/homeSelectors';
-import { AppIcon } from '../ui/AppIcon';
 import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { DeadlineBadge } from './DeadlineBadge';
 import { TaskStatusBadge } from './TaskStatusBadge';
 
@@ -17,7 +15,20 @@ export function TeacherTaskCard({
   onOpen: () => void;
 }) {
   return (
-    <Card as="article" className="mvp-teacher-task-card">
+    <Card
+      as="article"
+      className="mvp-teacher-task-card mvp-clickable-card"
+      role="link"
+      tabIndex={0}
+      aria-label={`查看${task.student.name}的${taskTypeLabels[task.type]}`}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <CardHeader>
         <div className="mvp-card-heading">
           <div>
@@ -34,16 +45,6 @@ export function TeacherTaskCard({
         <p className="mvp-task-purpose">{task.purpose}</p>
         <DeadlineBadge task={task} now={now} />
       </CardContent>
-      <CardFooter>
-        <Button
-          variant="secondary"
-          fullWidth
-          trailingIcon={<AppIcon name="arrowRight" size={17} />}
-          onClick={onOpen}
-        >
-          {task.type === 'retest_reminder' ? '查看提醒' : '查看任务'}
-        </Button>
-      </CardFooter>
     </Card>
   );
 }

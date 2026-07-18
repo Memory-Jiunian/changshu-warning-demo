@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DraftSaveStatus } from '../components/business/DraftSaveStatus';
 import { ObservationRecordCard } from '../components/business/ObservationRecordCard';
-import { PrivacyNotice } from '../components/business/PrivacyNotice';
-import { StudentCompactInfo } from '../components/business/StudentCompactInfo';
 import { BottomActionBar } from '../components/layout/BottomActionBar';
 import { AppIcon } from '../components/ui/AppIcon';
-import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -27,7 +24,7 @@ import type {
 } from '../domain/feedback';
 import type { Result } from '../domain/result';
 import type { CollaborationTask } from '../domain/tasks';
-import { formatCompactDateTime } from '../selectors/homeSelectors';
+import { formatCompactDateTime, taskTypeLabels } from '../selectors/homeSelectors';
 import { getTaskObservationRecords } from '../selectors/taskSelectors';
 import type { NavigationGuardChange } from '../state/navigationGuard';
 import { useAutoSavedDraft } from '../state/useAutoSavedDraft';
@@ -242,13 +239,9 @@ export function ObservationFeedbackPage({
         <DraftSaveStatus status={autoDraft.status} savedAt={autoDraft.savedAt} />
       </header>
 
-      <Card>
-        <CardHeader><CardTitle>{task.student.name} · {task.student.className}</CardTitle></CardHeader>
-        <CardContent>
-          <StudentCompactInfo student={task.student} />
-          <PrivacyNotice>当前内容仅作为协作线索，是否进入专业处置由心理老师在管理终端判断。</PrivacyNotice>
-        </CardContent>
-      </Card>
+      <p className="mvp-form-context">
+        {task.student.name} · {task.student.className} · {taskTypeLabels[task.type]}
+      </p>
 
       {revision ? (
         <>
@@ -263,22 +256,24 @@ export function ObservationFeedbackPage({
             </CardContent>
           </Card>
           {originalRecord ? (
-            <section className="mvp-section" aria-labelledby="original-record-title">
-              <div className="mvp-section-heading">
-                <div>
-                  <span>原记录保持只读</span>
-                  <h2 id="original-record-title">原反馈</h2>
-                </div>
+            <details className="mvp-disclosure">
+              <summary>
+                <span>
+                  <strong>原反馈摘要</strong>
+                  <small>{originalRecord.facts.slice(0, 64)}{originalRecord.facts.length > 64 ? '…' : ''}</small>
+                </span>
+                <span>查看原反馈</span>
+              </summary>
+              <div className="mvp-disclosure__content">
+                <ObservationRecordCard record={originalRecord} />
               </div>
-              <ObservationRecordCard record={originalRecord} />
-            </section>
+            </details>
           ) : null}
         </>
       ) : null}
 
       <Card>
         <CardHeader>
-          <span className="mvp-card-kicker">必填项会在字段附近提示</span>
           <CardTitle>观察内容</CardTitle>
         </CardHeader>
         <CardContent className="mvp-form-stack">
@@ -335,15 +330,21 @@ export function ObservationFeedbackPage({
             />
           </FormField>
 
-          <div className="mvp-writing-guide">
-            <strong>事实表达提示</strong>
-            <ul>
-              <li>写发生时间和具体场景</li>
-              <li>写实际行为或原话</li>
-              <li>写出现频率，避免诊断和人格评价</li>
-            </ul>
-            <p>示例：7 月 15 日午休时独自趴在座位约 40 分钟，两次拒绝同学邀请，回应声音较小。</p>
-          </div>
+          <p className="mvp-field-note">
+            请描述实际看到或听到的行为、发生时间和场景，避免填写心理诊断或人格评价。
+          </p>
+
+          <details className="mvp-disclosure mvp-disclosure--compact">
+            <summary>查看填写示例</summary>
+            <div className="mvp-writing-guide">
+              <ul>
+                <li>写发生时间和具体场景</li>
+                <li>写实际行为或原话</li>
+                <li>写出现频率，避免诊断和人格评价</li>
+              </ul>
+              <p>7 月 15 日午休时独自趴在座位约 40 分钟，两次拒绝同学邀请，回应声音较小。</p>
+            </div>
+          </details>
 
           <FormField label="出现频率" error={errors.frequency}>
             <RadioGroup

@@ -10,13 +10,41 @@ export function TeacherReportDetailPage({
   report,
   justSubmitted,
   onBack,
+  onViewRecord,
   onHome,
 }: {
   report: AbnormalReport;
   justSubmitted: boolean;
   onBack: () => void;
+  onViewRecord: () => void;
   onHome: () => void;
 }) {
+  if (justSubmitted) {
+    return (
+      <div className="mvp-page mvp-report-success-page">
+        <header className="mvp-page-header mvp-page-header--simple">
+          <div>
+            <h1>提交成功</h1>
+          </div>
+        </header>
+        <div className="mvp-success-result" role="status">
+          <span className="mvp-success-result__icon" aria-hidden="true">
+            <AppIcon name="check" size={28} />
+          </span>
+          <strong>{abnormalReportStatusLabel}</strong>
+          <dl className="mvp-detail-metrics">
+            <div><dt>记录编号</dt><dd>{report.id}</dd></div>
+            <div><dt>提交时间</dt><dd>{formatCompactDateTime(report.submittedAt)}</dd></div>
+          </dl>
+        </div>
+        <div className="mvp-inline-actions">
+          <Button variant="secondary" fullWidth onClick={onViewRecord}>查看记录</Button>
+          <Button fullWidth onClick={onHome}>返回首页</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mvp-page mvp-report-detail-page">
       <header className="mvp-page-header">
@@ -24,30 +52,15 @@ export function TeacherReportDetailPage({
           <AppIcon name="arrowLeft" size={20} />
         </Button>
         <div>
-          <span>本人提交记录 · 只读</span>
           <h1>上报记录详情</h1>
         </div>
+        <Badge variant="info">已提交待复核</Badge>
       </header>
-
-      {justSubmitted ? (
-        <div className="mvp-success-panel" role="status">
-          <AppIcon name="check" size={24} />
-          <div>
-            <strong>提交成功</strong>
-            <p>{abnormalReportStatusLabel}</p>
-          </div>
-        </div>
-      ) : null}
 
       <Card>
         <CardHeader>
-          <div className="mvp-card-heading">
-            <div>
-              <span className="mvp-card-kicker">{report.student.className}</span>
-              <CardTitle>{report.student.name}</CardTitle>
-            </div>
-            <Badge variant="info">已提交待复核</Badge>
-          </div>
+          <span className="mvp-card-kicker">{report.student.className}</span>
+          <CardTitle>{report.student.name}</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="mvp-detail-metrics">
@@ -55,7 +68,6 @@ export function TeacherReportDetailPage({
             <div><dt>提交时间</dt><dd>{formatCompactDateTime(report.submittedAt)}</dd></div>
             <div><dt>观察时间</dt><dd>{formatCompactDateTime(report.observedAt)}</dd></div>
             <div><dt>观察场景</dt><dd>{report.scene}</dd></div>
-            <div><dt>状态</dt><dd>{abnormalReportStatusLabel}</dd></div>
           </dl>
         </CardContent>
       </Card>
@@ -78,19 +90,7 @@ export function TeacherReportDetailPage({
         </CardContent>
       </Card>
 
-      <Card tone="soft">
-        <CardHeader><CardTitle>信息边界</CardTitle></CardHeader>
-        <CardContent>
-          <p className="mvp-muted-copy">
-            这里只保留本人提交的原始事实。心理老师专业复核、风险等级和后续处置结论不在班主任端展示。
-          </p>
-        </CardContent>
-      </Card>
-
-      <div className="mvp-inline-actions">
-        <Button variant="secondary" fullWidth onClick={onBack}>查看我的上报</Button>
-        <Button fullWidth onClick={onHome}>返回首页</Button>
-      </div>
+      <Button variant="secondary" fullWidth onClick={onBack}>返回我的上报</Button>
     </div>
   );
 }

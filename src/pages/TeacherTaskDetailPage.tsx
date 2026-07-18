@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { ObservationRecordCard } from '../components/business/ObservationRecordCard';
-import { PrivacyNotice } from '../components/business/PrivacyNotice';
-import { StudentCompactInfo } from '../components/business/StudentCompactInfo';
 import { TaskStatusBadge } from '../components/business/TaskStatusBadge';
 import { BottomActionBar } from '../components/layout/BottomActionBar';
 import { AppIcon } from '../components/ui/AppIcon';
@@ -53,26 +51,28 @@ export function TeacherTaskDetailPage({
   }, [highlightRecordId, records.length]);
 
   return (
-    <div className="mvp-page mvp-task-detail-page">
+    <div className={`mvp-page mvp-task-detail-page ${task.status === 'pending' || task.status === 'returned' ? 'has-bottom-action' : ''}`}>
       <header className="mvp-page-header">
         <Button variant="secondary" size="icon" aria-label="返回任务列表" onClick={onBack}>
           <AppIcon name="arrowLeft" size={20} />
         </Button>
         <div>
-          <span>协作任务详情</span>
-          <h1>{task.student.name}</h1>
+          <h1>任务详情</h1>
         </div>
-        <TaskStatusBadge task={task} now={new Date(now)} />
       </header>
 
-      <Card>
+      <Card className="mvp-state-summary">
         <CardHeader>
-          <span className="mvp-card-kicker">任务状态</span>
-          <CardTitle>{taskTypeLabels[task.type]}</CardTitle>
+          <div className="mvp-card-heading">
+            <div>
+              <span className="mvp-card-kicker">当前状态</span>
+              <CardTitle>{taskTypeLabels[task.type]}</CardTitle>
+            </div>
+            <TaskStatusBadge task={task} now={new Date(now)} />
+          </div>
         </CardHeader>
         <CardContent>
           <dl className="mvp-detail-metrics">
-            <div><dt>当前行动</dt><dd>{display.label}</dd></div>
             <div><dt>创建时间</dt><dd>{formatCompactDateTime(task.createdAt)}</dd></div>
             <div><dt>截止时间</dt><dd>{display.deadlineLabel}</dd></div>
           </dl>
@@ -82,16 +82,21 @@ export function TeacherTaskDetailPage({
               <p>该任务已经超过截止时间，请优先完成事实反馈。</p>
             </div>
           ) : null}
+          {task.status === 'cancelled' ? (
+            <div className="mvp-exception-summary">
+              <strong>取消原因</strong>
+              <p>{task.cancelReason}</p>
+              <span>取消时间：{formatCompactDateTime(task.cancelledAt)}</span>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>学生有限信息</CardTitle></CardHeader>
-        <CardContent><StudentCompactInfo student={task.student} /></CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>任务说明</CardTitle></CardHeader>
+        <CardHeader>
+          <span className="mvp-card-kicker">{task.student.gradeName} · {task.student.className}</span>
+          <CardTitle>{task.student.name}</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="mvp-copy-block">
             <span>任务目的</span>
@@ -105,42 +110,18 @@ export function TeacherTaskDetailPage({
               ))}
             </div>
           </div>
-          <div className="mvp-copy-block">
-            <span>非诊断性注意事项</span>
-            {(task.precautions?.length ? task.precautions : ['只记录可观察事实。']).map((item) => (
-              <p key={item}>{item}</p>
-            ))}
-          </div>
-          <dl className="mvp-detail-metrics">
-            <div><dt>发起时间</dt><dd>{formatCompactDateTime(task.createdAt)}</dd></div>
-            <div><dt>发起角色</dt><dd>心理老师</dd></div>
-          </dl>
-          <PrivacyNotice>请记录实际看到或听到的事实，不需要进行心理判断。</PrivacyNotice>
+          <p className="mvp-field-note">请记录实际看到或听到的事实，不需要进行心理判断。</p>
         </CardContent>
       </Card>
 
       {task.status === 'returned' ? (
         <Card tone="warning">
           <CardHeader>
-            <span className="mvp-card-kicker">需要补充</span>
             <CardTitle>退回原因</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mvp-task-purpose">{task.returnReason}</p>
-            <dl className="mvp-detail-metrics">
-              <div><dt>退回时间</dt><dd>{formatCompactDateTime(task.returnedAt)}</dd></div>
-              <div><dt>处理方式</dt><dd>新增补充记录，原反馈保持只读</dd></div>
-            </dl>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {task.status === 'cancelled' ? (
-        <Card>
-          <CardHeader><CardTitle>任务已取消</CardTitle></CardHeader>
-          <CardContent>
-            <p className="mvp-task-purpose">{task.cancelReason}</p>
-            <p className="mvp-muted-copy">取消时间：{formatCompactDateTime(task.cancelledAt)}</p>
+            <p className="mvp-muted-copy">退回时间：{formatCompactDateTime(task.returnedAt)}</p>
           </CardContent>
         </Card>
       ) : null}
@@ -170,19 +151,15 @@ export function TeacherTaskDetailPage({
         )}
       </section>
 
-      <BottomActionBar>
-        {task.status === 'pending' ? (
+      {task.status === 'pending' || task.status === 'returned' ? (
+        <BottomActionBar>
+          {task.status === 'pending' ? (
           <Button fullWidth onClick={onFeedback}>填写观察反馈</Button>
-        ) : task.status === 'returned' ? (
+          ) : (
           <Button fullWidth onClick={onFeedback}>补充反馈</Button>
-        ) : task.status === 'submitted' ? (
-          <Button fullWidth disabled>已提交，等待心理老师查看</Button>
-        ) : task.status === 'completed' ? (
-          <Button fullWidth disabled>任务已完成</Button>
-        ) : (
-          <Button fullWidth disabled>任务已取消</Button>
-        )}
-      </BottomActionBar>
+          )}
+        </BottomActionBar>
+      ) : null}
     </div>
   );
 }
