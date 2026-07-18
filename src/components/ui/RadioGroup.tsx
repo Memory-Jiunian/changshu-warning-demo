@@ -8,14 +8,16 @@ export function RadioGroup<T extends string>({
   value,
   options,
   onChange,
+  variant = 'cards',
 }: {
   name: string;
   value: T | '';
   options: RadioOption<T>[];
   onChange: (value: T) => void;
+  variant?: 'cards' | 'chips' | 'inline';
 }) {
   return (
-    <div className="ui-radio-group" role="radiogroup">
+    <div className={`ui-radio-group ui-radio-group--${variant}`} role="radiogroup">
       {options.map((option) => {
         const checked = value === option.value;
         return (

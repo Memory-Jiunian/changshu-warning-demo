@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import type { CollaborationTask } from '../../domain/tasks';
 import { taskTypeLabels } from '../../selectors/homeSelectors';
 import { formatTaskDeadline, getTaskDisplayState } from '../../selectors/taskSelectors';
@@ -32,6 +33,37 @@ export function HomeTaskCard({
         ? 'warning'
         : 'neutral';
 
+  const openWithKeyboard = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onOpen();
+    }
+  };
+
+  if (mode === 'teacher' && density === 'compact') {
+    return (
+      <article
+        className="mvp-home-task-row mvp-clickable-card"
+        role="link"
+        tabIndex={0}
+        aria-label={`查看${task.student.name}的任务`}
+        onClick={onOpen}
+        onKeyDown={openWithKeyboard}
+      >
+        <div className="mvp-home-task-row__heading">
+          <strong>{task.student.name}</strong>
+          <span>{task.student.className}</span>
+          <Badge variant={statusVariant}>{display.label}</Badge>
+        </div>
+        <p>
+          <span>{taskTypeLabels[task.type]}</span>
+          {task.purpose}
+        </p>
+        <small>{formatTaskDeadline(task, now)}</small>
+      </article>
+    );
+  }
+
   return (
     <Card
       as="article"
@@ -40,12 +72,7 @@ export function HomeTaskCard({
       tabIndex={0}
       aria-label={mode === 'director' ? '查看督办事项' : `查看${task.student.name}的任务`}
       onClick={onOpen}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onOpen();
-        }
-      }}
+      onKeyDown={openWithKeyboard}
     >
       <CardHeader>
         <div className="mvp-card-heading">

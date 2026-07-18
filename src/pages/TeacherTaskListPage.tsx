@@ -26,12 +26,12 @@ const historyFilters: TeacherTaskViewFilter[] = [
 ];
 
 const filterLabels: Record<TeacherTaskViewFilter, string> = {
-  action: '全部待处理',
-  history: '全部历史',
+  action: '全部',
+  history: '全部',
   pending: teacherTaskFilterLabels.pending,
   returned: teacherTaskFilterLabels.returned,
-  overdue: teacherTaskFilterLabels.overdue,
-  retest: teacherTaskFilterLabels.retest,
+  overdue: '超时',
+  retest: '复测',
   submitted: teacherTaskFilterLabels.submitted,
   completed: teacherTaskFilterLabels.completed,
 };
@@ -119,7 +119,7 @@ export function TeacherTaskListPage({
             aria-current={filter === item ? 'page' : undefined}
             onClick={() => onFilter(view, item)}
           >
-            {filterLabels[item]}
+            <span>{filterLabels[item]}</span>
           </button>
         ))}
       </nav>
@@ -131,7 +131,7 @@ export function TeacherTaskListPage({
         {loading && filteredTasks.length === 0 ? (
           <div className="mvp-loading-state" role="status">正在加载任务…</div>
         ) : filteredTasks.length > 0 ? (
-          <div className="mvp-card-list">
+          <div className="mvp-v21-task-list-surface">
             {filteredTasks.map((task) => (
               <TeacherTaskCard
                 key={task.id}

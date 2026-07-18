@@ -56,7 +56,7 @@ export function TeacherTaskDetailPage({
     return (
       <div className="mvp-page mvp-v2-page mvp-v2-task-detail-page mvp-task-detail-page has-bottom-action">
         <header className="mvp-page-header mvp-v2-detail-header">
-          <Button variant="secondary" size="icon" aria-label="返回任务列表" onClick={onBack}>
+          <Button variant="ghost" size="icon" aria-label="返回任务列表" onClick={onBack}>
             <AppIcon name="arrowLeft" size={20} />
           </Button>
           <div>
@@ -65,51 +65,35 @@ export function TeacherTaskDetailPage({
           </div>
         </header>
 
-        <section className="mvp-v2-status-summary" aria-label="任务状态">
-          <div>
-            <span>当前状态</span>
-            <strong>{taskTypeLabels[task.type]}</strong>
+        <section className="mvp-v21-detail-surface" aria-label="任务内容">
+          <div className="mvp-v21-detail-status">
+            <div>
+              <strong>{taskTypeLabels[task.type]}</strong>
+              <span>截止：{display.deadlineLabel}</span>
+              <small>创建于 {formatCompactDateTime(task.createdAt)}</small>
+            </div>
+            {statusBadge}
           </div>
-          {statusBadge}
-          <dl>
-            <div>
-              <dt>创建</dt>
-              <dd>{formatCompactDateTime(task.createdAt)}</dd>
-            </div>
-            <div>
-              <dt>截止</dt>
-              <dd>{display.deadlineLabel}</dd>
-            </div>
-          </dl>
           {display.isOverdue ? (
-            <p className="mvp-v2-status-summary__warning">
+            <p className="mvp-v21-detail-warning">
               <AppIcon name="alert" size={17} />
               已超过截止时间，请优先完成事实反馈。
             </p>
           ) : null}
-        </section>
 
-        <section className="mvp-v2-detail-surface" aria-labelledby="task-purpose-title">
-          <div className="mvp-v2-student-line">
-            <div>
-              <span>{task.student.gradeName} · {task.student.className}</span>
-              <h2>{task.student.name}</h2>
-            </div>
-          </div>
-
-          <div className="mvp-v2-detail-block">
+          <div className="mvp-v21-detail-block">
+            <span>{task.student.gradeName} · {task.student.className}</span>
+            <strong className="mvp-v21-student-name">{task.student.name}</strong>
             <h2 id="task-purpose-title">任务目的</h2>
             <p>{task.purpose}</p>
           </div>
 
-          <div className="mvp-v2-detail-block">
+          <div className="mvp-v21-detail-block">
             <h2>本次观察重点</h2>
-            <div className="mvp-focus-tags">
-              {(task.observationFocus?.length ? task.observationFocus : ['按任务说明观察']).map((item) => (
-                <Badge key={item} variant="outline">{item}</Badge>
-              ))}
-            </div>
-            <p className="mvp-v2-fact-note">
+            <p className="mvp-v21-focus-text">
+              {(task.observationFocus?.length ? task.observationFocus : ['按任务说明观察']).join(' · ')}
+            </p>
+            <p className="mvp-v21-fact-note">
               请记录实际看到或听到的事实，不需要进行心理判断。
             </p>
           </div>

@@ -92,7 +92,8 @@ checks.push('pending detail hides empty history and uses the V2 hierarchy');
 assert(
   feedbackSource.includes('mvp-v2-form-surface') &&
     feedbackSource.includes('mvp-v2-form-group--primary') &&
-    feedbackSource.includes('<details className="mvp-disclosure mvp-disclosure--compact">') &&
+    (feedbackSource.includes('<details className="mvp-disclosure mvp-disclosure--compact">') ||
+      feedbackSource.includes('<details className="mvp-v21-text-disclosure">')) &&
     (feedbackSource.match(/<BottomActionBar>/g) ?? []).length === 1,
   'feedback page must use flat field groups and one fixed action region',
 );

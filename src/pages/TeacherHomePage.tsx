@@ -1,17 +1,21 @@
 import { HomeTaskCard } from '../components/business/HomeTaskCard';
-import { RetestReminderCard } from '../components/business/RetestReminderCard';
 import { RoleHeader } from '../components/layout/RoleHeader';
 import { AppIcon } from '../components/ui/AppIcon';
-import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { EmptyState } from '../components/ui/EmptyState';
 import {
   getRecentTeacherTasks,
   getTeacherClassLabel,
   getTodayRetestItems,
 } from '../selectors/homeSelectors';
+import { getRetestReminderStatusLabel } from '../selectors/retestSelectors';
 import { useDemo } from '../state/DemoProvider';
+
+function formatRetestTime(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value));
+}
 
 export function TeacherHomePage({
   onNavigate,
@@ -44,9 +48,9 @@ export function TeacherHomePage({
       />
 
       {overdueCount > 0 ? (
-        <div className="mvp-alert mvp-alert--warning" role="status">
-          <AppIcon name="alert" size={19} />
-          <p>有 {overdueCount} 项任务已超时，请优先处理最紧急的一项。</p>
+        <div className="mvp-v21-action-notice" role="status">
+          <AppIcon name="alert" size={17} />
+          <p>{overdueCount} 项任务已超时，请优先处理</p>
         </div>
       ) : null}
 
@@ -56,9 +60,13 @@ export function TeacherHomePage({
             <span>按处理优先级</span>
             <h2 id="teacher-tasks-title">最近待办</h2>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => onNavigate('#/mvp/teacher/tasks')}>
+          <button
+            className="mvp-v21-text-link"
+            type="button"
+            onClick={() => onNavigate('#/mvp/teacher/tasks')}
+          >
             查看全部
-          </Button>
+          </button>
         </div>
         <div className="mvp-v2-home-task-stack">
           {recentTasks.length > 0 ? (
@@ -88,8 +96,8 @@ export function TeacherHomePage({
         </div>
       </section>
 
-      <section className="mvp-section mvp-compact-overview" aria-label="任务概览">
-        <div className="mvp-stat-grid">
+      <section className="mvp-v21-stat-strip" aria-label="任务概览">
+        <div>
           <button type="button" onClick={() => onNavigate('#/mvp/teacher/tasks?filter=pending')}>
             <strong>{pendingCount}</strong>
             <span>待处理</span>
@@ -105,48 +113,54 @@ export function TeacherHomePage({
         </div>
       </section>
 
-      <section className="mvp-section" id="today-retest" aria-labelledby="teacher-retest-title">
+      <section className="mvp-section mvp-v21-home-section" id="today-retest" aria-labelledby="teacher-retest-title">
         <div className="mvp-section-heading">
           <div>
-            <span>日程提醒</span>
-            <h2 id="teacher-retest-title">今日复测提醒</h2>
+            <h2 id="teacher-retest-title">今日复测</h2>
           </div>
-          <Badge variant="outline">{retestItems.length} 项</Badge>
+          <span className="mvp-list-count">{retestItems.length} 项</span>
         </div>
-        <div className="mvp-card-list">
+        <div className="mvp-v21-compact-list">
           {retestItems.length > 0 ? (
             retestItems.map(({ task, schedule }) => (
-              <RetestReminderCard
+              <button
                 key={task.id}
-                task={task}
-                schedule={schedule}
-                onOpen={() => onNavigate(`#/mvp/teacher/retest/${task.id}`)}
-              />
+                type="button"
+                className="mvp-v21-retest-row"
+                onClick={() => onNavigate(`#/mvp/teacher/retest/${task.id}`)}
+              >
+                <span>
+                  <strong>{task.student.name}</strong>
+                  <small>今天 {formatRetestTime(schedule.scheduledAt)} 复测</small>
+                </span>
+                <span className="mvp-v21-row-action">
+                  {getRetestReminderStatusLabel(task, schedule)}
+                  <AppIcon name="arrowRight" size={16} />
+                </span>
+              </button>
             ))
           ) : (
-            <EmptyState
-              title="今天没有需要提醒的复测安排"
-              description="新的提醒会在心理老师完成安排后同步到这里。"
-              icon="calendar"
-            />
+            <div className="mvp-v21-empty-row">今天没有需要提醒的复测安排</div>
           )}
         </div>
       </section>
 
-      <Card className="mvp-report-shortcut" tone="soft">
-        <CardHeader>
-          <span className="mvp-report-shortcut__icon">
-            <AppIcon name="report" size={22} />
-          </span>
-          <CardTitle>发现学生出现持续异常表现？</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>提交事实观察，由心理老师进行专业复核。</p>
-          <Button fullWidth onClick={() => onNavigate('#/mvp/teacher/report')}>
-            提交观察线索
-          </Button>
-        </CardContent>
-      </Card>
+      <button
+        type="button"
+        className="mvp-v21-report-row"
+        onClick={() => onNavigate('#/mvp/teacher/report')}
+      >
+        <span className="mvp-v21-report-row__icon">
+          <AppIcon name="report" size={19} />
+        </span>
+        <span>
+          <strong>发现需要关注的异常表现？</strong>
+        </span>
+        <span className="mvp-v21-row-action">
+          提交线索
+          <AppIcon name="arrowRight" size={16} />
+        </span>
+      </button>
     </div>
   );
 }

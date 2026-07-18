@@ -52,6 +52,14 @@ function isDirty(values: ObservationFormValues) {
   return JSON.stringify(values) !== JSON.stringify(emptyObservationFormValues);
 }
 
+function hasOptionalObservationValues(values?: ObservationFormValues) {
+  return Boolean(
+    values?.frequency ||
+      values?.duration.trim() ||
+      values?.additionalNotes.trim(),
+  );
+}
+
 function validate(values: ObservationFormValues, now: string): FieldErrors {
   const errors: FieldErrors = {};
   if (!values.observedAt) {
@@ -108,6 +116,9 @@ export function ObservationFeedbackPage({
   );
   const [values, setValues] = useState<ObservationFormValues>(
     () => storedDraft?.values ?? { ...emptyObservationFormValues },
+  );
+  const [supplementExpanded, setSupplementExpanded] = useState(
+    () => hasOptionalObservationValues(storedDraft?.values),
   );
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
@@ -227,9 +238,9 @@ export function ObservationFeedbackPage({
   };
 
   return (
-    <div className="mvp-page mvp-v2-page mvp-v2-feedback-page mvp-feedback-page">
+    <div className="mvp-page mvp-v2-page mvp-v2-feedback-page mvp-v21-feedback-page mvp-feedback-page">
       <header className="mvp-page-header mvp-v2-feedback-header">
-        <Button variant="secondary" size="icon" aria-label="返回任务详情" onClick={onBack}>
+        <Button variant="ghost" size="icon" aria-label="返回任务详情" onClick={onBack}>
           <AppIcon name="arrowLeft" size={20} />
         </Button>
         <div>
@@ -296,6 +307,7 @@ export function ObservationFeedbackPage({
               name="scene"
               value={values.scene}
               options={sceneOptions}
+              variant="chips"
               onChange={(value) => update('scene', value)}
             />
           </FormField>
@@ -319,23 +331,24 @@ export function ObservationFeedbackPage({
             htmlFor="facts"
             required
             error={errors.facts}
-            hint={`${values.facts.trim().length}/500 字`}
           >
             <Textarea
               id="facts"
               value={values.facts}
               maxLength={500}
-              rows={7}
+              rows={4}
+              autoGrow
+              maxAutoGrowHeight={220}
               placeholder="请写明发生时间、场景和实际看到或听到的行为。"
               onChange={(event) => update('facts', event.target.value)}
             />
+            <span className="mvp-v21-facts-helper">
+              <span>写明时间、场景和实际行为，避免心理诊断或人格评价。</span>
+              <span>{values.facts.trim().length}/500</span>
+            </span>
           </FormField>
 
-          <p className="mvp-field-note">
-            请描述实际看到或听到的行为、发生时间和场景，避免填写心理诊断或人格评价。
-          </p>
-
-          <details className="mvp-disclosure mvp-disclosure--compact">
+          <details className="mvp-v21-text-disclosure">
             <summary>查看填写示例</summary>
             <div className="mvp-writing-guide">
               <ul>
@@ -348,47 +361,60 @@ export function ObservationFeedbackPage({
           </details>
         </div>
 
-        <div className="mvp-v2-form-group">
-          <h2>补充信息</h2>
-          <FormField label="出现频率" error={errors.frequency}>
-            <RadioGroup
-              name="frequency"
-              value={values.frequency}
-              options={[
-                { value: '首次', label: '首次' },
-                { value: '偶尔', label: '偶尔' },
-                { value: '多次', label: '多次' },
-                { value: '持续', label: '持续' },
-              ]}
-              onChange={(value) => update('frequency', value)}
-            />
-          </FormField>
-
-          <FormField label="持续时间" htmlFor="duration" error={errors.duration} hint="可选，50 字以内">
-            <Input
-              id="duration"
-              value={values.duration}
-              maxLength={50}
-              placeholder="例如：约 40 分钟、近 3 天"
-              onChange={(event) => update('duration', event.target.value)}
-            />
-          </FormField>
-
-          <FormField
-            label="补充说明"
-            htmlFor="additionalNotes"
-            error={errors.additionalNotes}
-            hint={`${values.additionalNotes.length}/300 字，可选`}
+        <div className="mvp-v2-form-group mvp-v21-optional-group">
+          <button
+            type="button"
+            className="mvp-v21-optional-toggle"
+            aria-expanded={supplementExpanded}
+            onClick={() => setSupplementExpanded((current) => !current)}
           >
-            <Textarea
-              id="additionalNotes"
-              value={values.additionalNotes}
-              maxLength={300}
-              rows={4}
-              placeholder="补充与本次事实观察相关的信息"
-              onChange={(event) => update('additionalNotes', event.target.value)}
-            />
-          </FormField>
+            <span>{supplementExpanded ? '收起补充信息' : '＋ 添加补充信息'}</span>
+            <AppIcon name="arrowRight" size={17} />
+          </button>
+          {supplementExpanded ? (
+            <div className="mvp-v21-optional-content">
+              <FormField label="出现频率" error={errors.frequency}>
+                <RadioGroup
+                  name="frequency"
+                  value={values.frequency}
+                  options={[
+                    { value: '首次', label: '首次' },
+                    { value: '偶尔', label: '偶尔' },
+                    { value: '多次', label: '多次' },
+                    { value: '持续', label: '持续' },
+                  ]}
+                  variant="chips"
+                  onChange={(value) => update('frequency', value)}
+                />
+              </FormField>
+
+              <FormField label="持续时间" htmlFor="duration" error={errors.duration} hint="可选，50 字以内">
+                <Input
+                  id="duration"
+                  value={values.duration}
+                  maxLength={50}
+                  placeholder="例如：约 40 分钟、近 3 天"
+                  onChange={(event) => update('duration', event.target.value)}
+                />
+              </FormField>
+
+              <FormField
+                label="补充说明"
+                htmlFor="additionalNotes"
+                error={errors.additionalNotes}
+                hint={`${values.additionalNotes.length}/300 字，可选`}
+              >
+                <Textarea
+                  id="additionalNotes"
+                  value={values.additionalNotes}
+                  maxLength={300}
+                  rows={3}
+                  placeholder="补充与本次事实观察相关的信息"
+                  onChange={(event) => update('additionalNotes', event.target.value)}
+                />
+              </FormField>
+            </div>
+          ) : null}
         </div>
 
         <div className="mvp-v2-form-group">
@@ -411,6 +437,7 @@ export function ObservationFeedbackPage({
                 { value: 'yes', label: '是' },
                 { value: 'no', label: '否' },
               ]}
+              variant="inline"
               onChange={(value) => update('immediateSafetyConcern', value === 'yes')}
             />
           </FormField>
@@ -425,7 +452,6 @@ export function ObservationFeedbackPage({
       </section>
 
       <BottomActionBar>
-        <Button variant="secondary" fullWidth onClick={onBack}>返回</Button>
         <Button fullWidth disabled={loading} onClick={openSubmit}>
           {revision ? '提交补充反馈' : '提交观察反馈'}
         </Button>

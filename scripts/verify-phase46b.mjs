@@ -133,7 +133,8 @@ assert(
 checks.push('task filters remain fully visible at the 390px target width');
 
 assert(
-  feedbackSource.includes('<details className="mvp-disclosure mvp-disclosure--compact">') &&
+  (feedbackSource.includes('<details className="mvp-disclosure mvp-disclosure--compact">') ||
+    feedbackSource.includes('<details className="mvp-v21-text-disclosure">')) &&
     reportSource.includes('<details className="mvp-disclosure mvp-disclosure--compact">'),
   'writing examples must use progressive disclosure',
 );

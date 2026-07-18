@@ -20,10 +20,13 @@ export function RoleHeader({
   return (
     <header className={`mvp-role-header ${compact ? 'mvp-role-header--compact' : ''}`}>
       <div className="mvp-role-header__copy">
-        <span className="mvp-role-header__eyebrow">
-          {compact ? `${roleLabels[user.role]} · ${scopeLabel}` : '当前身份'}
-        </span>
+        {compact ? null : <span className="mvp-role-header__eyebrow">当前身份</span>}
         <h1>{compact ? user.name : `${user.name}，你好`}</h1>
+        {compact ? (
+          <span className="mvp-role-header__eyebrow">
+            {scopeLabel} · {roleLabels[user.role]}
+          </span>
+        ) : null}
         {!compact ? <p>{roleLabels[user.role]} · {scopeLabel}</p> : null}
       </div>
       <span className="mvp-role-header__icon" aria-hidden="true">
