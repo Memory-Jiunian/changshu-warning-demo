@@ -5,7 +5,7 @@ export const mockUsers: DemoUser[] = [
     id: 'user-head-li',
     name: '李老师',
     role: 'head_teacher',
-    classIds: ['class-g2-3', 'class-g2-1', 'class-g1-2'],
+    classIds: ['class-g2-3'],
   },
   {
     id: 'user-head-wang',

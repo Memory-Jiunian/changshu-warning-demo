@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState';
 import {
   formatCompactDateTime,
-  formatDemoDate,
   getRecentSubmissions,
   getRecentTeacherTasks,
   getTeacherClassLabel,
@@ -46,7 +45,6 @@ export function TeacherHomePage({
       <RoleHeader
         user={currentUser}
         scopeLabel={getTeacherClassLabel(currentUser, tasks)}
-        demoDate={formatDemoDate(now)}
       />
 
       <section className="mvp-section" aria-labelledby="teacher-overview-title">

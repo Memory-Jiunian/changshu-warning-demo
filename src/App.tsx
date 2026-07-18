@@ -339,7 +339,7 @@ function LegacyApp({
         <ProgressDetail task={task} role={role} onConfirmFeedback={confirmFeedback} showToast={showToast} />
       )}
       {guardedRoute.name === 'schoolOverview' && role.id !== 'principal' && (
-        <PermissionBlock title="无权进入校级页面" text="校级页面属于 legacy 演示，不在当前小程序角色权限范围内。" />
+        <PermissionBlock title="无权进入校级页面" text="校级页面不在当前小程序角色权限范围内。" />
       )}
       {guardedRoute.name === 'schoolOverview' && role.id === 'principal' && (
         <SchoolOverview

@@ -13,7 +13,9 @@ export function TaskStatusBadge({
   const variant =
     task.status === 'completed'
       ? 'success'
-      : task.status === 'cancelled' || display.isOverdue
+      : task.status === 'cancelled'
+        ? 'neutral'
+        : display.isOverdue
         ? 'error'
         : task.status === 'returned'
           ? 'warning'

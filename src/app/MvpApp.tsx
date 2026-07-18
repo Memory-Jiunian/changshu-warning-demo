@@ -1,8 +1,15 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { AppShell } from '../components/layout/AppShell';
 import { AppIcon } from '../components/ui/AppIcon';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import type { UserRole } from '../domain/users';
 import { useDemo } from '../state/DemoProvider';
 import { AbnormalReportPage } from '../pages/AbnormalReportPage';
@@ -18,6 +25,10 @@ import { ObservationFeedbackPage } from '../pages/ObservationFeedbackPage';
 import { TeacherTaskDetailPage } from '../pages/TeacherTaskDetailPage';
 import { TeacherTaskListPage } from '../pages/TeacherTaskListPage';
 import { canTaskAcceptObservation } from '../selectors/taskSelectors';
+import {
+  type NavigationGuardRegistration,
+  formatDraftSavedTime,
+} from '../state/navigationGuard';
 import { getActiveNavigation, getMvpRoute, type MvpRoute } from './routes';
 import './mvp.css';
 
@@ -39,11 +50,10 @@ function replaceHash(hash: string) {
   window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
 }
 
-function filterIntentLabel(filter?: string) {
-  if (filter === 'overdue') return '筛选意图：仅查看已超时任务';
-  if (filter === 'pending') return '筛选意图：仅查看待处理任务';
-  if (filter === 'today') return '筛选意图：仅查看今日新增事项';
-  return '进入后将展示当前角色可见的全部事项';
+interface PendingNavigation {
+  hash: string;
+  replace: boolean;
+  beforeNavigate?: () => void;
 }
 
 export function MvpApp({
@@ -74,9 +84,84 @@ export function MvpApp({
   } = useDemo();
   const [selectedRole, setSelectedRole] = useState<MvpRole | null>(() => readStoredRole());
   const [route, setRoute] = useState<MvpRoute>(() => getMvpRoute());
+  const [navigationGuard, setNavigationGuardState] =
+    useState<NavigationGuardRegistration | null>(null);
+  const [pendingNavigation, setPendingNavigation] =
+    useState<PendingNavigation | null>(null);
+  const navigationGuardRef = useRef<NavigationGuardRegistration | null>(null);
+  const acceptedHashRef = useRef(window.location.hash || '#/');
+  const allowNextHashChangeRef = useRef(false);
+
+  const updateNavigationGuard = useCallback(
+    (registration: NavigationGuardRegistration | null) => {
+      navigationGuardRef.current = registration;
+      setNavigationGuardState(registration);
+    },
+    [],
+  );
+
+  const performNavigation = useCallback((transition: PendingNavigation) => {
+    transition.beforeNavigate?.();
+    if (transition.replace) {
+      replaceHash(transition.hash);
+      acceptedHashRef.current = transition.hash;
+      setRoute(getMvpRoute());
+      return;
+    }
+    if (window.location.hash === transition.hash) {
+      acceptedHashRef.current = transition.hash;
+      setRoute(getMvpRoute());
+      return;
+    }
+    allowNextHashChangeRef.current = true;
+    window.location.hash = transition.hash;
+  }, []);
+
+  const requestNavigation = useCallback(
+    (
+      hash: string,
+      options: { replace?: boolean; beforeNavigate?: () => void } = {},
+    ) => {
+      if (
+        hash === acceptedHashRef.current &&
+        !options.beforeNavigate
+      ) {
+        return;
+      }
+      const transition: PendingNavigation = {
+        hash,
+        replace: Boolean(options.replace),
+        beforeNavigate: options.beforeNavigate,
+      };
+      if (navigationGuardRef.current?.dirty) {
+        setPendingNavigation(transition);
+        return;
+      }
+      performNavigation(transition);
+    },
+    [performNavigation],
+  );
 
   useEffect(() => {
-    const handleHashChange = () => setRoute(getMvpRoute());
+    const handleHashChange = () => {
+      const nextHash = window.location.hash || '#/';
+      if (allowNextHashChangeRef.current) {
+        allowNextHashChangeRef.current = false;
+        acceptedHashRef.current = nextHash;
+        setRoute(getMvpRoute());
+        return;
+      }
+      if (
+        navigationGuardRef.current?.dirty &&
+        nextHash !== acceptedHashRef.current
+      ) {
+        replaceHash(acceptedHashRef.current);
+        setPendingNavigation({ hash: nextHash, replace: false });
+        return;
+      }
+      acceptedHashRef.current = nextHash;
+      setRoute(getMvpRoute());
+    };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -102,14 +187,15 @@ export function MvpApp({
     );
   }, [simulateNextWriteFailure]);
 
-  const navigate = (hash: string) => {
-    window.location.hash = hash;
-  };
+  const navigate = useCallback(
+    (hash: string) => requestNavigation(hash),
+    [requestNavigation],
+  );
 
-  const navigateReplace = (hash: string) => {
-    replaceHash(hash);
-    setRoute(getMvpRoute());
-  };
+  const navigateReplace = useCallback(
+    (hash: string) => requestNavigation(hash, { replace: true }),
+    [requestNavigation],
+  );
 
   const taskListHash = () => {
     const filter = window.sessionStorage.getItem('changshu-demo:teacher-task-last-filter');
@@ -124,22 +210,42 @@ export function MvpApp({
     window.sessionStorage.setItem(ROLE_STORAGE_KEY, role);
     setSelectedRole(role);
     replaceHash('#/mvp/home');
+    acceptedHashRef.current = '#/mvp/home';
     setRoute({ name: 'home' });
   };
 
-  const resetRole = () => {
+  const performRoleReset = useCallback(() => {
     window.sessionStorage.removeItem(ROLE_STORAGE_KEY);
     setSelectedRole(null);
-    replaceHash('#/select-role');
-    setRoute({ name: 'roleSelect' });
-  };
+  }, []);
+
+  const resetRole = useCallback(() => {
+    requestNavigation('#/select-role', {
+      replace: true,
+      beforeNavigate: performRoleReset,
+    });
+  }, [performRoleReset, requestNavigation]);
+
+  const continueCurrentForm = useCallback(() => {
+    setPendingNavigation(null);
+  }, []);
+
+  const leaveCurrentForm = useCallback(() => {
+    if (!pendingNavigation) return;
+    if (navigationGuardRef.current?.saveStatus === 'error') {
+      navigationGuardRef.current.discardDraft();
+    }
+    updateNavigationGuard(null);
+    setPendingNavigation(null);
+    performNavigation(pendingNavigation);
+  }, [pendingNavigation, performNavigation, updateNavigationGuard]);
 
   if (route.name === 'legacyPrincipal') {
     return <>{renderLegacy('principal')}</>;
   }
 
   if (route.name === 'legacyCounselor') {
-    if (currentRole !== 'psychologist') return <LoadingState text="正在进入旧版心理老师演示…" />;
+    if (currentRole !== 'psychologist') return <LoadingState text="正在进入心理老师页面…" />;
     return <>{renderLegacy('counselor')}</>;
   }
 
@@ -148,13 +254,13 @@ export function MvpApp({
   }
 
   if (currentRole !== selectedRole) {
-    return <LoadingState text="正在切换演示角色…" />;
+    return <LoadingState text="正在切换角色…" />;
   }
 
   if (error && !['legacyTask', 'legacyReport'].includes(route.name)) {
     return (
       <AccessState
-        title="演示数据暂时不可用"
+        title="数据暂时不可用"
         description={error}
         actionLabel="返回角色选择"
         onAction={resetRole}
@@ -360,6 +466,7 @@ export function MvpApp({
               `#/mvp/teacher/tasks/${phase3TaskAccess.data.id}?highlight=${recordId}`,
             )
           }
+          onNavigationGuardChange={updateNavigationGuard}
           submitObservation={submitObservation}
           submitObservationRevision={submitObservationRevision}
         />
@@ -376,6 +483,7 @@ export function MvpApp({
               `#/mvp/teacher/reports/${reportId}?submitted=1`,
             )
           }
+          onNavigationGuardChange={updateNavigationGuard}
           submitAbnormalReport={submitAbnormalReport}
         />
       ) : null}
@@ -401,10 +509,9 @@ export function MvpApp({
       {route.name === 'supervision' ? (
         <PlaceholderPage
           title="督办事项"
-          phase="Phase 5"
-          description="这里将承接当前年级主任可见的超时和明确指派事项。"
-          detail={`${filterIntentLabel(route.filter)}${route.taskId ? ` · 事项 ${route.taskId}` : ''}`}
+          description="督办事项的详细处理暂未开放。"
           icon="supervision"
+          action={{ label: '返回首页', onClick: () => navigate('#/mvp/home') }}
         />
       ) : null}
       {route.name === 'profile' ? (
@@ -425,13 +532,67 @@ export function MvpApp({
       {route.name === 'notFound' ? (
         <PlaceholderPage
           title="页面不存在"
-          phase="路由提示"
-          description="当前链接不属于本轮已开放的演示页面。"
+          description="当前链接对应的页面不存在。"
           icon="alert"
           action={{ label: '返回首页', onClick: () => navigate('#/mvp/home') }}
         />
       ) : null}
+      <NavigationGuardDialog
+        guard={navigationGuard}
+        open={Boolean(pendingNavigation)}
+        onContinue={continueCurrentForm}
+        onLeave={leaveCurrentForm}
+      />
     </AppShell>
+  );
+}
+
+function NavigationGuardDialog({
+  guard,
+  open,
+  onContinue,
+  onLeave,
+}: {
+  guard: NavigationGuardRegistration | null;
+  open: boolean;
+  onContinue: () => void;
+  onLeave: () => void;
+}) {
+  if (!guard) return null;
+  const saving =
+    guard.saveStatus === 'idle' || guard.saveStatus === 'saving';
+  const failed = guard.saveStatus === 'error';
+  const savedTime = formatDraftSavedTime(guard.savedAt);
+
+  return (
+    <ConfirmDialog
+      open={open}
+      title={failed ? '草稿尚未保存' : '尚未提交'}
+      description={
+        failed
+          ? '当前内容尚未保存。请重试保存，或明确舍弃后离开。'
+          : saving
+            ? '正在自动保存草稿，请稍候。'
+            : '当前内容已自动保存为草稿，离开后可继续填写。'
+      }
+      cancelLabel="继续填写"
+      confirmLabel={failed ? '舍弃并离开' : '离开页面'}
+      confirmDisabled={saving}
+      onCancel={onContinue}
+      onConfirm={onLeave}
+    >
+      {failed ? (
+        <Button variant="secondary" fullWidth onClick={guard.retrySave}>
+          重试保存
+        </Button>
+      ) : (
+        <p className="mvp-muted-copy">
+          {savedTime
+            ? `草稿已自动保存于 ${savedTime}，但尚未正式提交。`
+            : '草稿已保存，但尚未正式提交。'}
+        </p>
+      )}
+    </ConfirmDialog>
   );
 }
 

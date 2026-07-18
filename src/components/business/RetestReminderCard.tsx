@@ -2,6 +2,7 @@ import type { CollaborationTask, RetestSchedule } from '../../domain/tasks';
 import { formatCompactDateTime } from '../../selectors/homeSelectors';
 import {
   getRetestReminderDisplayState,
+  getRetestScheduleTimeLabel,
   getRetestReminderStatusLabel,
 } from '../../selectors/retestSelectors';
 import { Badge } from '../ui/Badge';
@@ -42,7 +43,7 @@ export function RetestReminderCard({
       </CardHeader>
       <CardContent>
         <div className="mvp-task-meta-list">
-          <div><span>复测时间</span><strong>{formatCompactDateTime(schedule.scheduledAt)}</strong></div>
+          <div><span>{getRetestScheduleTimeLabel(task)}</span><strong>{formatCompactDateTime(schedule.scheduledAt)}</strong></div>
           <div><span>提醒要求</span><strong>{schedule.instructions}</strong></div>
         </div>
       </CardContent>

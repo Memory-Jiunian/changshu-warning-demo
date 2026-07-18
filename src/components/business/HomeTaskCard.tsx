@@ -40,7 +40,7 @@ export function HomeTaskCard({
               {mode === 'director' ? task.student.className : task.student.className}
             </span>
             <CardTitle>
-              {mode === 'director' ? taskTypeLabels[task.type] : task.student.name}
+              {mode === 'director' ? '年级督办' : task.student.name}
             </CardTitle>
           </div>
           <Badge variant={statusVariant}>{display.label}</Badge>

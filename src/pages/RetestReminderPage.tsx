@@ -19,6 +19,7 @@ import type { DemoUser } from '../domain/users';
 import { formatCompactDateTime } from '../selectors/homeSelectors';
 import {
   getRetestReminderDisplayState,
+  getRetestScheduleTimeLabel,
   getRetestReminderStatusLabel,
   retestReminderMethodLabels,
 } from '../selectors/retestSelectors';
@@ -147,7 +148,7 @@ export function RetestReminderPage({
         <CardContent>
           <dl className="mvp-detail-metrics">
             <div><dt>年级 / 班级</dt><dd>{task.student.gradeName} · {task.student.className}</dd></div>
-            <div><dt>复测时间</dt><dd>{formatCompactDateTime(schedule.scheduledAt)}</dd></div>
+            <div><dt>{getRetestScheduleTimeLabel(task)}</dt><dd>{formatCompactDateTime(schedule.scheduledAt)}</dd></div>
             <div><dt>方式或地点</dt><dd>{schedule.location}</dd></div>
             <div><dt>当前状态</dt><dd>{statusLabel}</dd></div>
           </dl>
@@ -219,7 +220,7 @@ export function RetestReminderPage({
       ) : null}
 
       {displayState === 'cancelled' ? (
-        <Card tone="warning">
+        <Card>
           <CardHeader><CardTitle>复测提醒已取消</CardTitle></CardHeader>
           <CardContent>
             <p className="mvp-task-purpose">{task.cancelReason}</p>

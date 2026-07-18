@@ -6,11 +6,11 @@ import { Card, CardContent } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import {
   formatCompactDateTime,
-  formatDemoDate,
+  getCanonicalSupervisionItems,
   getDirectorClassProgress,
   getDirectorGradeLabel,
-  getLatestSupervisionRecord,
-  getRecentSupervisionTasks,
+  getRecentSupervisionItems,
+  getSupervisionItemCounts,
   getTaskAssigneeName,
 } from '../selectors/homeSelectors';
 import { useDemo } from '../state/DemoProvider';
@@ -26,20 +26,22 @@ export function DirectorHomePage({
     tasks,
     supervisionRecords,
     now,
-    pendingCount,
-    overdueCount,
-    todayNewCount,
   } = useDemo();
   const demoNow = new Date(now);
-  const classProgress = getDirectorClassProgress(tasks, demoNow);
-  const supervisionTasks = getRecentSupervisionTasks(tasks, demoNow);
+  const supervisionItems = getCanonicalSupervisionItems(
+    tasks,
+    supervisionRecords,
+    demoNow,
+  );
+  const classProgress = getDirectorClassProgress(supervisionItems);
+  const supervisionCounts = getSupervisionItemCounts(supervisionItems, demoNow);
+  const recentSupervisionItems = getRecentSupervisionItems(supervisionItems);
 
   return (
     <div className="mvp-page">
       <RoleHeader
         user={currentUser}
         scopeLabel={getDirectorGradeLabel(currentUser, tasks)}
-        demoDate={formatDemoDate(now)}
       />
 
       <section className="mvp-section" aria-labelledby="director-overview-title">
@@ -51,15 +53,15 @@ export function DirectorHomePage({
         </div>
         <div className="mvp-stat-grid">
           <button type="button" onClick={() => onNavigate('#/mvp/supervision?filter=pending')}>
-            <strong>{pendingCount}</strong>
+            <strong>{supervisionCounts.pending}</strong>
             <span>待督办</span>
           </button>
           <button type="button" onClick={() => onNavigate('#/mvp/supervision?filter=overdue')}>
-            <strong>{overdueCount}</strong>
+            <strong>{supervisionCounts.overdue}</strong>
             <span>已超时</span>
           </button>
           <button type="button" onClick={() => onNavigate('#/mvp/supervision?filter=today')}>
-            <strong>{todayNewCount}</strong>
+            <strong>{supervisionCounts.todayNew}</strong>
             <span>今日新增</span>
           </button>
         </div>
@@ -108,17 +110,25 @@ export function DirectorHomePage({
           </Button>
         </div>
         <div className="mvp-card-list">
-          {supervisionTasks.map((task) => {
-            const record = getLatestSupervisionRecord(task.id, supervisionRecords);
+          {recentSupervisionItems.map((item) => {
+            const task = item.originalTask;
             return (
               <HomeTaskCard
-                key={task.id}
+                key={item.key}
                 task={task}
                 now={demoNow}
                 mode="director"
                 assigneeName={getTaskAssigneeName(task, users)}
-                latestSupervision={record ? formatCompactDateTime(record.createdAt) : undefined}
-                onOpen={() => onNavigate(`#/mvp/supervision?task=${task.id}`)}
+                latestSupervision={
+                  item.latestSupervisionRecord
+                    ? formatCompactDateTime(item.latestSupervisionRecord.createdAt)
+                    : undefined
+                }
+                onOpen={() =>
+                  onNavigate(
+                    `#/mvp/supervision?task=${item.supervisionTask?.id ?? task.id}`,
+                  )
+                }
               />
             );
           })}

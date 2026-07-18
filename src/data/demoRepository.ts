@@ -64,7 +64,7 @@ interface WriteFailure {
 }
 
 interface PersistedRepositoryState {
-  version: 2;
+  version: 3;
   tasks: CollaborationTask[];
   observations: ObservationRecord[];
   abnormalReports: AbnormalReport[];
@@ -73,7 +73,7 @@ interface PersistedRepositoryState {
   requestIds: string[];
 }
 
-const REPOSITORY_STORAGE_KEY = 'changshu-demo:repository:v2';
+const REPOSITORY_STORAGE_KEY = 'changshu-demo:repository:v3';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -159,7 +159,7 @@ export class DemoRepository {
   }
 
   getViewSnapshot(): Result<DemoSnapshot> {
-    if (this.failReads) return err('DEMO_LOAD_FAILED', '演示数据加载失败，请稍后重试');
+    if (this.failReads) return err('DEMO_LOAD_FAILED', '数据加载失败，请稍后重试');
 
     const currentUser = this.requireCurrentUser();
     const tasks = this.getVisibleTasks(currentUser);
@@ -428,7 +428,7 @@ export class DemoRepository {
     try {
       const state = JSON.parse(raw) as Partial<PersistedRepositoryState>;
       if (
-        state.version !== 2 ||
+        state.version !== 3 ||
         !Array.isArray(state.tasks) ||
         !Array.isArray(state.observations) ||
         !Array.isArray(state.abnormalReports) ||
@@ -453,7 +453,7 @@ export class DemoRepository {
   private persist() {
     if (!this.storage) return;
     const state: PersistedRepositoryState = {
-      version: 2,
+      version: 3,
       tasks: this.tasks,
       observations: this.observations,
       abnormalReports: this.abnormalReports,

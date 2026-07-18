@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DraftSaveStatus } from '../components/business/DraftSaveStatus';
 import { BottomActionBar } from '../components/layout/BottomActionBar';
 import { AppIcon } from '../components/ui/AppIcon';
 import { Badge } from '../components/ui/Badge';
@@ -26,9 +27,10 @@ import type { Result } from '../domain/result';
 import type { StudentProfile } from '../domain/students';
 import type { DemoUser } from '../domain/users';
 import { formatCompactDateTime } from '../selectors/homeSelectors';
+import type { NavigationGuardChange } from '../state/navigationGuard';
+import { useAutoSavedDraft } from '../state/useAutoSavedDraft';
 
 type FieldErrors = Partial<Record<keyof AbnormalReportFormValues, string>>;
-type DialogKind = 'submit' | 'leave' | null;
 
 const sceneOptions: Array<{ value: ObservationScene; label: string }> = [
   { value: 'classroom', label: '课堂' },
@@ -65,7 +67,7 @@ function validate(
   if (!values.observedAt) {
     errors.observedAt = '请选择观察时间。';
   } else if (new Date(values.observedAt).getTime() > new Date(now).getTime()) {
-    errors.observedAt = '观察时间不能晚于当前 Demo 时间。';
+    errors.observedAt = '观察时间不能晚于现在。';
   }
   if (!values.scene) errors.scene = '请选择观察场景。';
   if (values.scene === 'other' && !values.otherScene.trim()) {
@@ -94,6 +96,7 @@ export function AbnormalReportPage({
   loading,
   onBack,
   onSubmitted,
+  onNavigationGuardChange,
   submitAbnormalReport,
 }: {
   currentUser: DemoUser;
@@ -102,6 +105,7 @@ export function AbnormalReportPage({
   loading: boolean;
   onBack: () => void;
   onSubmitted: (reportId: string) => void;
+  onNavigationGuardChange: NavigationGuardChange;
   submitAbnormalReport: (
     input: AbnormalReportInput,
   ) => Promise<Result<AbnormalReport>>;
@@ -121,16 +125,61 @@ export function AbnormalReportPage({
     };
   });
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [dialog, setDialog] = useState<DialogKind>(null);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [draftSaved, setDraftSaved] = useState(Boolean(storedDraft));
   const requestIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
+  const dirty = isDirty(values);
+
+  const saveDraft = useCallback(
+    (updatedAt: string) =>
+      saveAbnormalReportDraft(
+        window.localStorage,
+        currentUser.id,
+        values,
+        updatedAt,
+      ),
+    [currentUser.id, values],
+  );
+  const clearDraft = useCallback(() => {
+    removeAbnormalReportDraft(window.localStorage, currentUser.id);
+  }, [currentUser.id]);
+  const autoDraft = useAutoSavedDraft({
+    dirty,
+    initialSavedAt: storedDraft?.updatedAt,
+    save: saveDraft,
+    clear: clearDraft,
+  });
 
   useEffect(() => {
-    if (!isDirty(values)) return;
-    saveAbnormalReportDraft(window.localStorage, currentUser.id, values, now);
-  }, [currentUser.id, now, values]);
+    if (!dirty) {
+      onNavigationGuardChange(null);
+      return;
+    }
+    onNavigationGuardChange({
+      key: `abnormal-report:${currentUser.id}`,
+      dirty: true,
+      saveStatus: autoDraft.status,
+      savedAt: autoDraft.savedAt,
+      retrySave: autoDraft.retrySave,
+      discardDraft: autoDraft.discard,
+    });
+  }, [
+    autoDraft.discard,
+    autoDraft.retrySave,
+    autoDraft.savedAt,
+    autoDraft.status,
+    currentUser.id,
+    dirty,
+    onNavigationGuardChange,
+  ]);
+
+  useEffect(
+    () => () => {
+      onNavigationGuardChange(null);
+    },
+    [onNavigationGuardChange],
+  );
 
   const update = <K extends keyof AbnormalReportFormValues>(
     key: K,
@@ -138,14 +187,8 @@ export function AbnormalReportPage({
   ) => {
     requestIdRef.current = null;
     setSubmitError('');
-    setDraftSaved(false);
     setErrors((current) => ({ ...current, [key]: undefined }));
     setValues((current) => ({ ...current, [key]: value }));
-  };
-
-  const saveDraft = () => {
-    saveAbnormalReportDraft(window.localStorage, currentUser.id, values, now);
-    setDraftSaved(true);
   };
 
   const openSubmit = () => {
@@ -153,7 +196,7 @@ export function AbnormalReportPage({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     setSubmitError('');
-    setDialog('submit');
+    setSubmitDialogOpen(true);
   };
 
   const submit = async () => {
@@ -189,28 +232,10 @@ export function AbnormalReportPage({
       return;
     }
     removeAbnormalReportDraft(window.localStorage, currentUser.id);
-    setDialog(null);
+    autoDraft.clearSavedDraft();
+    onNavigationGuardChange(null);
+    setSubmitDialogOpen(false);
     onSubmitted(result.data.id);
-  };
-
-  const requestLeave = () => {
-    if (!isDirty(values)) {
-      onBack();
-      return;
-    }
-    setDialog('leave');
-  };
-
-  const discardAndLeave = () => {
-    removeAbnormalReportDraft(window.localStorage, currentUser.id);
-    setDialog(null);
-    onBack();
-  };
-
-  const saveAndLeave = () => {
-    saveDraft();
-    setDialog(null);
-    onBack();
   };
 
   const selectedStudent = students.find(
@@ -227,7 +252,7 @@ export function AbnormalReportPage({
           variant="secondary"
           size="icon"
           aria-label="返回首页"
-          onClick={requestLeave}
+          onClick={onBack}
         >
           <AppIcon name="arrowLeft" size={20} />
         </Button>
@@ -235,7 +260,7 @@ export function AbnormalReportPage({
           <span>提交观察线索</span>
           <h1>异常情况上报</h1>
         </div>
-        {draftSaved ? <Badge variant="info">草稿已保存</Badge> : null}
+        <DraftSaveStatus status={autoDraft.status} savedAt={autoDraft.savedAt} />
       </header>
 
       <Card tone="soft">
@@ -260,7 +285,6 @@ export function AbnormalReportPage({
             htmlFor="reportStudent"
             required
             error={errors.studentId}
-            hint="学生目录由统一 Repository 按班级权限提供"
           >
             <Select
               id="reportStudent"
@@ -289,7 +313,7 @@ export function AbnormalReportPage({
             htmlFor="reportObservedAt"
             required
             error={errors.observedAt}
-            hint={`不得晚于 ${formatCompactDateTime(now)}`}
+            hint="观察时间不能晚于现在"
           >
             <Input
               id="reportObservedAt"
@@ -436,7 +460,7 @@ export function AbnormalReportPage({
       <Card tone="soft">
         <CardHeader>
           <span className="mvp-card-kicker">提交人确认</span>
-          <CardTitle>联系信息</CardTitle>
+          <CardTitle>提交人信息</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="mvp-detail-metrics">
@@ -448,21 +472,19 @@ export function AbnormalReportPage({
       </Card>
 
       <BottomActionBar>
-        <Button variant="secondary" fullWidth onClick={saveDraft}>
-          保存草稿
-        </Button>
+        <Button variant="secondary" fullWidth onClick={onBack}>返回</Button>
         <Button fullWidth disabled={loading} onClick={openSubmit}>
           提交观察线索
         </Button>
       </BottomActionBar>
 
       <ConfirmDialog
-        open={dialog === 'submit'}
+        open={submitDialogOpen}
         title="确认提交异常情况记录"
         description="提交后记录保持只读，并由心理老师进行专业复核。"
         confirmLabel={submitError ? '重试提交' : '确认提交'}
         submitting={loading}
-        onCancel={() => !loading && setDialog(null)}
+        onCancel={() => !loading && setSubmitDialogOpen(false)}
         onConfirm={() => void submit()}
       >
         <dl className="mvp-confirm-summary">
@@ -486,17 +508,6 @@ export function AbnormalReportPage({
         ) : null}
       </ConfirmDialog>
 
-      <ConfirmDialog
-        open={dialog === 'leave'}
-        title="离开前是否保留草稿？"
-        description="上报草稿只属于当前班主任，不与任务反馈草稿混用。"
-        cancelLabel="舍弃草稿"
-        confirmLabel="保存草稿并返回"
-        onCancel={discardAndLeave}
-        onConfirm={saveAndLeave}
-      >
-        <p className="mvp-muted-copy">保存后刷新或再次进入上报页，可恢复当前内容。</p>
-      </ConfirmDialog>
     </div>
   );
 }

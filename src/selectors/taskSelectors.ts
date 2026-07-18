@@ -22,7 +22,11 @@ export function isTaskOverdue(task: CollaborationTask, now: Date) {
 }
 
 export function isTaskDueToday(task: CollaborationTask, now: Date) {
-  return Boolean(task.dueAt && isSameLocalDate(new Date(task.dueAt), now));
+  return Boolean(
+    task.dueAt &&
+      ['pending', 'returned'].includes(task.status) &&
+      isSameLocalDate(new Date(task.dueAt), now),
+  );
 }
 
 export function canTaskAcceptObservation(task: CollaborationTask) {
@@ -40,6 +44,10 @@ export function formatTaskDeadline(task: CollaborationTask, now: Date) {
   if (!task.dueAt) return '未设置截止时间';
   const due = new Date(task.dueAt);
   const difference = due.getTime() - now.getTime();
+
+  if (task.status === 'cancelled') {
+    return `原计划截止：${due.getMonth() + 1} 月 ${due.getDate()} 日 ${timeLabel(due)}`;
+  }
 
   if (isTaskOverdue(task, now)) {
     const overdue = Math.abs(difference);

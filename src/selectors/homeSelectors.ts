@@ -3,8 +3,8 @@ import type { CollaborationTask, CollaborationTaskType, RetestSchedule, TaskUrge
 import type { DemoUser } from '../domain/users';
 import {
   formatTaskDeadline,
-  getTaskDisplayState,
   isSameLocalDate,
+  isTaskOverdue,
   sortTasksForAction,
 } from './taskSelectors';
 
@@ -95,32 +95,134 @@ export interface DirectorClassProgress {
   overdueCount: number;
 }
 
-export function getDirectorClassProgress(tasks: CollaborationTask[], now: Date) {
+export interface SupervisionItemViewModel {
+  key: string;
+  originalTask: CollaborationTask;
+  supervisionTask?: CollaborationTask;
+  latestSupervisionRecord?: SupervisionRecord;
+  isOverdue: boolean;
+  source: 'explicit' | 'derived';
+}
+
+function latestSupervisionRecordForTaskIds(
+  taskIds: string[],
+  records: SupervisionRecord[],
+) {
+  return records
+    .filter((record) => taskIds.includes(record.taskId))
+    .sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    )[0];
+}
+
+export function getCanonicalSupervisionItems(
+  tasks: CollaborationTask[],
+  records: SupervisionRecord[],
+  now: Date,
+) {
+  const tasksById = new Map(tasks.map((task) => [task.id, task]));
+  const explicitByOriginalId = new Map<string, CollaborationTask>();
+
+  tasks
+    .filter((task) => task.type === 'grade_supervision' && task.originalTaskId)
+    .forEach((task) => {
+      if (!explicitByOriginalId.has(task.originalTaskId!)) {
+        explicitByOriginalId.set(task.originalTaskId!, task);
+      }
+    });
+
+  const items: SupervisionItemViewModel[] = [];
+
+  explicitByOriginalId.forEach((supervisionTask, originalTaskId) => {
+    const originalTask = tasksById.get(originalTaskId);
+    if (!originalTask) return;
+    items.push({
+      key: originalTask.id,
+      originalTask,
+      supervisionTask,
+      latestSupervisionRecord: latestSupervisionRecordForTaskIds(
+        [supervisionTask.id, originalTask.id],
+        records,
+      ),
+      isOverdue: isTaskOverdue(originalTask, now),
+      source: 'explicit',
+    });
+  });
+
+  tasks
+    .filter(
+      (task) =>
+        task.type !== 'grade_supervision' &&
+        isTaskOverdue(task, now) &&
+        !explicitByOriginalId.has(task.id),
+    )
+    .forEach((originalTask) => {
+      items.push({
+        key: originalTask.id,
+        originalTask,
+        latestSupervisionRecord: latestSupervisionRecordForTaskIds(
+          [originalTask.id],
+          records,
+        ),
+        isOverdue: true,
+        source: 'derived',
+      });
+    });
+
+  return items.sort((left, right) => {
+    if (left.isOverdue !== right.isOverdue) return left.isOverdue ? -1 : 1;
+    const leftDue = left.originalTask.dueAt
+      ? new Date(left.originalTask.dueAt).getTime()
+      : Number.MAX_SAFE_INTEGER;
+    const rightDue = right.originalTask.dueAt
+      ? new Date(right.originalTask.dueAt).getTime()
+      : Number.MAX_SAFE_INTEGER;
+    if (leftDue !== rightDue) return leftDue - rightDue;
+    return (
+      new Date(left.originalTask.createdAt).getTime() -
+      new Date(right.originalTask.createdAt).getTime()
+    );
+  });
+}
+
+export function getSupervisionItemCounts(
+  items: SupervisionItemViewModel[],
+  now: Date,
+) {
+  return items.reduce(
+    (counts, item) => {
+      if (['pending', 'returned'].includes(item.originalTask.status)) {
+        counts.pending += 1;
+      }
+      if (item.isOverdue) counts.overdue += 1;
+      const createdAt =
+        item.supervisionTask?.createdAt ?? item.originalTask.createdAt;
+      if (isSameLocalDate(new Date(createdAt), now)) counts.todayNew += 1;
+      return counts;
+    },
+    { pending: 0, overdue: 0, todayNew: 0 },
+  );
+}
+
+export function getDirectorClassProgress(items: SupervisionItemViewModel[]) {
   const groups = new Map<string, DirectorClassProgress>();
-  tasks.forEach((task) => {
+  items.forEach((item) => {
+    const task = item.originalTask;
     const current = groups.get(task.student.classId) ?? {
       className: task.student.className,
       pendingCount: 0,
       overdueCount: 0,
     };
     if (['pending', 'returned'].includes(task.status)) current.pendingCount += 1;
-    if (getTaskDisplayState(task, now).isOverdue) current.overdueCount += 1;
+    if (item.isOverdue) current.overdueCount += 1;
     groups.set(task.student.classId, current);
   });
   return [...groups.values()].sort((left, right) => right.overdueCount - left.overdueCount);
 }
 
-export function getRecentSupervisionTasks(tasks: CollaborationTask[], now: Date) {
-  return sortTasksForAction(tasks, now).slice(0, 3);
-}
-
-export function getLatestSupervisionRecord(
-  taskId: string,
-  records: SupervisionRecord[],
-) {
-  return records
-    .filter((record) => record.taskId === taskId)
-    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())[0];
+export function getRecentSupervisionItems(items: SupervisionItemViewModel[]) {
+  return items.slice(0, 3);
 }
 
 export function getTaskAssigneeName(task: CollaborationTask, users: DemoUser[]) {

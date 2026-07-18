@@ -23,7 +23,7 @@ const standardFilters: TeacherTaskFilter[] = [
 const emptyCopy: Record<TeacherTaskFilter, { title: string; description: string }> = {
   all: { title: '暂无协作任务', description: '新的协作任务会在管理终端完成分发后显示在这里。' },
   pending: { title: '当前没有需要填写观察反馈的任务', description: '可以查看其他筛选中的历史任务。' },
-  overdue: { title: '当前没有已超时任务', description: '任务截止时间由系统根据 Demo Clock 自动判断。' },
+  overdue: { title: '当前没有已超时任务', description: '可以查看其他筛选中的协作任务。' },
   returned: { title: '当前没有被退回等待补充的任务', description: '需要补充时，原反馈仍会保留。' },
   retest: { title: '当前没有复测提醒', description: '复测安排由管理终端创建后同步到这里。' },
   submitted: { title: '暂时没有已提交的协作任务', description: '提交成功的观察反馈会显示在这里。' },

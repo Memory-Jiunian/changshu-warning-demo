@@ -11,7 +11,14 @@ export function DeadlineBadge({
   now: Date;
 }) {
   const state = getTaskDisplayState(task, now);
-  const variant = state.isOverdue ? 'error' : state.key === 'due_today' ? 'warning' : 'outline';
+  const variant =
+    task.status === 'cancelled'
+      ? 'neutral'
+      : state.isOverdue
+        ? 'error'
+        : state.key === 'due_today'
+          ? 'warning'
+          : 'outline';
   return (
     <Badge variant={variant} className="mvp-deadline-badge">
       <AppIcon name={state.isOverdue ? 'alert' : 'clock'} size={14} />

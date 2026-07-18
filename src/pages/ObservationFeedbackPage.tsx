@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DraftSaveStatus } from '../components/business/DraftSaveStatus';
 import { ObservationRecordCard } from '../components/business/ObservationRecordCard';
 import { PrivacyNotice } from '../components/business/PrivacyNotice';
 import { StudentCompactInfo } from '../components/business/StudentCompactInfo';
@@ -28,9 +29,10 @@ import type { Result } from '../domain/result';
 import type { CollaborationTask } from '../domain/tasks';
 import { formatCompactDateTime } from '../selectors/homeSelectors';
 import { getTaskObservationRecords } from '../selectors/taskSelectors';
+import type { NavigationGuardChange } from '../state/navigationGuard';
+import { useAutoSavedDraft } from '../state/useAutoSavedDraft';
 
 type FieldErrors = Partial<Record<keyof ObservationFormValues, string>>;
-type DialogKind = 'submit' | 'leave' | null;
 
 const sceneOptions: Array<{ value: ObservationScene; label: string }> = [
   { value: 'classroom', label: '课堂' },
@@ -58,7 +60,7 @@ function validate(values: ObservationFormValues, now: string): FieldErrors {
   if (!values.observedAt) {
     errors.observedAt = '请选择观察时间。';
   } else if (new Date(values.observedAt).getTime() > new Date(now).getTime()) {
-    errors.observedAt = '观察时间不能晚于当前 Demo 时间。';
+    errors.observedAt = '观察时间不能晚于现在。';
   }
   if (!values.scene) errors.scene = '请选择观察场景。';
   if (values.scene === 'other' && !values.otherScene.trim()) {
@@ -88,6 +90,7 @@ export function ObservationFeedbackPage({
   loading,
   onBack,
   onSubmitted,
+  onNavigationGuardChange,
   submitObservation,
   submitObservationRevision,
 }: {
@@ -98,6 +101,7 @@ export function ObservationFeedbackPage({
   loading: boolean;
   onBack: () => void;
   onSubmitted: (recordId: string) => void;
+  onNavigationGuardChange: NavigationGuardChange;
   submitObservation: (taskId: string, input: ObservationInput) => Promise<Result<ObservationRecord>>;
   submitObservationRevision: (taskId: string, input: ObservationInput) => Promise<Result<ObservationRecord>>;
 }) {
@@ -109,18 +113,66 @@ export function ObservationFeedbackPage({
     () => storedDraft?.values ?? { ...emptyObservationFormValues },
   );
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [dialog, setDialog] = useState<DialogKind>(null);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const requestIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
   const records = getTaskObservationRecords(observations, task.id);
   const revision = task.status === 'returned';
   const originalRecord = records[records.length - 1];
+  const dirty = isDirty(values);
+
+  const saveDraft = useCallback(
+    (updatedAt: string) =>
+      saveObservationDraft(
+        window.localStorage,
+        currentUserId,
+        task.id,
+        values,
+        updatedAt,
+      ),
+    [currentUserId, task.id, values],
+  );
+  const clearDraft = useCallback(() => {
+    removeObservationDraft(window.localStorage, currentUserId, task.id);
+  }, [currentUserId, task.id]);
+  const autoDraft = useAutoSavedDraft({
+    dirty,
+    initialSavedAt: storedDraft?.updatedAt,
+    save: saveDraft,
+    clear: clearDraft,
+  });
 
   useEffect(() => {
-    if (!isDirty(values)) return;
-    saveObservationDraft(window.localStorage, currentUserId, task.id, values, now);
-  }, [currentUserId, now, task.id, values]);
+    if (!dirty) {
+      onNavigationGuardChange(null);
+      return;
+    }
+    onNavigationGuardChange({
+      key: `observation:${currentUserId}:${task.id}`,
+      dirty: true,
+      saveStatus: autoDraft.status,
+      savedAt: autoDraft.savedAt,
+      retrySave: autoDraft.retrySave,
+      discardDraft: autoDraft.discard,
+    });
+  }, [
+    autoDraft.discard,
+    autoDraft.retrySave,
+    autoDraft.savedAt,
+    autoDraft.status,
+    currentUserId,
+    dirty,
+    onNavigationGuardChange,
+    task.id,
+  ]);
+
+  useEffect(
+    () => () => {
+      onNavigationGuardChange(null);
+    },
+    [onNavigationGuardChange],
+  );
 
   const update = <K extends keyof ObservationFormValues>(
     key: K,
@@ -137,7 +189,7 @@ export function ObservationFeedbackPage({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     setSubmitError('');
-    setDialog('submit');
+    setSubmitDialogOpen(true);
   };
 
   const submit = async () => {
@@ -171,41 +223,23 @@ export function ObservationFeedbackPage({
       return;
     }
     removeObservationDraft(window.localStorage, currentUserId, task.id);
-    setDialog(null);
+    autoDraft.clearSavedDraft();
+    onNavigationGuardChange(null);
+    setSubmitDialogOpen(false);
     onSubmitted(result.data.id);
-  };
-
-  const requestLeave = () => {
-    if (!isDirty(values)) {
-      onBack();
-      return;
-    }
-    setDialog('leave');
-  };
-
-  const discardAndLeave = () => {
-    removeObservationDraft(window.localStorage, currentUserId, task.id);
-    setDialog(null);
-    onBack();
-  };
-
-  const saveAndLeave = () => {
-    saveObservationDraft(window.localStorage, currentUserId, task.id, values, now);
-    setDialog(null);
-    onBack();
   };
 
   return (
     <div className="mvp-page mvp-feedback-page">
       <header className="mvp-page-header">
-        <Button variant="secondary" size="icon" aria-label="返回任务详情" onClick={requestLeave}>
+        <Button variant="secondary" size="icon" aria-label="返回任务详情" onClick={onBack}>
           <AppIcon name="arrowLeft" size={20} />
         </Button>
         <div>
           <span>{revision ? '退回任务' : '事实观察'}</span>
           <h1>{revision ? '补充反馈' : '填写观察反馈'}</h1>
         </div>
-        {storedDraft ? <Badge variant="info">已恢复草稿</Badge> : null}
+        <DraftSaveStatus status={autoDraft.status} savedAt={autoDraft.savedAt} />
       </header>
 
       <Card>
@@ -253,7 +287,7 @@ export function ObservationFeedbackPage({
             htmlFor="observedAt"
             required
             error={errors.observedAt}
-            hint={`不得晚于 ${formatCompactDateTime(now)}`}
+            hint="观察时间不能晚于现在"
           >
             <Input
               id="observedAt"
@@ -383,19 +417,19 @@ export function ObservationFeedbackPage({
       </Card>
 
       <BottomActionBar>
-        <Button variant="secondary" fullWidth onClick={requestLeave}>返回</Button>
+        <Button variant="secondary" fullWidth onClick={onBack}>返回</Button>
         <Button fullWidth disabled={loading} onClick={openSubmit}>
           {revision ? '提交补充反馈' : '提交观察反馈'}
         </Button>
       </BottomActionBar>
 
       <ConfirmDialog
-        open={dialog === 'submit'}
+        open={submitDialogOpen}
         title={revision ? '确认提交补充反馈' : '确认提交观察反馈'}
         description="提交后本条记录将保持只读，请核对关键内容。"
         confirmLabel={submitError ? '重试提交' : revision ? '确认补充' : '确认提交'}
         submitting={loading}
-        onCancel={() => !loading && setDialog(null)}
+        onCancel={() => !loading && setSubmitDialogOpen(false)}
         onConfirm={() => void submit()}
       >
         <dl className="mvp-confirm-summary">
@@ -420,17 +454,6 @@ export function ObservationFeedbackPage({
         ) : null}
       </ConfirmDialog>
 
-      <ConfirmDialog
-        open={dialog === 'leave'}
-        title="离开前是否保留草稿？"
-        description="草稿只属于当前账号和当前任务。"
-        cancelLabel="舍弃草稿"
-        confirmLabel="保存草稿并返回"
-        onCancel={discardAndLeave}
-        onConfirm={saveAndLeave}
-      >
-        <p className="mvp-muted-copy">保存后再次进入本任务，会恢复当前未提交内容。</p>
-      </ConfirmDialog>
     </div>
   );
 }

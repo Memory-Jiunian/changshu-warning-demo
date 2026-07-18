@@ -111,7 +111,7 @@ export const roles: Role[] = [
     id: 'principal',
     label: '校级管理者',
     org: '学校管理层',
-    scope: 'Legacy 演示页：不属于新小程序 MVP，不进入个案任务。',
+    scope: '校级管理仅查看聚合信息，不进入个案任务。',
   },
 ];
 
@@ -168,7 +168,7 @@ export const rolePermissions: Record<RoleId, RolePermission> = {
     canSupervise: false,
     canViewSchoolAggregate: true,
     canEnterStudentDetail: false,
-    visibleScope: 'Legacy 校级聚合演示页',
+    visibleScope: '校级聚合视角',
     allowedActions: [],
     restrictedInfo: ['学生姓名', '班级', '测评原文', '咨询记录', '敏感题项', 'AI 原始判断', '个体学生详情'],
   },

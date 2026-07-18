@@ -3,7 +3,6 @@ import { AppIcon } from '../components/ui/AppIcon';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import {
-  formatDemoDate,
   getDirectorGradeLabel,
   getTeacherClassLabel,
 } from '../selectors/homeSelectors';
@@ -16,7 +15,7 @@ export function ProfilePage({
   onSwitchRole: () => void;
   onNavigate: (hash: string) => void;
 }) {
-  const { currentUser, tasks, now } = useDemo();
+  const { currentUser, tasks } = useDemo();
   const isDirector = currentUser.role === 'grade_director';
   const scopeLabel = isDirector
     ? getDirectorGradeLabel(currentUser, tasks)
@@ -24,10 +23,10 @@ export function ProfilePage({
 
   return (
     <div className="mvp-page">
-      <RoleHeader user={currentUser} scopeLabel={scopeLabel} demoDate={formatDemoDate(now)} />
+      <RoleHeader user={currentUser} scopeLabel={scopeLabel} />
       <Card>
         <CardHeader>
-          <CardTitle>我的演示信息</CardTitle>
+          <CardTitle>当前身份</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mvp-profile-row">
@@ -45,7 +44,7 @@ export function ProfilePage({
           <CardTitle>{isDirector ? '督办历史' : '我的历史任务'}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mvp-muted-copy">该功能将在后续阶段迁移。</p>
+          <p className="mvp-muted-copy">当前暂不提供历史汇总，可从任务页查看已有记录。</p>
         </CardContent>
       </Card>
       {!isDirector ? (
@@ -82,7 +81,7 @@ export function ProfilePage({
         leadingIcon={<AppIcon name="switch" size={18} />}
         onClick={onSwitchRole}
       >
-        切换演示角色
+        切换角色
       </Button>
     </div>
   );

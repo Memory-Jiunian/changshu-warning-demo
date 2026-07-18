@@ -157,7 +157,7 @@ export const mockTasks: CollaborationTask[] = [
   {
     id: 'task-010-supervision',
     warningId: 'warning-010',
-    student: getMockStudentRef('student-tang'),
+    student: getMockStudentRef('student-wu'),
     type: 'grade_supervision',
     status: 'pending',
     assigneeId: 'user-head-sun',

@@ -2,6 +2,7 @@ import type {
   AbnormalReportDraft,
   AbnormalReportFormValues,
 } from '../domain/feedback';
+import { err, ok } from '../domain/result';
 
 const DRAFT_VERSION = 1;
 const DRAFT_NAMESPACE = 'changshu:abnormal-report-draft:v1';
@@ -56,16 +57,25 @@ export function saveAbnormalReportDraft(
   values: AbnormalReportFormValues,
   updatedAt: string,
 ) {
-  const draft: AbnormalReportDraft = {
-    version: DRAFT_VERSION,
-    userId,
-    values,
-    updatedAt,
-  };
-  storage.setItem(draftKey(userId), JSON.stringify(draft));
-  return draft;
+  try {
+    const draft: AbnormalReportDraft = {
+      version: DRAFT_VERSION,
+      userId,
+      values,
+      updatedAt,
+    };
+    storage.setItem(draftKey(userId), JSON.stringify(draft));
+    return ok(draft);
+  } catch {
+    return err('DRAFT_SAVE_FAILED', '草稿保存失败');
+  }
 }
 
 export function removeAbnormalReportDraft(storage: Storage, userId: string) {
-  storage.removeItem(draftKey(userId));
+  try {
+    storage.removeItem(draftKey(userId));
+    return ok(true);
+  } catch {
+    return err('DRAFT_REMOVE_FAILED', '草稿清理失败');
+  }
 }

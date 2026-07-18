@@ -37,3 +37,7 @@ export function getRetestReminderStatusLabel(
   if (state === 'reminded') return '已提醒，等待学生完成复测';
   return '待提醒';
 }
+
+export function getRetestScheduleTimeLabel(task: CollaborationTask) {
+  return task.status === 'cancelled' ? '原计划复测时间' : '复测时间';
+}

@@ -75,7 +75,6 @@ export function TeacherTaskDetailPage({
             <div><dt>当前行动</dt><dd>{display.label}</dd></div>
             <div><dt>创建时间</dt><dd>{formatCompactDateTime(task.createdAt)}</dd></div>
             <div><dt>截止时间</dt><dd>{display.deadlineLabel}</dd></div>
-            <div><dt>阅读状态</dt><dd>{task.readAt ? `已读 · ${formatCompactDateTime(task.readAt)}` : '正在记录已读'}</dd></div>
           </dl>
           {display.isOverdue ? (
             <div className="mvp-alert mvp-alert--warning">
@@ -137,7 +136,7 @@ export function TeacherTaskDetailPage({
       ) : null}
 
       {task.status === 'cancelled' ? (
-        <Card tone="warning">
+        <Card>
           <CardHeader><CardTitle>任务已取消</CardTitle></CardHeader>
           <CardContent>
             <p className="mvp-task-purpose">{task.cancelReason}</p>

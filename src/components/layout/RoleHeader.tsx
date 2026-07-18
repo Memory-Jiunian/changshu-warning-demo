@@ -10,17 +10,15 @@ const roleLabels: Record<UserRole, string> = {
 export function RoleHeader({
   user,
   scopeLabel,
-  demoDate,
 }: {
   user: DemoUser;
   scopeLabel: string;
-  demoDate: string;
 }) {
   const isDirector = user.role === 'grade_director';
   return (
     <header className="mvp-role-header">
       <div className="mvp-role-header__copy">
-        <span className="mvp-role-header__eyebrow">演示模式 · {demoDate}</span>
+        <span className="mvp-role-header__eyebrow">当前身份</span>
         <h1>{user.name}，你好</h1>
         <p>{roleLabels[user.role]} · {scopeLabel}</p>
       </div>

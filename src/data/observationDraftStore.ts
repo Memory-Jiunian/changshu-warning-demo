@@ -1,4 +1,5 @@
 import type { ObservationDraft, ObservationFormValues } from '../domain/feedback';
+import { err, ok } from '../domain/result';
 
 const DRAFT_VERSION = 1;
 const DRAFT_NAMESPACE = 'changshu-demo:observation-draft:v1';
@@ -59,17 +60,26 @@ export function saveObservationDraft(
   values: ObservationFormValues,
   updatedAt: string,
 ) {
-  const draft: ObservationDraft = {
-    version: DRAFT_VERSION,
-    userId,
-    taskId,
-    values,
-    updatedAt,
-  };
-  storage.setItem(draftKey(userId, taskId), JSON.stringify(draft));
-  return draft;
+  try {
+    const draft: ObservationDraft = {
+      version: DRAFT_VERSION,
+      userId,
+      taskId,
+      values,
+      updatedAt,
+    };
+    storage.setItem(draftKey(userId, taskId), JSON.stringify(draft));
+    return ok(draft);
+  } catch {
+    return err('DRAFT_SAVE_FAILED', '草稿保存失败');
+  }
 }
 
 export function removeObservationDraft(storage: Storage, userId: string, taskId: string) {
-  storage.removeItem(draftKey(userId, taskId));
+  try {
+    storage.removeItem(draftKey(userId, taskId));
+    return ok(true);
+  } catch {
+    return err('DRAFT_REMOVE_FAILED', '草稿清理失败');
+  }
 }
