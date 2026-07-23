@@ -18,6 +18,7 @@ import type { DemoUser, UserRole } from '../domain/users';
 import {
   canUserAddSupervision,
   canUserConfirmRetestReminder,
+  canUserMarkFeedbackViewed,
   canUserSubmitObservation,
   canUserViewStudent,
   canUserViewTask,
@@ -207,6 +208,27 @@ export class DemoRepository {
     if (!task.readAt) task.readAt = this.nowIso;
     this.persist();
     return ok(clone(task));
+  }
+
+  async markFeedbackViewed(taskId: string): Promise<Result<ObservationRecord>> {
+    await this.wait();
+    const user = this.requireCurrentUser();
+    const access = this.getTaskById(taskId, user);
+    if (!access.ok) return access;
+    const task = this.requireTask(taskId);
+    if (!canUserMarkFeedbackViewed(user, task)) {
+      return err('FEEDBACK_VIEW_FORBIDDEN', '当前反馈不能由该用户确认查看');
+    }
+    const record = [...this.observations]
+      .reverse()
+      .find((item) => item.taskId === taskId);
+    if (!record) return err('FEEDBACK_NOT_FOUND', '当前任务还没有可查看的反馈');
+    if (!record.viewedAt) {
+      record.viewedAt = this.nowIso;
+      record.viewedById = user.id;
+      this.persist();
+    }
+    return ok(clone(record));
   }
 
   async submitObservation(taskId: string, input: ObservationInput): Promise<Result<ObservationRecord>> {

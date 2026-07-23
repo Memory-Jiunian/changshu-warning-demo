@@ -73,6 +73,22 @@ npm run preview -- --host 127.0.0.1 --port 4173
 http://127.0.0.1:4173/
 ```
 
+## 事实观察反馈高保真流程
+
+设计执行包对应的新流程使用独立 Hash 路由，并继续复用 Demo Repository：
+
+- 班主任待办与反馈 Sheet：`#/feedback/tasks`
+- 指定待办详情：`#/feedback/tasks/task-001-pending`
+- 心理老师只读反馈：`#/feedback/review/task-004-submitted`
+
+需要验收提交失败状态时，可在首次打开页面前使用：
+
+```text
+http://127.0.0.1:4173/?failNextWrite=1#/feedback/tasks/task-001-pending
+```
+
+该参数只会模拟下一次写入失败，表单内容与草稿会保留，重试后仍走统一 Repository。
+
 ## 重要边界
 
 - 当前项目只使用 mock data，不连接真实后端。

@@ -17,6 +17,8 @@ export interface ObservationRecord {
   additionalNotes?: string;
   submittedAt: string;
   revisionOfRecordId?: string;
+  viewedAt?: string;
+  viewedById?: string;
 }
 
 export interface ObservationInput {

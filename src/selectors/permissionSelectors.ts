@@ -27,3 +27,7 @@ export function canUserConfirmRetestReminder(user: DemoUser, task: Collaboration
 export function canUserAddSupervision(user: DemoUser, task: CollaborationTask, now: Date) {
   return user.role === 'grade_director' && canUserViewTask(user, task, now);
 }
+
+export function canUserMarkFeedbackViewed(user: DemoUser, task: CollaborationTask) {
+  return user.role === 'psychologist' && task.status === 'submitted';
+}

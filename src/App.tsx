@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { MvpApp } from './app/MvpApp';
+import { FactualFeedbackApp } from './features/factualFeedback/FactualFeedbackApp';
+import { isFactualFeedbackHash } from './features/factualFeedback/routes';
 import { RiskLevelTag as UiRiskLevelTag } from './components/business/RiskLevelTag';
 import { StatusBadge as UiStatusBadge } from './components/business/StatusBadge';
 import { Badge as UiBadge } from './components/ui/Badge';
@@ -131,6 +133,18 @@ function RoleHeroIcon({ roleId }: { roleId: RoleId }) {
 }
 
 export function App() {
+  const [activeHash, setActiveHash] = useState(() => window.location.hash);
+
+  useEffect(() => {
+    const handleHashChange = () => setActiveHash(window.location.hash);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  if (isFactualFeedbackHash(activeHash)) {
+    return <FactualFeedbackApp hash={activeHash} />;
+  }
+
   return (
     <MvpApp
       renderLegacy={(roleId) => (

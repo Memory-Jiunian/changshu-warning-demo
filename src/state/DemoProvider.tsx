@@ -49,6 +49,7 @@ interface DemoContextValue {
   getTaskById: (taskId: string) => Result<CollaborationTask>;
   getAbnormalReportById: (reportId: string) => Result<AbnormalReport>;
   markTaskRead: (taskId: string) => Promise<Result<CollaborationTask>>;
+  markFeedbackViewed: (taskId: string) => Promise<Result<ObservationRecord>>;
   submitObservation: (taskId: string, input: ObservationInput) => Promise<Result<ObservationRecord>>;
   submitObservationRevision: (taskId: string, input: ObservationInput) => Promise<Result<ObservationRecord>>;
   submitAbnormalReport: (input: AbnormalReportInput) => Promise<Result<AbnormalReport>>;
@@ -147,6 +148,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       getAbnormalReportById: (reportId) =>
         repository.getAbnormalReportById(reportId, snapshot.currentUser),
       markTaskRead: (taskId) => runWrite(() => repository.markTaskRead(taskId)),
+      markFeedbackViewed: (taskId) =>
+        runWrite(() => repository.markFeedbackViewed(taskId)),
       submitObservation: (taskId, input) => runWrite(() => repository.submitObservation(taskId, input)),
       submitObservationRevision: (taskId, input) =>
         runWrite(() => repository.submitObservationRevision(taskId, input)),

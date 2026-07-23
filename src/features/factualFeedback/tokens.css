@@ -1,0 +1,71 @@
+:root {
+  --color-brand-primary: #3d73ff;
+  --color-brand-strong: #266fff;
+  --color-brand-soft: #bfd5ff;
+
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #999999;
+  --color-text-inverse: #ffffff;
+  --color-text-danger: #d93f21;
+
+  --color-surface-page: #f5f5f5;
+  --color-surface-card: #ffffff;
+  --color-surface-subtle: #fafafa;
+  --color-surface-muted: #f2f3f6;
+
+  --color-border-default: #dadada;
+  --color-border-subtle: #eeeeee;
+  --color-border-focus: #3d73ff;
+  --color-border-danger: #d93f21;
+
+  --color-danger: #d93f21;
+  --color-danger-soft: #ffe5e5;
+  --color-success: #20d920;
+  --color-success-soft: #e9fbe9;
+  --color-warning: #ff9226;
+  --color-warning-soft: #fff1e3;
+
+  --color-overlay: rgba(0, 0, 0, 0.4);
+  --color-button-primary: #333333;
+  --color-button-primary-pressed: #000000;
+  --color-button-secondary: #f2f3f6;
+  --color-button-disabled: #dadada;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-small: 8px;
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-sheet: 24px;
+  --radius-pill: 999px;
+
+  --font-page-title: 700 18px/26px "Alibaba PuHuiTi 3.0", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-title: 700 16px/24px "Alibaba PuHuiTi 3.0", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-body: 500 14px/22px "Alibaba PuHuiTi 3.0", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-caption: 500 12px/20px "Alibaba PuHuiTi 3.0", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+
+  --height-control: 48px;
+  --height-button: 48px;
+  --height-touch-target: 44px;
+
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-floating: 0 16px 48px rgba(0, 0, 0, 0.16);
+
+  --page-background: linear-gradient(
+    180deg,
+    #dde9ff 0%,
+    #f5f7fb 28%,
+    #ffffff 62%
+  );
+}

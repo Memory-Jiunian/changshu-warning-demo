@@ -10,6 +10,7 @@ export type AppIconName =
   | 'clock'
   | 'arrowLeft'
   | 'arrowRight'
+  | 'close'
   | 'clipboard'
   | 'users'
   | 'shield'
@@ -63,6 +64,7 @@ const iconPaths: Record<AppIconName, ReactNode> = {
   ),
   arrowLeft: <path d="m15 18-6-6 6-6M9 12h10" />,
   arrowRight: <path d="m9 18 6-6-6-6" />,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
   clipboard: (
     <>
       <path d="M9 5h6a2 2 0 0 1 2 2v1H7V7a2 2 0 0 1 2-2Z" />
