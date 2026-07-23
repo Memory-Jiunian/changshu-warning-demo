@@ -2,10 +2,7 @@ import type { ObservationRecord } from '../../../domain/feedback';
 import type { Result } from '../../../domain/result';
 import type { CollaborationTask } from '../../../domain/tasks';
 import { formatCompactDateTime } from '../../../selectors/homeSelectors';
-import { AppIcon } from '../../../components/ui/AppIcon';
 import { Button } from '../components/Button';
-import { FeedbackRecord } from '../components/FeedbackRecord';
-import { StatusBadge } from '../components/StatusBadge';
 
 export function PsychologistReviewPage({
   task,
@@ -22,52 +19,39 @@ export function PsychologistReviewPage({
 }) {
   return (
     <main className="ff-app ff-review-page">
-      <header className="ff-page-header ff-page-header--back">
-        <Button variant="icon" aria-label="返回班主任待办" onClick={onBack}>
-          <AppIcon name="arrowLeft" size={21} />
-        </Button>
-        <div>
-          <span>心理老师</span>
-          <h1>反馈详情</h1>
-        </div>
-        <span aria-hidden="true" />
+      <header className="ff-page-header">
+        <h1>待我查看</h1>
       </header>
 
-      <section className="ff-review-card">
-        <div className="ff-review-card__head">
-          <div>
-            <h2>{task.student.name}</h2>
-            <p>{task.student.gradeName} · {task.student.className}</p>
-          </div>
-          <StatusBadge
-            label={record?.viewedAt ? '已查看' : '待我查看'}
-            tone={record?.viewedAt ? 'success' : 'brand'}
-          />
+      <section className="ff-review-sheet">
+        <header className="ff-review-sheet__header">
+          <h2>详情抽屉</h2>
+          <Button variant="icon" aria-label="关闭详情" onClick={onBack}>×</Button>
+        </header>
+        <div className="ff-review-sheet__content">
+          <section className="ff-sheet-section ff-task-summary">
+            <div className="ff-task-summary__title">
+              <h3>{task.student.name}</h3>
+              <p>{task.student.gradeName} · {task.student.className}</p>
+            </div>
+            <p>当前状态：{record?.viewedAt ? '已查看' : '已反馈'}</p>
+          </section>
+
+          <section className="ff-sheet-section ff-review-feedback">
+            <h3>请求内容</h3>
+            <p>反馈需求：{task.purpose}</p>
+            {record ? (
+              <>
+                <h3>反馈内容</h3>
+                <p>观察时间：{formatCompactDateTime(record.observedAt)}</p>
+                <p>{record.facts}</p>
+                <div className="ff-review-feedback__meta">
+                  <span>提交时间：{formatCompactDateTime(record.submittedAt)}</span>
+                </div>
+              </>
+            ) : null}
+          </section>
         </div>
-        <dl className="ff-summary-grid">
-          <div>
-            <dt>反馈任务</dt>
-            <dd>{task.title}</dd>
-          </div>
-          <div>
-            <dt>提交时间</dt>
-            <dd>{record ? formatCompactDateTime(record.submittedAt) : '暂无记录'}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="ff-review-card">
-        <h2>请求内容</h2>
-        <p>{task.purpose}</p>
-      </section>
-
-      <section className="ff-review-card">
-        <h2>班主任反馈</h2>
-        {record ? (
-          <FeedbackRecord record={record} psychologistView />
-        ) : (
-          <p className="ff-review-empty">当前任务还没有可查看的反馈记录。</p>
-        )}
       </section>
 
       {record && !record.viewedAt ? (

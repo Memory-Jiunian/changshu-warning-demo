@@ -12,12 +12,9 @@ import type {
 } from '../../../domain/feedback';
 import type { Result } from '../../../domain/result';
 import type { CollaborationTask } from '../../../domain/tasks';
-import { formatCompactDateTime } from '../../../selectors/homeSelectors';
-import {
-  formatTaskDeadline,
-  getTaskDisplayState,
-} from '../../../selectors/taskSelectors';
+import { getTaskDisplayState } from '../../../selectors/taskSelectors';
 import { useAutoSavedDraft } from '../../../state/useAutoSavedDraft';
+import { formatFeedbackRemaining } from '../feedbackPresentation';
 import {
   isFeedbackDirty,
   toLocalDateTimeValue,
@@ -29,20 +26,6 @@ import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { FormField } from './FormField';
 import { HistoryAccordion } from './HistoryAccordion';
-import { StatusBadge } from './StatusBadge';
-
-function draftMeta(status: 'idle' | 'saving' | 'saved' | 'error', savedAt?: string) {
-  if (status === 'saving') return '正在自动保存';
-  if (status === 'saved' && savedAt) {
-    return `草稿已保存 ${new Date(savedAt).toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    })}`;
-  }
-  if (status === 'error') return '草稿保存失败';
-  return '填写后自动保存';
-}
 
 export function FeedbackBottomSheet({
   task,
@@ -81,7 +64,6 @@ export function FeedbackBottomSheet({
   const [errors, setErrors] = useState<FeedbackFieldErrors>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [failureOpen, setFailureOpen] = useState(false);
-  const [failureMessage, setFailureMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef<string | null>(null);
   const dirty = isFeedbackDirty(values);
@@ -158,7 +140,6 @@ export function FeedbackBottomSheet({
     setSubmitting(false);
     if (!result.ok) {
       setConfirmOpen(false);
-      setFailureMessage(result.message);
       setFailureOpen(true);
       return;
     }
@@ -185,8 +166,7 @@ export function FeedbackBottomSheet({
     <>
       <BottomSheet
         open
-        title="反馈详情"
-        meta={<span className="ff-draft-meta">{draftMeta(autoDraft.status, autoDraft.savedAt)}</span>}
+        title="详情抽屉"
         onClose={close}
         footer={
           <>
@@ -201,49 +181,29 @@ export function FeedbackBottomSheet({
       >
         <section className="ff-sheet-section ff-task-summary">
           <div className="ff-task-summary__title">
-            <div>
-              <h3>{task.student.name}</h3>
-              <p>{task.student.gradeName} · {task.student.className}</p>
-            </div>
-            <StatusBadge display={display} />
+            <h3>{task.student.name}</h3>
+            <p>{task.student.gradeName} · {task.student.className}</p>
           </div>
-          <dl className="ff-summary-grid">
-            <div>
-              <dt>当前状态</dt>
-              <dd>{display.label}</dd>
-            </div>
-            <div>
-              <dt>{display.isOverdue ? '超时情况' : '反馈截止'}</dt>
-              <dd className={display.isOverdue ? 'ff-text-danger' : ''}>
-                {formatTaskDeadline(task, new Date(now))}
-              </dd>
-            </div>
-          </dl>
-          {display.isOverdue ? (
-            <p className="ff-overdue-notice">任务已超时，仍可继续提交事实反馈。</p>
+          <p>当前状态：待反馈</p>
+          <p className={display.isOverdue ? 'ff-text-danger' : ''}>
+            {formatFeedbackRemaining(task, new Date(now))}
+          </p>
+          {task.dueAt ? (
+            <p>
+              反馈截止时间：
+              {new Date(task.dueAt).toLocaleString('zh-CN', { hour12: false })}
+            </p>
           ) : null}
         </section>
 
         <section className="ff-sheet-section">
           <h3>请求内容</h3>
-          <p>{task.purpose}</p>
-          {task.observationFocus?.length ? (
-            <ul className="ff-focus-list">
-              {task.observationFocus.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-          ) : null}
+          <p>反馈需求：{task.purpose}</p>
         </section>
 
         <HistoryAccordion records={records} />
 
         <section className="ff-sheet-section ff-feedback-form" aria-label="事实观察反馈表单">
-          <h3>{task.status === 'returned' ? '补充事实观察' : '填写事实观察'}</h3>
-          {task.status === 'returned' && task.returnReason ? (
-            <div className="ff-return-notice">
-              <strong>需要补充</strong>
-              <p>{task.returnReason}</p>
-            </div>
-          ) : null}
           <FormField
             id="feedback-observed-at"
             label="请选择观察时间"
@@ -265,7 +225,6 @@ export function FeedbackBottomSheet({
             label="请填写观察内容"
             required
             error={errors.facts}
-            hint="请记录实际看到或听到的事实，不需要进行心理判断。"
           >
             <textarea
               id="feedback-facts"
@@ -274,10 +233,8 @@ export function FeedbackBottomSheet({
               maxLength={500}
               value={values.facts}
               aria-describedby={errors.facts ? 'feedback-facts-error' : undefined}
-              placeholder="例如：午休时独自在座位约 30 分钟，两次拒绝同学邀请，能简短回应老师询问。"
               onChange={(event) => update('facts', event.target.value)}
             />
-            <span className="ff-character-count">{values.facts.trim().length}/500</span>
           </FormField>
         </section>
       </BottomSheet>
@@ -290,39 +247,17 @@ export function FeedbackBottomSheet({
         submitting={submitting}
         onCancel={() => !submitting && setConfirmOpen(false)}
         onConfirm={() => void submit()}
-      >
-        <dl className="ff-confirm-summary">
-          <div>
-            <dt>学生</dt>
-            <dd>{task.student.name} · {task.student.className}</dd>
-          </div>
-          <div>
-            <dt>观察时间</dt>
-            <dd>
-              {values.observedAt
-                ? formatCompactDateTime(new Date(values.observedAt).toISOString())
-                : '未填写'}
-            </dd>
-          </div>
-          <div>
-            <dt>事实摘要</dt>
-            <dd>{values.facts.trim().slice(0, 72)}{values.facts.trim().length > 72 ? '…' : ''}</dd>
-          </div>
-        </dl>
-      </Dialog>
+      />
 
       <Dialog
         open={failureOpen}
-        title="提交失败"
-        description="内容和草稿均已保留，请检查后重试。"
-        cancelLabel="稍后再试"
-        confirmLabel="重新提交"
+        title="提交失败，请重试"
+        description="已经帮你自动保存草稿了"
+        cancelLabel={null}
+        confirmLabel="好的"
         submitting={submitting}
-        onCancel={() => setFailureOpen(false)}
-        onConfirm={() => void submit()}
-      >
-        <p className="ff-dialog-error" role="alert">{failureMessage}</p>
-      </Dialog>
+        onConfirm={() => setFailureOpen(false)}
+      />
     </>
   );
 }

@@ -16,10 +16,10 @@ export function Dialog({
   title: string;
   description?: string;
   children?: ReactNode;
-  cancelLabel?: string;
+  cancelLabel?: string | null;
   confirmLabel: string;
   submitting?: boolean;
-  onCancel: () => void;
+  onCancel?: () => void;
   onConfirm: () => void;
 }) {
   if (!open) return null;
@@ -31,10 +31,12 @@ export function Dialog({
           {description ? <p>{description}</p> : null}
           {children}
         </div>
-        <footer className="ff-dialog__actions">
-          <Button variant="secondary" fullWidth disabled={submitting} onClick={onCancel}>
-            {cancelLabel}
-          </Button>
+        <footer className={`ff-dialog__actions${cancelLabel ? '' : ' ff-dialog__actions--single'}`}>
+          {cancelLabel ? (
+            <Button variant="secondary" fullWidth disabled={submitting} onClick={onCancel}>
+              {cancelLabel}
+            </Button>
+          ) : null}
           <Button fullWidth disabled={submitting} onClick={onConfirm}>
             {submitting ? '提交中' : confirmLabel}
           </Button>

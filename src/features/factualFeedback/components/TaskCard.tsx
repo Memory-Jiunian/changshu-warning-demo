@@ -1,6 +1,6 @@
 import type { CollaborationTask } from '../../../domain/tasks';
-import { formatTaskDeadline, getTaskDisplayState } from '../../../selectors/taskSelectors';
-import { AppIcon } from '../../../components/ui/AppIcon';
+import { getTaskDisplayState } from '../../../selectors/taskSelectors';
+import { formatFeedbackRemaining } from '../feedbackPresentation';
 import { Button } from './Button';
 import { StatusBadge } from './StatusBadge';
 
@@ -19,20 +19,19 @@ export function TaskCard({
       className={`ff-task-card${display.isOverdue ? ' ff-task-card--overdue' : ''}`}
     >
       <div className="ff-task-card__top">
-        <div>
-          <h2>{task.student.name}</h2>
-          <p>{task.student.gradeName} · {task.student.className}</p>
-        </div>
-        <StatusBadge display={display} />
+        <h2>{task.student.name}</h2>
+        <StatusBadge label="待反馈" tone="neutral" />
       </div>
-      <p className="ff-task-card__purpose">{task.purpose}</p>
+      <p className="ff-task-card__purpose">
+        <span>反馈需求：</span>{task.purpose}
+      </p>
+      <p className={`ff-task-card__deadline${display.isOverdue ? ' ff-text-danger' : ''}`}>
+        {formatFeedbackRemaining(task, now)}
+      </p>
       <div className="ff-task-card__footer">
-        <span className={display.isOverdue ? 'ff-text-danger' : ''}>
-          <AppIcon name="clock" size={16} />
-          {formatTaskDeadline(task, now)}
-        </span>
         <Button
           variant="secondary"
+          fullWidth
           onClick={onOpen}
         >
           查看详情
