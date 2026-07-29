@@ -1,8 +1,15 @@
 import type { CollaborationTask } from '../../../domain/tasks';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../../../components/ui/Card';
+import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
 import { getTaskDisplayState } from '../../../selectors/taskSelectors';
 import { formatFeedbackRemaining } from '../feedbackPresentation';
-import { Button } from './Button';
-import { StatusBadge } from './StatusBadge';
 
 export function TaskCard({
   task,
@@ -15,28 +22,31 @@ export function TaskCard({
 }) {
   const display = getTaskDisplayState(task, now);
   return (
-    <article
+    <Card
+      as="article"
       className={`ff-task-card${display.isOverdue ? ' ff-task-card--overdue' : ''}`}
     >
-      <div className="ff-task-card__top">
-        <h2>{task.student.name}</h2>
-        <StatusBadge label="待反馈" tone="neutral" />
-      </div>
-      <p className="ff-task-card__purpose">
-        <span>反馈需求：</span>{task.purpose}
-      </p>
-      <p className={`ff-task-card__deadline${display.isOverdue ? ' ff-text-danger' : ''}`}>
-        {formatFeedbackRemaining(task, now)}
-      </p>
-      <div className="ff-task-card__footer">
+      <CardHeader className="ff-task-card__top">
+        <CardTitle>{task.student.name}</CardTitle>
+        <Badge variant="brand">待反馈</Badge>
+      </CardHeader>
+      <CardContent>
+        <p className="ff-task-card__purpose">
+          <span>反馈需求：</span>{task.purpose}
+        </p>
+      </CardContent>
+      <CardFooter className="ff-task-card__footer">
+        <p className={`ff-task-card__deadline${display.isOverdue ? ' ff-text-danger' : ''}`}>
+          {formatFeedbackRemaining(task, now)}
+        </p>
         <Button
-          variant="secondary"
-          fullWidth
+          variant="primary"
+          size="md"
           onClick={onOpen}
         >
           查看详情
         </Button>
-      </div>
-    </article>
+      </CardFooter>
+    </Card>
   );
 }

@@ -6,7 +6,6 @@ import type { Result } from '../../../domain/result';
 import type { CollaborationTask } from '../../../domain/tasks';
 import type { DemoUser } from '../../../domain/users';
 import { getTaskObservationRecords } from '../../../selectors/taskSelectors';
-import { Button } from '../components/Button';
 import { FeedbackBottomSheet } from '../components/FeedbackBottomSheet';
 import { TaskCard } from '../components/TaskCard';
 
@@ -50,30 +49,17 @@ export function PendingTasksPage({
     : [];
 
   return (
-    <main className="ff-app">
+    <main className="ff-app ff-pending-page">
       <header className="ff-page-header">
-        <div>
-          <span>{tasks[0]?.student.className ?? '班主任工作台'}</span>
-          <h1>我的待办</h1>
-        </div>
+        <h1>我的待办</h1>
       </header>
 
       <section className="ff-greeting">
         <div>
+          <span>{tasks[0]?.student.className ?? '班主任工作台'}</span>
           <p>{currentUser.name}，您好</p>
           <strong>您有 {tasks.length} 件待办需要处理</strong>
         </div>
-        <Button
-          variant="secondary"
-          disabled={!tasks[0]}
-          onClick={() => {
-            if (!tasks[0]) return;
-            void markTaskRead(tasks[0].id);
-            onOpenTask(tasks[0].id);
-          }}
-        >
-          我要反馈
-        </Button>
       </section>
 
       <section className="ff-task-list" aria-label="待反馈任务">

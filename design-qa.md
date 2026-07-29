@@ -1,63 +1,66 @@
-# Design QA: 事实观察反馈
+# Design QA: “我的待办”Pilot Page
 
-## Visual source
+## Sources
 
-- High fidelity: `事实观察反馈-设计执行包/feedback-design-execution-kit/references/high-fidelity/`
-- Prototype states: `事实观察反馈-设计执行包/feedback-design-execution-kit/references/prototype/`
-- Canonical tokens: `src/features/factualFeedback/tokens.css`
-- Baseline viewport: 402px
-- Responsive range: 375–440px
+- Structure reference: `C:\Users\18668\AppData\Local\Temp\codex-clipboard-1d6618f9-cfaf-432a-b06d-d2b171327059.png`
+- Structure reference dimensions: 804 x 1756 px, interpreted as a 2x image for a 402 px mobile viewport.
+- Visual baseline: `C:\Users\18668\Downloads\完整基准 Export\design-system-export-2026-07-29T05-10-35-203Z.zip`
+- Auxiliary audit exports:
+  - `design-system-export-2026-07-29T05-09-39-985Z.zip`
+  - `design-system-export-2026-07-29T05-10-46-785Z.zip`
+- Implemented route: `#/feedback/tasks`
 
-## Coverage
+The low-fidelity image is used only for information structure. Current Repository data remains authoritative for teacher name, task count, student names, content, deadline state, and click behavior.
 
-| State | Evidence |
-|---|---|
-| Teacher pending list | `C:\tmp\factual-feedback-qa\teacher-list-402.png` |
-| Empty feedback form | `C:\tmp\factual-feedback-qa\teacher-sheet-empty-402.png` |
-| Filled feedback form | `C:\tmp\factual-feedback-qa\teacher-sheet-filled-402.png` |
-| Required validation | `C:\tmp\factual-feedback-qa\teacher-validation-402.png` |
-| Overdue and still submittable | `C:\tmp\factual-feedback-qa\teacher-overdue-402.png` |
-| Submit confirmation | `C:\tmp\factual-feedback-qa\teacher-confirm-402.png` |
-| Submitting state | `C:\tmp\factual-feedback-qa\teacher-submitting-402.png` |
-| Success toast | `C:\tmp\factual-feedback-qa\teacher-success-toast-402.png` |
-| Failure dialog | `C:\tmp\factual-feedback-qa\teacher-failure-dialog-402.png` |
-| Psychologist read-only review | `C:\tmp\factual-feedback-qa\psychologist-readonly-402.png` |
+## Component Mapping
 
-Screenshots are temporary QA evidence and are not committed.
+| Page element | Existing code primitive | Exported Design System baseline |
+|---|---|---|
+| Todo surface | `Card` | Card / Default |
+| Task status | `Badge` | Badge / Default |
+| View action | `Button` | Button / Primary / MD |
+| Page hierarchy | Feature typography | PageTitle, Title, Body, Caption |
 
-## Responsive verification
+No new global Todo component or parallel visual token system was created.
 
-| Width | Teacher list | Empty Sheet | Horizontal overflow |
-|---|---|---|---|
-| 375px | captured | captured | none |
-| 402px | captured | captured | none |
-| 440px | captured | captured | none |
+## Token Verification
 
-## Interaction verification
+- Color: Text Primary, Text Secondary, Brand Primary, Danger, Surface Page, Surface Card.
+- Typography: PageTitle 22/30, Title 18/26, Body 14/22, Caption 12/20.
+- Spacing: 4, 8, 12, 16, 24, 32.
+- Radius: Card 16, Badge 4, Button 8.
+- Shadow: Card `0 4px 24px rgba(0, 0, 0, 0.04)`.
 
-- Empty submit shows two field-level errors and scrolls to the first invalid field.
-- Closing a form with content saves a user/task-scoped draft and shows `已自动保存草稿`.
-- Reopening the same task restores the draft.
-- Confirmation dialog contains only the submission summary.
-- Submitting disables repeated actions and shows `提交中`.
-- Successful submit closes the Sheet, changes the task to submitted, reduces the visible count, and shows `反馈已提交`.
-- Simulated failure preserves the form and draft and exposes a retry action.
-- Overdue status is visually emphasized without disabling submission.
-- Psychologist review is read-only; `确认已查看` writes view metadata without changing task status.
+## Responsive Evidence
 
-## Visual checks
+Temporary screenshots:
 
-- Uses the supplied pale-blue-to-white page gradient.
-- Cards use 16px radius and soft shadow.
-- Inputs and buttons use 12px radius.
-- Bottom Sheet uses 24px top radius.
-- Primary actions use the supplied dark token; brand emphasis uses the supplied blue token.
-- Sheet header and footer remain fixed while the content region scrolls independently.
-- Bottom actions include safe-area padding.
-- Product icons describe feedback, time, status, and review rather than copying source-domain facility icons.
+- `C:\tmp\changshu-pilot-qa\pending-tasks-375.png`
+- `C:\tmp\changshu-pilot-qa\pending-tasks-402.png`
+- `C:\tmp\changshu-pilot-qa\pending-tasks-440.png`
 
-## Outstanding manual check
+| Width | Cards rendered | Horizontal overflow | Detail action |
+|---|---:|---|---|
+| 375 px | 3 | none | opens existing task Sheet |
+| 402 px | 3 | none | opens existing task Sheet |
+| 440 px | 3 | none | opens existing task Sheet |
 
-- A real mobile device soft-keyboard pass is still recommended because headless desktop emulation cannot validate native keyboard resizing.
+## Findings
+
+- P0: none.
+- P1: none.
+- P2: none.
+- P3: none blocking the pilot.
+- Design System gap: the export does not contain PageHeader or TodoItem. The page therefore composes the existing Card, Badge, Button, and typography tokens without creating a new global component.
+- Design System gap: the repository's global UI primitive styles predate the supplied export. This pilot uses scoped overrides so unrelated screens are not changed before visual approval.
+
+## Regression
+
+- Current mock content and task count are unchanged.
+- Overdue remains a derived display state.
+- `markTaskRead`, route updates, and Feedback Sheet behavior are unchanged.
+- `npm.cmd run typecheck`: passed.
+- `npm.cmd run verify:factual-feedback`: passed, 9 checks.
+- `npm.cmd run build`: passed.
 
 final result: passed
