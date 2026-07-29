@@ -10,6 +10,8 @@
       }
 
       body {
+        display: grid;
+        gap: 8px;
         margin: 0;
         padding: 16px;
         color: var(--figma-color-text);
@@ -17,7 +19,7 @@
       }
 
       h1 {
-        margin: 0 0 16px;
+        margin: 0 0 8px;
         font-size: 14px;
         line-height: 20px;
       }
@@ -43,24 +45,30 @@
   </head>
   <body>
     <h1>Figma Design Compiler</h1>
-    <button id="build" type="button">Build Design System</button>
+    <button type="button" data-action="build-design-system">Build Design System</button>
+    <button type="button" data-action="build-pilot-screen">Build Pilot Screen</button>
     <script>
-      const button = document.getElementById('build');
+      const buttons = [...document.querySelectorAll('button')];
+      const labels = new Map(buttons.map((button) => [button.dataset.action, button.textContent]));
 
-      button.addEventListener('click', () => {
-        button.disabled = true;
-        button.textContent = 'Building...';
-        parent.postMessage({ pluginMessage: { type: 'build-design-system' } }, '*');
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+          buttons.forEach((item) => {
+            item.disabled = true;
+          });
+          button.textContent = 'Building...';
+          parent.postMessage({ pluginMessage: { type: button.dataset.action } }, '*');
+        });
       });
 
       onmessage = (event) => {
         const message = event.data.pluginMessage;
         if (!message) return;
 
-        button.disabled = false;
-        button.textContent = message.type === 'build-complete'
-          ? 'Build Design System'
-          : 'Try Again';
+        buttons.forEach((button) => {
+          button.disabled = false;
+          button.textContent = labels.get(button.dataset.action);
+        });
       };
     </script>
   </body>

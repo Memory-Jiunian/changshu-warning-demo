@@ -2,6 +2,7 @@
   "schemaVersion": "1.0.0",
   "components": [
     {
+      "id": "component.button",
       "name": "Button",
       "nodeType": "COMPONENT_SET",
       "variantProperties": {
@@ -34,6 +35,7 @@
       ]
     },
     {
+      "id": "component.badge",
       "name": "Badge",
       "nodeType": "COMPONENT_SET",
       "variantProperties": {
@@ -52,6 +54,7 @@
       ]
     },
     {
+      "id": "component.card",
       "name": "Card",
       "nodeType": "COMPONENT"
     }

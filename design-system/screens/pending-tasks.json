@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "screen.pending-tasks-pilot",
+  "name": "Pending Tasks Pilot",
+  "width": 375,
+  "children": [
+    {
+      "type": "TEXT",
+      "style": "TITLE",
+      "text": "Pending Tasks"
+    },
+    {
+      "type": "TEXT",
+      "style": "BODY",
+      "text": "A schema-driven screen built from existing design system components."
+    },
+    {
+      "type": "INSTANCE",
+      "componentId": "component.card"
+    },
+    {
+      "type": "INSTANCE",
+      "componentId": "component.card"
+    },
+    {
+      "type": "INSTANCE",
+      "componentId": "component.badge",
+      "variant": {
+        "Status": "Pending"
+      }
+    },
+    {
+      "type": "INSTANCE",
+      "componentId": "component.badge",
+      "variant": {
+        "Status": "Done"
+      }
+    },
+    {
+      "type": "INSTANCE",
+      "componentId": "component.button",
+      "variant": {
+        "Type": "Primary",
+        "Size": "MD"
+      }
+    }
+  ]
+}

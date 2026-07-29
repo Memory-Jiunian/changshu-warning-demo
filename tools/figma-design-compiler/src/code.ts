@@ -1,5 +1,6 @@
 import tokenSchemaJson from '../../../design-system/tokens.json';
 import componentSchemaJson from '../../../design-system/components.json';
+import screenSchemaJson from '../../../design-system/screens/pending-tasks.json';
 
 type ColorToken = {
   id: string;
@@ -25,6 +26,7 @@ type TokenSchema = {
 };
 
 type ComponentDefinition = {
+  id: string;
   name: string;
   nodeType: 'COMPONENT' | 'COMPONENT_SET';
   variantProperties?: Record<string, string[]>;
@@ -35,21 +37,50 @@ type ComponentSchema = {
   components: ComponentDefinition[];
 };
 
+type ScreenTextChild = {
+  type: 'TEXT';
+  style: 'TITLE' | 'BODY';
+  text: string;
+};
+
+type ScreenInstanceChild = {
+  type: 'INSTANCE';
+  componentId: string;
+  variant?: Record<string, string>;
+};
+
+type ScreenChild = ScreenTextChild | ScreenInstanceChild;
+
+type ScreenSchema = {
+  id: string;
+  name: string;
+  width: number;
+  children: ScreenChild[];
+};
+
 const tokenSchema = tokenSchemaJson as TokenSchema;
 const componentSchema = componentSchemaJson as ComponentSchema;
+const screenSchema = screenSchemaJson as ScreenSchema;
 
 const FONT_REGULAR: FontName = { family: 'Inter', style: 'Regular' };
 const FONT_SEMIBOLD: FontName = { family: 'Inter', style: 'Semi Bold' };
+const PLUGIN_DATA_NAMESPACE = 'figma-design-compiler';
+const COMPONENT_ID_KEY = 'componentId';
 
 figma.showUI(__html__, {
   width: 280,
-  height: 112,
+  height: 156,
   themeColors: true,
   title: 'Figma Design Compiler',
 });
 
 figma.ui.onmessage = async (message: { type?: string }) => {
-  if (message.type !== 'build-design-system') return;
+  if (
+    message.type !== 'build-design-system' &&
+    message.type !== 'build-pilot-screen'
+  ) {
+    return;
+  }
 
   try {
     validateSchemas();
@@ -58,18 +89,26 @@ figma.ui.onmessage = async (message: { type?: string }) => {
       figma.loadFontAsync(FONT_SEMIBOLD),
     ]);
 
-    const variables = createVariables();
-    const nodes = buildComponents(variables);
+    if (message.type === 'build-design-system') {
+      const variables = createVariables();
+      const nodes = buildComponents(variables);
 
-    figma.currentPage.selection = nodes;
-    figma.viewport.scrollAndZoomIntoView(nodes);
-    figma.notify('Pilot 01 design system created.');
-    figma.ui.postMessage({ type: 'build-complete' });
+      figma.currentPage.selection = nodes;
+      figma.viewport.scrollAndZoomIntoView(nodes);
+      figma.notify('Pilot 01 design system created.');
+    } else {
+      const screen = await buildPilotScreen();
+      figma.currentPage.selection = [screen];
+      figma.viewport.scrollAndZoomIntoView([screen]);
+      figma.notify('Pilot 02 screen created.');
+    }
+
+    figma.ui.postMessage({ type: 'build-complete', action: message.type });
   } catch (error) {
     const messageText = error instanceof Error ? error.message : String(error);
     console.error(error);
     figma.notify(`Build failed: ${messageText}`, { error: true });
-    figma.ui.postMessage({ type: 'build-error' });
+    figma.ui.postMessage({ type: 'build-error', action: message.type });
   }
 };
 
@@ -111,12 +150,33 @@ function validateSchemas(): void {
     if (!tokenIds.has(tokenId)) throw new Error(`Missing token: ${tokenId}`);
   }
 
-  const componentNames = new Set(componentSchema.components.map((component) => component.name));
-  for (const componentName of ['Button', 'Badge', 'Card']) {
-    if (!componentNames.has(componentName)) {
-      throw new Error(`Missing component: ${componentName}`);
+  const requiredComponents = new Map([
+    ['component.button', 'Button'],
+    ['component.badge', 'Badge'],
+    ['component.card', 'Card'],
+  ]);
+  const componentIds = new Set<string>();
+  const componentNames = new Set<string>();
+
+  for (const component of componentSchema.components) {
+    if (componentIds.has(component.id)) {
+      throw new Error(`Duplicate component id: ${component.id}`);
     }
+    if (componentNames.has(component.name)) {
+      throw new Error(`Duplicate component name: ${component.name}`);
+    }
+    if (requiredComponents.get(component.id) !== component.name) {
+      throw new Error(`Invalid component identity: ${component.id} / ${component.name}`);
+    }
+    componentIds.add(component.id);
+    componentNames.add(component.name);
   }
+
+  for (const componentId of requiredComponents.keys()) {
+    if (!componentIds.has(componentId)) throw new Error(`Missing component: ${componentId}`);
+  }
+
+  validateScreenSchema(componentIds);
 }
 
 function createVariables(): Map<string, Variable> {
@@ -236,6 +296,11 @@ function buildButtonSet(
 
   const componentSet = figma.combineAsVariants(components, figma.currentPage);
   componentSet.name = definition.name;
+  componentSet.setSharedPluginData(
+    PLUGIN_DATA_NAMESPACE,
+    COMPONENT_ID_KEY,
+    definition.id,
+  );
   assertVariantLayout(componentSet, 4);
   return componentSet;
 }
@@ -276,13 +341,24 @@ function buildBadgeSet(
 
   const componentSet = figma.combineAsVariants(components, figma.currentPage);
   componentSet.name = definition.name;
+  componentSet.setSharedPluginData(
+    PLUGIN_DATA_NAMESPACE,
+    COMPONENT_ID_KEY,
+    definition.id,
+  );
   assertVariantLayout(componentSet, 2);
   return componentSet;
 }
 
 function buildCard(variables: Map<string, Variable>): ComponentNode {
+  const definition = getComponentDefinition('Card', 'COMPONENT');
   const card = figma.createComponent();
-  card.name = 'Card';
+  card.name = definition.name;
+  card.setSharedPluginData(
+    PLUGIN_DATA_NAMESPACE,
+    COMPONENT_ID_KEY,
+    definition.id,
+  );
   card.layoutMode = 'VERTICAL';
   card.primaryAxisSizingMode = 'AUTO';
   card.counterAxisSizingMode = 'FIXED';
@@ -314,6 +390,150 @@ function buildCard(variables: Map<string, Variable>): ComponentNode {
   card.appendChild(body);
 
   return card;
+}
+
+function validateScreenSchema(componentIds: Set<string>): void {
+  if (!screenSchema.id || !screenSchema.name || screenSchema.width <= 0) {
+    throw new Error('Pilot screen id, name, and width are required');
+  }
+  if (!screenSchema.children.length) {
+    throw new Error('Pilot screen must contain children');
+  }
+
+  for (const child of screenSchema.children) {
+    if (child.type === 'TEXT') {
+      if (!child.text || !['TITLE', 'BODY'].includes(child.style)) {
+        throw new Error('Invalid screen text child');
+      }
+      continue;
+    }
+
+    if (!componentIds.has(child.componentId)) {
+      throw new Error(`Screen references unknown component id: ${child.componentId}`);
+    }
+
+    const definition = componentSchema.components.find(
+      (component) => component.id === child.componentId,
+    );
+    if (!definition) throw new Error(`Missing component schema: ${child.componentId}`);
+
+    const requestedVariants = child.variant ?? {};
+    for (const [property, value] of Object.entries(requestedVariants)) {
+      if (!definition.variantProperties?.[property]?.includes(value)) {
+        throw new Error(
+          `Invalid ${child.componentId} variant request: ${property}=${value}`,
+        );
+      }
+    }
+
+    if (definition.nodeType === 'COMPONENT_SET' && !child.variant) {
+      throw new Error(`Screen must request variants for ${child.componentId}`);
+    }
+    if (definition.nodeType === 'COMPONENT' && child.variant) {
+      throw new Error(`Screen cannot request variants for ${child.componentId}`);
+    }
+  }
+}
+
+async function buildPilotScreen(): Promise<FrameNode> {
+  const requiredComponentIds = new Set(
+    screenSchema.children
+      .filter((child): child is ScreenInstanceChild => child.type === 'INSTANCE')
+      .map((child) => child.componentId),
+  );
+  const components = await findDesignSystemComponents(requiredComponentIds);
+
+  const screen = figma.createFrame();
+  screen.name = screenSchema.name;
+  screen.layoutMode = 'VERTICAL';
+  screen.primaryAxisSizingMode = 'AUTO';
+  screen.counterAxisSizingMode = 'FIXED';
+  screen.resize(screenSchema.width, 100);
+  screen.itemSpacing = 16;
+  screen.paddingTop = 24;
+  screen.paddingRight = 24;
+  screen.paddingBottom = 24;
+  screen.paddingLeft = 24;
+  screen.fills = [solidPaint('#F5F5F5')];
+  screen.clipsContent = false;
+
+  for (const child of screenSchema.children) {
+    if (child.type === 'TEXT') {
+      const text = createText(
+        child.text,
+        child.style === 'TITLE' ? 24 : 14,
+        child.style === 'TITLE' ? FONT_SEMIBOLD : FONT_REGULAR,
+      );
+      text.fills = [solidPaint(child.style === 'TITLE' ? '#333333' : '#666666')];
+      screen.appendChild(text);
+      text.layoutAlign = 'STRETCH';
+      text.textAutoResize = 'HEIGHT';
+      continue;
+    }
+
+    const component = components.get(child.componentId);
+    if (!component) {
+      throw new Error(
+        `Missing design system component: ${child.componentId}. Run Build Design System first.`,
+      );
+    }
+
+    const instance = createScreenInstance(component, child);
+    screen.appendChild(instance);
+    if (child.componentId === 'component.card') {
+      instance.layoutAlign = 'STRETCH';
+    }
+  }
+
+  screen.x = figma.viewport.center.x - screen.width / 2;
+  screen.y = figma.viewport.center.y - screen.height / 2;
+  return screen;
+}
+
+async function findDesignSystemComponents(
+  requiredIds: Set<string>,
+): Promise<Map<string, ComponentNode | ComponentSetNode>> {
+  await figma.loadAllPagesAsync();
+  const components = new Map<string, ComponentNode | ComponentSetNode>();
+  const candidates = figma.root.findAll(
+    (node) => node.type === 'COMPONENT' || node.type === 'COMPONENT_SET',
+  );
+
+  for (const candidate of candidates) {
+    if (candidate.type !== 'COMPONENT' && candidate.type !== 'COMPONENT_SET') continue;
+    const componentId = candidate.getSharedPluginData(
+      PLUGIN_DATA_NAMESPACE,
+      COMPONENT_ID_KEY,
+    );
+    if (!requiredIds.has(componentId)) continue;
+    if (components.has(componentId)) {
+      throw new Error(`Multiple design system components found for: ${componentId}`);
+    }
+    components.set(componentId, candidate);
+  }
+
+  for (const componentId of requiredIds) {
+    if (!components.has(componentId)) {
+      throw new Error(
+        `Missing design system component: ${componentId}. Run Build Design System first.`,
+      );
+    }
+  }
+
+  return components;
+}
+
+function createScreenInstance(
+  component: ComponentNode | ComponentSetNode,
+  child: ScreenInstanceChild,
+): InstanceNode {
+  if (component.type === 'COMPONENT') {
+    return component.createInstance();
+  }
+
+  const instance = component.defaultVariant.createInstance();
+  instance.setProperties(child.variant ?? {});
+  return instance;
 }
 
 function requireVariants(definition: ComponentDefinition): Array<Record<string, string>> {
