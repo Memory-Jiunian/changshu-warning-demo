@@ -11,6 +11,7 @@ const manifest = JSON.parse(await readFile(new URL('manifest.json', pluginRoot),
 const bundle = await readFile(new URL('dist/code.js', pluginRoot), 'utf8');
 const pluginSource = await readFile(new URL('src/code.ts', pluginRoot), 'utf8');
 const ui = await readFile(new URL('src/ui.html', pluginRoot), 'utf8');
+const expectedPluginDataNamespace = 'figma_design_compiler';
 
 const expectedTokens = new Map([
   ['color.brand.primary', 'color/brand/primary'],
@@ -165,6 +166,49 @@ for (const apiCall of [
 }
 
 assert(ui.includes('Build Pilot Screen'), 'plugin UI is missing Build Pilot Screen');
+
+const namespaceDeclaration = pluginSource.match(
+  /const PLUGIN_DATA_NAMESPACE = '([^']+)'/,
+);
+assert(namespaceDeclaration, 'PLUGIN_DATA_NAMESPACE declaration not found');
+assert(
+  namespaceDeclaration[1] === expectedPluginDataNamespace,
+  `invalid shared plugin data namespace: ${namespaceDeclaration[1]}`,
+);
+assert(
+  !namespaceDeclaration[1].includes('-'),
+  'shared plugin data namespace must not contain "-"',
+);
+assert(
+  pluginSource.match(/figma_design_compiler/g)?.length === 1,
+  'shared plugin data namespace must be defined only once',
+);
+
+for (const method of [
+  'setSharedPluginData',
+  'getSharedPluginData',
+  'getSharedPluginDataKeys',
+]) {
+  const calls = [
+    ...pluginSource.matchAll(
+      new RegExp(`\\.${method}\\(\\s*([^,\\n\\)]+)`, 'g'),
+    ),
+  ];
+  if (method !== 'getSharedPluginDataKeys') {
+    assert(calls.length > 0, `${method} call not found`);
+  }
+  for (const call of calls) {
+    assert(
+      call[1].trim() === 'PLUGIN_DATA_NAMESPACE',
+      `${method} must use PLUGIN_DATA_NAMESPACE`,
+    );
+  }
+}
+
+assert(
+  bundle.includes(expectedPluginDataNamespace),
+  'built plugin is missing the valid shared plugin data namespace',
+);
 
 const screenBuilderStart = pluginSource.indexOf('async function buildPilotScreen');
 const screenBuilderEnd = pluginSource.indexOf('function requireVariants');

@@ -64,7 +64,7 @@ const screenSchema = screenSchemaJson as ScreenSchema;
 
 const FONT_REGULAR: FontName = { family: 'Inter', style: 'Regular' };
 const FONT_SEMIBOLD: FontName = { family: 'Inter', style: 'Semi Bold' };
-const PLUGIN_DATA_NAMESPACE = 'figma-design-compiler';
+const PLUGIN_DATA_NAMESPACE = 'figma_design_compiler';
 const COMPONENT_ID_KEY = 'componentId';
 
 figma.showUI(__html__, {
