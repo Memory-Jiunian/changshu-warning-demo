@@ -1,5 +1,6 @@
 .ui-input,
-.ui-select-menu {
+.ui-select-menu,
+.ui-textarea--figma-v01 {
   --color-text-error: var(--color-text-danger);
   --color-surface-input-default: var(--color-surface-card);
   --color-surface-input-disabled: var(--color-surface-page);
@@ -390,6 +391,45 @@
   padding: 12px 13px;
   line-height: 1.6;
   resize: vertical;
+}
+
+.ui-textarea--figma-v01 {
+  min-height: 90px;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-control-small);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-input-default);
+  font: var(--font-input-v01);
+  resize: none;
+  box-shadow: none;
+}
+
+.ui-textarea.ui-textarea--figma-v01::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+.ui-textarea--figma-v01.ui-textarea--error,
+.ui-textarea--figma-v01[aria-invalid='true'] {
+  border: var(--border-width-hairline) solid var(--color-border-danger);
+}
+
+.ui-textarea.ui-textarea--figma-v01:focus {
+  border-color: transparent;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-input-default);
+  box-shadow: none;
+}
+
+.ui-textarea.ui-textarea--figma-v01.ui-textarea--error:focus,
+.ui-textarea.ui-textarea--figma-v01[aria-invalid='true']:focus {
+  border-color: var(--color-border-danger);
+}
+
+.ui-textarea.ui-textarea--figma-v01:focus-visible {
+  outline: 2px solid var(--color-icon-brand);
+  outline-offset: 2px;
 }
 
 .ui-select {
