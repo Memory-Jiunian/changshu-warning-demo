@@ -713,7 +713,7 @@
 }
 
 .ff-text-danger {
-  color: var(--color-danger) !important;
+  color: var(--color-text-danger) !important;
 }
 
 /* Pending tasks pilot: scoped to the exported Design System baseline. */
