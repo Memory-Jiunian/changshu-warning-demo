@@ -414,6 +414,7 @@ export function MvpApp({
       role={selectedRole}
       activeNavigation={activeNavigation}
       onNavigate={navigate}
+      showMainContentPlate={!['teacherFeedback', 'report'].includes(route.name)}
       showBottomNavigation={
         route.name !== 'teacherTaskDetail' && route.name !== 'teacherFeedback'
       }

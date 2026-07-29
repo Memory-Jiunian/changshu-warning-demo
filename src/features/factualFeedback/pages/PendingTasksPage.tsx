@@ -6,6 +6,7 @@ import type { Result } from '../../../domain/result';
 import type { CollaborationTask } from '../../../domain/tasks';
 import type { DemoUser } from '../../../domain/users';
 import { getTaskObservationRecords } from '../../../selectors/taskSelectors';
+import { MainContentPlate } from '../../../components/layout/PageFrame';
 import { FeedbackBottomSheet } from '../components/FeedbackBottomSheet';
 import { TaskCard } from '../components/TaskCard';
 
@@ -64,27 +65,29 @@ export function PendingTasksPage({
         </div>
       </section>
 
-      <section className="ff-task-list" aria-label="待反馈任务">
-        {loading && tasks.length === 0 ? (
-          <div className="ff-state-card" role="status">正在加载待办…</div>
-        ) : tasks.length === 0 ? (
-          <div className="ff-state-card">
-            <h2>当前没有待反馈任务</h2>
-          </div>
-        ) : (
-          tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              now={new Date(now)}
-              onOpen={() => {
-                void markTaskRead(task.id);
-                onOpenTask(task.id);
-              }}
-            />
-          ))
-        )}
-      </section>
+      <MainContentPlate className="ff-pending-page__plate">
+        <section className="ff-task-list" aria-label="待反馈任务">
+          {loading && tasks.length === 0 ? (
+            <div className="ff-state-card" role="status">正在加载待办…</div>
+          ) : tasks.length === 0 ? (
+            <div className="ff-state-card">
+              <h2>当前没有待反馈任务</h2>
+            </div>
+          ) : (
+            tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                now={new Date(now)}
+                onOpen={() => {
+                  void markTaskRead(task.id);
+                  onOpenTask(task.id);
+                }}
+              />
+            ))
+          )}
+        </section>
+      </MainContentPlate>
 
       {selectedTask ? (
         <FeedbackBottomSheet

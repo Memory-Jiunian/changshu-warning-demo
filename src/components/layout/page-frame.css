@@ -1,0 +1,86 @@
+:root {
+  /* Figma Design System v0.1 paint styles used by the shared page frame. */
+  --color-surface-page-primary: #fafafa;
+  --color-surface-page-secondary: #bfd5ff;
+  --color-surface-list-opaque: #fafafa;
+  --color-surface-list-transparent: rgba(250, 250, 250, 0.1);
+  --color-stroke-list-opaque: #ffffff;
+  --color-stroke-list-transparent: rgba(255, 255, 255, 0.2);
+  --paint-surface-page: linear-gradient(
+    180deg,
+    var(--color-surface-page-secondary) 0%,
+    var(--color-surface-page-primary) 50%,
+    var(--color-surface-page-primary) 100%
+  );
+  --paint-surface-list: linear-gradient(
+    180deg,
+    var(--color-surface-list-transparent) 0%,
+    var(--color-surface-list-opaque) 20%
+  );
+  --paint-stroke-list-default: linear-gradient(
+    180deg,
+    var(--color-stroke-list-transparent) 0%,
+    var(--color-stroke-list-opaque) 50%
+  );
+  --radius-main-content-plate: 24px;
+}
+
+body,
+.phone-shell,
+.mvp-app-shell,
+.mvp-role-select,
+.mvp-system-state,
+.layout-mobile-shell,
+.ff-app {
+  background: var(--paint-surface-page);
+  background-attachment: scroll;
+}
+
+.layout-main-content-plate {
+  position: relative;
+  min-width: 0;
+  border-radius: var(--radius-main-content-plate);
+  background: var(--paint-surface-list);
+  isolation: isolate;
+}
+
+.layout-main-content-plate::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--paint-stroke-list-default);
+  content: "";
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.layout-main-content-plate--padded {
+  padding: 16px;
+}
+
+.mvp-app-shell__content > .layout-main-content-plate,
+.phone-shell > .layout-main-content-plate {
+  margin: 12px;
+}
+
+.mvp-app-shell__content > .layout-main-content-plate > .mvp-page,
+.phone-shell > .layout-main-content-plate > .content {
+  padding-inline: 16px;
+}
+
+@media (max-width: 374px) {
+  .mvp-app-shell__content > .layout-main-content-plate,
+  .phone-shell > .layout-main-content-plate {
+    margin-inline: 10px;
+  }
+
+  .layout-main-content-plate--padded {
+    padding-inline: 14px;
+  }
+}

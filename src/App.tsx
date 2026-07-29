@@ -9,6 +9,7 @@ import { Button as UiButton } from './components/ui/Button';
 import { Card as UiCard } from './components/ui/Card';
 import { FormField as UiFormField } from './components/ui/FormField';
 import { Sheet as UiSheet } from './components/ui/Sheet';
+import { MainContentPlate } from './components/layout/PageFrame';
 import type { ObservationInput } from './domain/feedback';
 import type { UserRole } from './domain/users';
 import {
@@ -409,6 +410,7 @@ function MobileShell({
 }) {
   const showBack = route.name !== 'home' && route.name !== 'schoolOverview';
   const canReport = rolePermissions[role.id].canSubmitClue;
+  const showMainContentPlate = ['home', 'task', 'progress', 'schoolOverview'].includes(route.name);
   return (
     <main className="phone-shell">
       <header className="top-bar">
@@ -427,7 +429,11 @@ function MobileShell({
           <span className="icon-button is-hidden" />
         )}
       </header>
-      {children}
+      {showMainContentPlate ? (
+        <MainContentPlate padded={false}>{children}</MainContentPlate>
+      ) : (
+        children
+      )}
       {toast && <div className="toast">{toast}</div>}
     </main>
   );
