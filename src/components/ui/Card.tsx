@@ -2,9 +2,11 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import './ui.css';
 
 type CardTone = 'default' | 'soft' | 'glass' | 'warning';
+type CardVariant = 'legacy' | 'figma-v01';
 
 export interface CardProps extends HTMLAttributes<HTMLElement> {
   tone?: CardTone;
+  variant?: CardVariant;
   as?: 'article' | 'section' | 'div';
 }
 
@@ -12,8 +14,23 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
-export function Card({ tone = 'default', as: Component = 'section', className, ...props }: CardProps) {
-  return <Component className={cx('ui-card', `ui-card--${tone}`, className)} {...props} />;
+export function Card({
+  tone = 'default',
+  variant = 'legacy',
+  as: Component = 'section',
+  className,
+  ...props
+}: CardProps) {
+  return (
+    <Component
+      className={cx(
+        'ui-card',
+        variant === 'figma-v01' ? 'ui-card--figma-v01' : `ui-card--${tone}`,
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -39,4 +56,3 @@ export function CardFooter({ className, children, ...props }: HTMLAttributes<HTM
     </div>
   );
 }
-

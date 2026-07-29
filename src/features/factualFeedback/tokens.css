@@ -6,6 +6,7 @@
   --color-text-primary: #333333;
   --color-text-secondary: #666666;
   --color-text-tertiary: #999999;
+  --color-text-muted: #cccccc;
   --color-text-inverse: #ffffff;
   --color-text-danger: #d93f21;
 
@@ -25,13 +26,19 @@
   --color-success-soft: #e9fbe9;
   --color-warning: #ff9226;
   --color-warning-soft: #fff1e3;
+  --color-status-badge-default: var(--color-brand-primary);
+  --color-status-success: var(--color-success);
+  --color-status-warning: var(--color-warning);
+  --color-status-danger: var(--color-danger);
 
   --color-overlay: rgba(0, 0, 0, 0.4);
   --color-button-primary: #333333;
   --color-button-primary-pressed: #000000;
+  --color-surface-button-inverse: #333333;
   --color-button-secondary: #f2f3f6;
   --color-button-disabled: #dadada;
 
+  --space-3xs: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -39,14 +46,19 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-2-xs: var(--space-1);
+  --space-xs: var(--space-2);
 
   --radius-small: 8px;
   --radius-control: 12px;
   --radius-card: 16px;
+  --radius-tag: 4px;
   --radius-sheet: 24px;
   --radius-pill: 999px;
 
   --font-page-title: 700 18px/26px "Alibaba PuHuiTi 3.0", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-display: 900 36px/44px "Alibaba PuHuiTi 3.0", "PingFang SC",
     "Microsoft YaHei", system-ui, sans-serif;
   --font-title: 700 16px/24px "Alibaba PuHuiTi 3.0", "PingFang SC",
     "Microsoft YaHei", system-ui, sans-serif;
@@ -59,7 +71,8 @@
   --height-button: 48px;
   --height-touch-target: 44px;
 
-  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.04);
+  --shadow-card-legacy: 0 8px 24px rgba(0, 0, 0, 0.08);
   --shadow-floating: 0 16px 48px rgba(0, 0, 0, 0.16);
 
   --page-background: linear-gradient(

@@ -67,7 +67,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-card);
   background: var(--color-surface-card);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-card-legacy);
 }
 
 .ff-greeting .ff-button {
@@ -96,22 +96,25 @@
 
 .ff-task-card {
   position: relative;
-  padding: var(--space-4);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-card);
-  background: var(--color-surface-card);
-  box-shadow: var(--shadow-card);
   transition:
     transform 160ms ease,
     box-shadow 160ms ease;
 }
 
-.ff-task-card:active {
+.ff-task-card:not(.ui-card--figma-v01) {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-card);
+  box-shadow: var(--shadow-card-legacy);
+}
+
+.ff-task-card:not(.ui-card--figma-v01):active {
   transform: translateY(1px);
   box-shadow: none;
 }
 
-.ff-task-card--overdue {
+.ff-task-card--overdue:not(.ui-card--figma-v01) {
   border-color: var(--color-border-danger);
 }
 
@@ -715,7 +718,6 @@
 
 /* Pending tasks pilot: scoped to the exported Design System baseline. */
 .ff-pending-page {
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.04);
   --page-background: var(--color-surface-subtle);
   padding-right: var(--space-4);
   padding-left: var(--space-4);
@@ -744,94 +746,60 @@
   box-shadow: none;
 }
 
-.ff-pending-page .ff-greeting span,
-.ff-pending-page .ff-greeting p,
+.ff-pending-page .ff-greeting__class-meta,
+.ff-pending-page .ff-greeting__hero-title,
 .ff-pending-page .ff-greeting strong {
   display: block;
   margin: 0;
 }
 
-.ff-pending-page .ff-greeting span {
+.ff-pending-page .ff-greeting__class-meta {
   color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 20px;
+  font: var(--font-caption);
 }
 
-.ff-pending-page .ff-greeting p {
-  margin-top: var(--space-2);
+.ff-pending-page .ff-greeting__content {
+  margin-top: var(--space-2-xs);
+}
+
+.ff-pending-page .ff-greeting__hero-title {
   color: var(--color-text-primary);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 26px;
+  font: var(--font-display);
 }
 
 .ff-pending-page .ff-greeting strong {
-  margin-top: var(--space-1);
   color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 22px;
+  font: var(--font-body);
 }
 
 .ff-pending-page .ff-task-list {
+  min-width: 0;
   gap: var(--space-4);
 }
 
-.ff-pending-page .ui-card.ff-task-card {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border: 0;
-  border-radius: var(--radius-card);
-  background: var(--color-surface-card);
-  box-shadow: var(--shadow-card);
-}
-
-.ff-pending-page .ff-task-card--overdue {
-  border: 0;
-}
-
-.ff-pending-page .ff-task-card .ui-card__header,
-.ff-pending-page .ff-task-card .ui-card__content,
-.ff-pending-page .ff-task-card .ui-card__footer {
-  padding: 0;
+.ff-pending-page .ff-task-card {
+  width: 100%;
+  min-width: 0;
 }
 
 .ff-pending-page .ff-task-card__top {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-.ff-pending-page .ff-task-card .ui-card__title {
+.ff-pending-page .ff-task-card__top .ui-card__title,
+.ff-pending-page .ff-task-card .ui-card__content,
+.ff-pending-page .ff-task-card__footer {
   min-width: 0;
-  color: var(--color-text-primary);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 24px;
-}
-
-.ff-pending-page .ff-task-card .ui-badge {
-  min-height: 24px;
-  flex: 0 0 auto;
-  padding: 2px var(--space-3);
-  border: 0;
-  border-radius: 4px;
-  color: var(--color-text-inverse);
-  background: var(--color-brand-primary);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 20px;
 }
 
 .ff-pending-page .ff-task-card__purpose {
   margin: 0;
   color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 22px;
+  font: var(--font-body);
 }
 
 .ff-pending-page .ff-task-card__purpose span {
@@ -849,23 +817,8 @@
 .ff-pending-page .ff-task-card__deadline {
   min-width: 0;
   margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 20px;
-}
-
-.ff-pending-page .ff-task-card .ui-button {
-  min-height: 38px;
-  padding: var(--space-2) var(--space-6);
-  border: 0;
-  border-radius: 8px;
-  color: var(--color-text-inverse);
-  background: var(--color-brand-primary);
-  box-shadow: none;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 22px;
+  color: var(--color-text-muted);
+  font: var(--font-caption);
 }
 
 .ff-pending-page .ff-state-card {
@@ -882,7 +835,7 @@
     margin: var(--space-4) auto;
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-sheet);
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-card-legacy);
   }
 
   .ff-sheet {

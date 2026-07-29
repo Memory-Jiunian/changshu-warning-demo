@@ -24,11 +24,12 @@ export function TaskCard({
   return (
     <Card
       as="article"
+      variant="figma-v01"
       className={`ff-task-card${display.isOverdue ? ' ff-task-card--overdue' : ''}`}
     >
       <CardHeader className="ff-task-card__top">
         <CardTitle>{task.student.name}</CardTitle>
-        <Badge variant="brand">待反馈</Badge>
+        <Badge designSystem="figma-v01" variant="default">待反馈</Badge>
       </CardHeader>
       <CardContent>
         <p className="ff-task-card__purpose">
@@ -40,8 +41,8 @@ export function TaskCard({
           {formatFeedbackRemaining(task, now)}
         </p>
         <Button
-          variant="primary"
-          size="md"
+          variant="inverse"
+          size="xs"
           onClick={onOpen}
         >
           查看详情

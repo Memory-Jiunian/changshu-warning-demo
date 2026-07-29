@@ -55,9 +55,11 @@ export function PendingTasksPage({
       </header>
 
       <section className="ff-greeting">
-        <div>
-          <span>{tasks[0]?.student.className ?? '班主任工作台'}</span>
-          <p>{currentUser.name}，您好</p>
+        <span className="ff-greeting__class-meta">
+          {tasks[0]?.student.className ?? '班主任工作台'}
+        </span>
+        <div className="ff-greeting__content">
+          <p className="ff-greeting__hero-title">{currentUser.name}，您好</p>
           <strong>您有 {tasks.length} 件待办需要处理</strong>
         </div>
       </section>

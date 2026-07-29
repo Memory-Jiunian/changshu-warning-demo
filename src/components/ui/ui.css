@@ -30,6 +30,13 @@
   box-shadow: none;
 }
 
+.ui-button--xs {
+  min-height: 24px;
+  padding: var(--space-3xs) var(--space-3);
+  border-radius: var(--radius-pill);
+  font: var(--font-caption);
+}
+
 .ui-button--sm {
   min-height: 36px;
   padding: 0 13px;
@@ -63,6 +70,13 @@
   background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
   border-color: rgba(64, 74, 210, 0.24);
   box-shadow: 0 12px 24px rgba(75, 87, 220, 0.2);
+}
+
+.ui-button--inverse {
+  color: var(--color-text-inverse);
+  background: var(--color-surface-button-inverse, var(--color-ink));
+  border: 0;
+  box-shadow: none;
 }
 
 .ui-button--secondary {
@@ -119,6 +133,22 @@
   border-color: rgba(196, 122, 34, 0.18);
 }
 
+.ui-card--figma-v01 {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ui-card--figma-v01 > .ui-card__header,
+.ui-card--figma-v01 > .ui-card__content,
+.ui-card--figma-v01 > .ui-card__footer {
+  padding: 0;
+}
+
 .ui-card__header,
 .ui-card__content,
 .ui-card__footer {
@@ -171,6 +201,16 @@
   line-height: 1.2;
 }
 
+.ui-badge--default {
+  min-height: 24px;
+  padding: var(--space-3xs) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-tag);
+  color: var(--color-text-inverse);
+  background: var(--color-status-badge-default);
+  font: var(--font-caption);
+}
+
 .ui-badge--neutral {
   color: var(--color-body);
   background: rgba(255, 255, 255, 0.68);
@@ -207,6 +247,32 @@
   color: var(--color-muted);
   background: rgba(255, 255, 255, 0.84);
   border-color: rgba(90, 100, 140, 0.18);
+}
+
+.ui-badge--figma-v01 {
+  min-height: 24px;
+  padding: var(--space-3xs) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-tag);
+  color: var(--color-text-inverse);
+  font: var(--font-caption);
+  box-shadow: none;
+}
+
+.ui-badge--figma-v01.ui-badge--default {
+  background: var(--color-status-badge-default);
+}
+
+.ui-badge--figma-v01.ui-badge--success {
+  background: var(--color-status-success);
+}
+
+.ui-badge--figma-v01.ui-badge--warning {
+  background: var(--color-status-warning);
+}
+
+.ui-badge--figma-v01.ui-badge--error {
+  background: var(--color-status-danger);
 }
 
 .ui-form-field {
