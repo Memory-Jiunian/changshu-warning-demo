@@ -22,6 +22,9 @@
     var(--color-stroke-list-transparent) 0%,
     var(--color-stroke-list-opaque) 50%
   );
+  --effect-glass-plate-backdrop-blur: 16px;
+  --effect-glass-plate-inner-shadow:
+    inset 0 2px 8px 0 color(srgb 1 1 1 / 0.2399999946);
   --radius-main-content-plate: 24px;
 }
 
@@ -41,6 +44,9 @@ body,
   min-width: 0;
   border-radius: var(--radius-main-content-plate);
   background: var(--paint-surface-list);
+  box-shadow: var(--effect-glass-plate-inner-shadow);
+  -webkit-backdrop-filter: blur(var(--effect-glass-plate-backdrop-blur));
+  backdrop-filter: blur(var(--effect-glass-plate-backdrop-blur));
   isolation: isolate;
 }
 
