@@ -2,12 +2,14 @@ import tokenSchemaJson from '../../../design-system/tokens.json';
 import componentSchemaJson from '../../../design-system/components.json';
 
 type ColorToken = {
+  id: string;
   name: string;
   type: 'COLOR';
   value: string;
 };
 
 type FloatToken = {
+  id: string;
   name: string;
   type: 'FLOAT';
   value: number;
@@ -72,19 +74,41 @@ figma.ui.onmessage = async (message: { type?: string }) => {
 };
 
 function validateSchemas(): void {
-  const requiredTokens = [
-    'color.brand.primary',
-    'color.text.primary',
-    'color.bg.surface',
-    'spacing.md',
-    'radius.md',
-  ];
-  const tokenNames = new Set(tokenSchema.tokens.map((token) => token.name));
+  const requiredTokens = new Map([
+    ['color.brand.primary', 'color/brand/primary'],
+    ['color.text.primary', 'color/text/primary'],
+    ['color.bg.surface', 'color/bg/surface'],
+    ['spacing.md', 'spacing/md'],
+    ['radius.md', 'radius/md'],
+  ]);
+  const tokenIds = new Set<string>();
+  const variableNames = new Set<string>();
 
-  for (const tokenName of requiredTokens) {
-    if (!tokenNames.has(tokenName)) {
-      throw new Error(`Missing token: ${tokenName}`);
+  for (const token of tokenSchema.tokens) {
+    if (tokenIds.has(token.id)) {
+      throw new Error(`Duplicate token id: ${token.id}`);
     }
+    if (variableNames.has(token.name)) {
+      throw new Error(`Duplicate variable name: ${token.name}`);
+    }
+    if (token.name.includes('.')) {
+      throw new Error(`Figma variable name cannot contain ".": ${token.name}`);
+    }
+
+    const expectedName = requiredTokens.get(token.id);
+    if (!expectedName) {
+      throw new Error(`Unexpected token id: ${token.id}`);
+    }
+    if (token.name !== expectedName) {
+      throw new Error(`Token ${token.id} must use Figma name ${expectedName}`);
+    }
+
+    tokenIds.add(token.id);
+    variableNames.add(token.name);
+  }
+
+  for (const tokenId of requiredTokens.keys()) {
+    if (!tokenIds.has(tokenId)) throw new Error(`Missing token: ${tokenId}`);
   }
 
   const componentNames = new Set(componentSchema.components.map((component) => component.name));
@@ -110,7 +134,7 @@ function createVariables(): Map<string, Variable> {
       collection.defaultModeId,
       definition.type === 'COLOR' ? hexToRgb(definition.value) : definition.value,
     );
-    variables.set(definition.name, variable);
+    variables.set(definition.id, variable);
   }
 
   return variables;

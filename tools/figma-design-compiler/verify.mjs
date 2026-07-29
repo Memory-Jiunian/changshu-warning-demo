@@ -7,19 +7,32 @@ const components = JSON.parse(await readFile(new URL('design-system/components.j
 const manifest = JSON.parse(await readFile(new URL('manifest.json', pluginRoot), 'utf8'));
 const bundle = await readFile(new URL('dist/code.js', pluginRoot), 'utf8');
 
-const expectedTokens = new Set([
-  'color.brand.primary',
-  'color.text.primary',
-  'color.bg.surface',
-  'spacing.md',
-  'radius.md',
+const expectedTokens = new Map([
+  ['color.brand.primary', 'color/brand/primary'],
+  ['color.text.primary', 'color/text/primary'],
+  ['color.bg.surface', 'color/bg/surface'],
+  ['spacing.md', 'spacing/md'],
+  ['radius.md', 'radius/md'],
 ]);
 
 assert(tokens.tokens.length === 5, 'tokens.json must contain exactly five tokens');
-assert(
-  tokens.tokens.every((token) => expectedTokens.delete(token.name)) && expectedTokens.size === 0,
-  'tokens.json does not contain the exact Pilot 01 token set',
-);
+
+const actualIds = new Set();
+const actualNames = new Set();
+for (const token of tokens.tokens) {
+  assert(expectedTokens.has(token.id), `unexpected token id: ${token.id}`);
+  assert(
+    token.name === expectedTokens.get(token.id),
+    `incorrect Figma variable name for ${token.id}: ${token.name}`,
+  );
+  assert(!token.name.includes('.'), `Figma variable name contains ".": ${token.name}`);
+  assert(!actualIds.has(token.id), `duplicate token id: ${token.id}`);
+  assert(!actualNames.has(token.name), `duplicate Figma variable name: ${token.name}`);
+  actualIds.add(token.id);
+  actualNames.add(token.name);
+}
+assert(actualIds.size === expectedTokens.size, 'tokens.json is missing a Pilot 01 token id');
+assert(actualNames.size === expectedTokens.size, 'tokens.json is missing a Figma variable name');
 
 const button = components.components.find((component) => component.name === 'Button');
 const badge = components.components.find((component) => component.name === 'Badge');
