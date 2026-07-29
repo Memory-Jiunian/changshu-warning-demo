@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: Inter, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        padding: 16px;
+        color: var(--figma-color-text);
+        background: var(--figma-color-bg);
+      }
+
+      h1 {
+        margin: 0 0 16px;
+        font-size: 14px;
+        line-height: 20px;
+      }
+
+      button {
+        width: 100%;
+        min-height: 32px;
+        border: 0;
+        border-radius: 6px;
+        color: var(--figma-color-text-onbrand);
+        background: var(--figma-color-bg-brand);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.6;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Figma Design Compiler</h1>
+    <button id="build" type="button">Build Design System</button>
+    <script>
+      const button = document.getElementById('build');
+
+      button.addEventListener('click', () => {
+        button.disabled = true;
+        button.textContent = 'Building...';
+        parent.postMessage({ pluginMessage: { type: 'build-design-system' } }, '*');
+      });
+
+      onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message) return;
+
+        button.disabled = false;
+        button.textContent = message.type === 'build-complete'
+          ? 'Build Design System'
+          : 'Try Again';
+      };
+    </script>
+  </body>
+</html>

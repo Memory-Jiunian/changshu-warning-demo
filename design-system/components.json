@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "1.0.0",
+  "components": [
+    {
+      "name": "Button",
+      "nodeType": "COMPONENT_SET",
+      "variantProperties": {
+        "Type": [
+          "Primary",
+          "Secondary"
+        ],
+        "Size": [
+          "SM",
+          "MD"
+        ]
+      },
+      "variants": [
+        {
+          "Type": "Primary",
+          "Size": "SM"
+        },
+        {
+          "Type": "Primary",
+          "Size": "MD"
+        },
+        {
+          "Type": "Secondary",
+          "Size": "SM"
+        },
+        {
+          "Type": "Secondary",
+          "Size": "MD"
+        }
+      ]
+    },
+    {
+      "name": "Badge",
+      "nodeType": "COMPONENT_SET",
+      "variantProperties": {
+        "Status": [
+          "Pending",
+          "Done"
+        ]
+      },
+      "variants": [
+        {
+          "Status": "Pending"
+        },
+        {
+          "Status": "Done"
+        }
+      ]
+    },
+    {
+      "name": "Card",
+      "nodeType": "COMPONENT"
+    }
+  ]
+}
