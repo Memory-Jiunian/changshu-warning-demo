@@ -24,6 +24,13 @@
         line-height: 20px;
       }
 
+      #schema-summary {
+        margin: 0 0 4px;
+        color: var(--figma-color-text-secondary);
+        font-size: 11px;
+        line-height: 16px;
+      }
+
       button {
         width: 100%;
         min-height: 32px;
@@ -45,11 +52,15 @@
   </head>
   <body>
     <h1>Figma Design Compiler</h1>
+    <p id="schema-summary">Loading bundled schema…</p>
     <button type="button" data-action="sync-design-system">Sync Design System</button>
     <button type="button" data-action="build-pilot-screen">Build Pilot Screen</button>
     <script>
       const buttons = [...document.querySelectorAll('button')];
       const labels = new Map(buttons.map((button) => [button.dataset.action, button.textContent]));
+      const schemaSummary = document.querySelector('#schema-summary');
+
+      parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
 
       buttons.forEach((button) => {
         button.addEventListener('click', () => {
@@ -64,6 +75,12 @@
       onmessage = (event) => {
         const message = event.data.pluginMessage;
         if (!message) return;
+
+        if (message.type === 'schema-summary') {
+          schemaSummary.textContent =
+            `Brand: ${message.summary.brand} · Radius: ${message.summary.radius}`;
+          return;
+        }
 
         buttons.forEach((button) => {
           button.disabled = false;

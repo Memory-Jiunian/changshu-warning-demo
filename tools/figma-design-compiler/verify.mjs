@@ -12,6 +12,8 @@ const bundle = await readFile(new URL('dist/code.js', pluginRoot), 'utf8');
 const pluginSource = await readFile(new URL('src/code.ts', pluginRoot), 'utf8');
 const ui = await readFile(new URL('src/ui.html', pluginRoot), 'utf8');
 const expectedPluginDataNamespace = 'figma_design_compiler';
+const brandToken = tokens.tokens.find((token) => token.id === 'color.brand.primary');
+const radiusToken = tokens.tokens.find((token) => token.id === 'radius.md');
 
 const expectedTokens = new Map([
   ['color.brand.primary', 'color/brand/primary'],
@@ -39,6 +41,8 @@ for (const token of tokens.tokens) {
 }
 assert(actualIds.size === expectedTokens.size, 'tokens.json is missing a Pilot 01 token id');
 assert(actualNames.size === expectedTokens.size, 'tokens.json is missing a Figma variable name');
+assert(brandToken?.type === 'COLOR', 'color.brand.primary must be a COLOR token');
+assert(radiusToken?.type === 'FLOAT', 'radius.md must be a FLOAT token');
 
 const button = components.components.find((component) => component.name === 'Button');
 const badge = components.components.find((component) => component.name === 'Badge');
@@ -170,6 +174,28 @@ for (const apiCall of [
 
 assert(ui.includes('Sync Design System'), 'plugin UI is missing Sync Design System');
 assert(ui.includes('Build Pilot Screen'), 'plugin UI is missing Build Pilot Screen');
+assert(ui.includes('schema-summary'), 'plugin UI is missing the bundled schema summary');
+assert(
+  ui.includes('message.summary.brand') && ui.includes('message.summary.radius'),
+  'plugin UI must render Brand and Radius from the main-thread summary message',
+);
+assert(
+  pluginSource.includes("requireColorToken('color.brand.primary').value") &&
+    pluginSource.includes("requireFloatToken('radius.md').value"),
+  'main-thread schema summary must read Brand and Radius from tokenSchema',
+);
+assert(
+  bundle.includes(brandToken.value),
+  `built plugin is missing current bundled Brand value: ${brandToken.value}`,
+);
+assert(
+  bundle.includes(String(radiusToken.value)),
+  `built plugin is missing current bundled Radius value: ${radiusToken.value}`,
+);
+assert(
+  pluginSource.includes('Synced: brand=${summary.brand}, radius=${summary.radius}'),
+  'Sync notification must report the values from the loaded schema summary',
+);
 
 const namespaceDeclaration = pluginSource.match(
   /const PLUGIN_DATA_NAMESPACE = '([^']+)'/,
@@ -289,6 +315,48 @@ assert(
   !pluginSource.includes('.remove()'),
   'Pilot 03A must not delete and rebuild existing components',
 );
+assert(
+  !pluginSource.includes("solidPaint('#000000')"),
+  'Variable paint binding must not use a fixed black fallback',
+);
+assert(
+  pluginSource.includes('boundFillVariables.some((alias) => alias.id === variable.id)'),
+  'Variable paint binding must no-op when the desired Variable is already bound',
+);
+assert(
+  pluginSource.includes('currentFills[solidPaintIndex] as SolidPaint'),
+  'Variable paint repair must reuse the existing SOLID paint',
+);
+assert(
+  pluginSource.includes('solidPaint(fallbackHex)') &&
+    pluginSource.includes('const token = requireColorToken(tokenId)'),
+  'Variable paint CREATE fallback must come from the bundled token schema',
+);
+assert(
+  pluginSource.includes('variable.resolveForConsumer(node)'),
+  'Visual idempotency must validate the resolved Variable value for each consumer',
+);
+for (const runtimeBindingCheck of [
+  "'Primary Button'",
+  "'Pending Badge'",
+  "'Card'",
+  "'Card text'",
+]) {
+  assert(
+    pluginSource.includes(runtimeBindingCheck),
+    `Visual idempotency is missing runtime binding check: ${runtimeBindingCheck}`,
+  );
+}
+assert(
+  pluginSource.includes('validateStructuralIdempotency(') &&
+    bundle.includes('Structural idempotency failed'),
+  'Sync must verify structural idempotency after CREATE/UPDATE',
+);
+assert(
+  pluginSource.includes('validateVisualBindingIdempotency(') &&
+    bundle.includes('Visual idempotency failed'),
+  'Sync must verify visual/binding idempotency after CREATE/UPDATE',
+);
 
 const screenBuilderStart = pluginSource.indexOf('async function buildPilotScreen');
 const screenBuilderEnd = pluginSource.indexOf('function requireVariants');
@@ -308,7 +376,7 @@ for (const runtimeCheck of [
 }
 
 console.log(
-  'Pilot 03A verification passed: guarded Variable and Component CREATE/UPDATE paths, stable ID lookup, duplicate protection, and no delete-rebuild update.',
+  `Pilot 03A verification passed: bundle schema brand=${brandToken.value}, radius=${radiusToken.value}; guarded CREATE/UPDATE, structural checks, resolved binding checks, and no delete-rebuild update.`,
 );
 
 function assert(condition, message) {

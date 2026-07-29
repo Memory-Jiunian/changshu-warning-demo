@@ -25,6 +25,11 @@ type TokenSchema = {
   tokens: TokenDefinition[];
 };
 
+type LoadedSchemaSummary = {
+  brand: string;
+  radius: number;
+};
+
 type ComponentDefinition = {
   id: string;
   name: string;
@@ -72,12 +77,20 @@ const DESIGN_SYSTEM_COLLECTION_ID = 'collection.pilot-design-system';
 
 figma.showUI(__html__, {
   width: 280,
-  height: 156,
+  height: 184,
   themeColors: true,
   title: 'Figma Design Compiler',
 });
 
 figma.ui.onmessage = async (message: { type?: string }) => {
+  if (message.type === 'ui-ready') {
+    figma.ui.postMessage({
+      type: 'schema-summary',
+      summary: getLoadedSchemaSummary(),
+    });
+    return;
+  }
+
   if (
     message.type !== 'sync-design-system' &&
     message.type !== 'build-pilot-screen'
@@ -94,10 +107,13 @@ figma.ui.onmessage = async (message: { type?: string }) => {
 
     if (message.type === 'sync-design-system') {
       const nodes = await syncDesignSystem();
+      const summary = getLoadedSchemaSummary();
 
       figma.currentPage.selection = nodes;
       figma.viewport.scrollAndZoomIntoView(nodes);
-      figma.notify('Pilot 03A design system synced.');
+      figma.notify(
+        `Synced: brand=${summary.brand}, radius=${summary.radius}`,
+      );
     } else {
       const screen = await buildPilotScreen();
       figma.currentPage.selection = [screen];
@@ -181,7 +197,10 @@ function validateSchemas(): void {
   validateScreenSchema(componentIds);
 }
 
-async function syncVariables(): Promise<Map<string, Variable>> {
+async function syncVariables(): Promise<{
+  collection: VariableCollection;
+  variables: Map<string, Variable>;
+}> {
   const [collections, localVariables] = await Promise.all([
     figma.variables.getLocalVariableCollectionsAsync(),
     figma.variables.getLocalVariablesAsync(),
@@ -255,7 +274,7 @@ async function syncVariables(): Promise<Map<string, Variable>> {
     variables.set(definition.id, variable);
   }
 
-  return variables;
+  return { collection, variables };
 }
 
 function resolveDesignSystemCollection(
@@ -306,8 +325,145 @@ async function syncDesignSystem(): Promise<SceneNode[]> {
     componentSchema.components.map((component) => component.id),
   );
   const existingComponents = await findComponentsByStableId(requiredComponentIds);
-  const variables = await syncVariables();
-  return syncComponents(existingComponents, variables);
+  const { collection, variables } = await syncVariables();
+  const nodes = syncComponents(existingComponents, variables);
+  await validateStructuralIdempotency(collection, variables, requiredComponentIds);
+  validateVisualBindingIdempotency(nodes, variables);
+  return nodes;
+}
+
+async function validateStructuralIdempotency(
+  collection: VariableCollection,
+  variables: Map<string, Variable>,
+  requiredComponentIds: Set<string>,
+): Promise<void> {
+  const [collections, localVariables, components] = await Promise.all([
+    figma.variables.getLocalVariableCollectionsAsync(),
+    figma.variables.getLocalVariablesAsync(),
+    findComponentsByStableId(requiredComponentIds),
+  ]);
+  const matchingCollections = collections.filter(
+    (candidate) =>
+      candidate.getSharedPluginData(
+        PLUGIN_DATA_NAMESPACE,
+        COLLECTION_ID_KEY,
+      ) === DESIGN_SYSTEM_COLLECTION_ID,
+  );
+  if (matchingCollections.length !== 1 || matchingCollections[0].id !== collection.id) {
+    throw new Error('Structural idempotency failed: expected exactly one Pilot collection');
+  }
+
+  const collectionVariables = localVariables.filter(
+    (variable) => variable.variableCollectionId === collection.id,
+  );
+  if (
+    collectionVariables.length !== tokenSchema.tokens.length ||
+    variables.size !== tokenSchema.tokens.length
+  ) {
+    throw new Error(
+      `Structural idempotency failed: expected exactly ${tokenSchema.tokens.length} Pilot variables`,
+    );
+  }
+  for (const definition of tokenSchema.tokens) {
+    const matches = collectionVariables.filter(
+      (variable) =>
+        variable.getSharedPluginData(PLUGIN_DATA_NAMESPACE, TOKEN_ID_KEY) ===
+        definition.id,
+    );
+    if (matches.length !== 1 || variables.get(definition.id)?.id !== matches[0].id) {
+      throw new Error(
+        `Structural idempotency failed: expected one Variable for ${definition.id}`,
+      );
+    }
+  }
+
+  if (components.size !== requiredComponentIds.size) {
+    throw new Error('Structural idempotency failed: expected one Button, Badge, and Card');
+  }
+}
+
+function validateVisualBindingIdempotency(
+  nodes: SceneNode[],
+  variables: Map<string, Variable>,
+): void {
+  const buttonSet = nodes.find(
+    (node): node is ComponentSetNode =>
+      node.type === 'COMPONENT_SET' &&
+      node.getSharedPluginData(PLUGIN_DATA_NAMESPACE, COMPONENT_ID_KEY) ===
+        'component.button',
+  );
+  const badgeSet = nodes.find(
+    (node): node is ComponentSetNode =>
+      node.type === 'COMPONENT_SET' &&
+      node.getSharedPluginData(PLUGIN_DATA_NAMESPACE, COMPONENT_ID_KEY) ===
+        'component.badge',
+  );
+  const card = nodes.find(
+    (node): node is ComponentNode =>
+      node.type === 'COMPONENT' &&
+      node.getSharedPluginData(PLUGIN_DATA_NAMESPACE, COMPONENT_ID_KEY) ===
+        'component.card',
+  );
+  if (!buttonSet || !badgeSet || !card) {
+    throw new Error('Visual idempotency failed: synced component identity is incomplete');
+  }
+
+  const primaryButton = requireVariantComponent(buttonSet, {
+    Type: 'Primary',
+    Size: 'MD',
+  });
+  const pendingBadge = requireVariantComponent(badgeSet, { Status: 'Pending' });
+  const cardText = requireDirectTextChildren(card, 2)[0];
+
+  assertResolvedColorBinding(
+    primaryButton,
+    variables,
+    'color.brand.primary',
+    'Primary Button',
+  );
+  assertResolvedColorBinding(
+    pendingBadge,
+    variables,
+    'color.brand.primary',
+    'Pending Badge',
+  );
+  assertResolvedColorBinding(card, variables, 'color.bg.surface', 'Card');
+  assertResolvedColorBinding(
+    cardText,
+    variables,
+    'color.text.primary',
+    'Card text',
+  );
+}
+
+function assertResolvedColorBinding(
+  node: ComponentNode | TextNode,
+  variables: Map<string, Variable>,
+  tokenId: string,
+  label: string,
+): void {
+  const variable = requireVariable(variables, tokenId);
+  const boundFillVariables = node.boundVariables?.fills ?? [];
+  if (!boundFillVariables.some((alias) => alias.id === variable.id)) {
+    throw new Error(`Visual idempotency failed: ${label} is not bound to ${tokenId}`);
+  }
+
+  const resolved = variable.resolveForConsumer(node);
+  if (resolved.resolvedType !== 'COLOR') {
+    throw new Error(`Visual idempotency failed: ${label} did not resolve a COLOR`);
+  }
+  const actual = resolved.value as RGB | RGBA;
+  const expected = hexToRgb(requireColorToken(tokenId).value);
+  const tolerance = 1 / 255 / 2;
+  if (
+    Math.abs(actual.r - expected.r) > tolerance ||
+    Math.abs(actual.g - expected.g) > tolerance ||
+    Math.abs(actual.b - expected.b) > tolerance
+  ) {
+    throw new Error(
+      `Visual idempotency failed: ${label} resolved value does not match ${tokenId}`,
+    );
+  }
 }
 
 function syncComponents(
@@ -411,12 +567,11 @@ function createButtonSet(
     }
 
     const isPrimary = type === 'Primary';
-    bindSolidFill(
+    bindTokenFill(
       component,
-      requireVariable(
-        variables,
-        isPrimary ? 'color.brand.primary' : 'color.bg.surface',
-      ),
+      variables,
+      isPrimary ? 'color.brand.primary' : 'color.bg.surface',
+      false,
     );
 
     if (!isPrimary) {
@@ -428,7 +583,7 @@ function createButtonSet(
     if (isPrimary) {
       label.fills = [solidPaint('#FFFFFF')];
     } else {
-      bindSolidFill(label, requireVariable(variables, 'color.text.primary'));
+      bindTokenFill(label, variables, 'color.text.primary', false);
     }
     component.appendChild(label);
     component.x = size === 'SM' ? 0 : 160;
@@ -469,7 +624,7 @@ function createBadgeSet(
     component.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
 
     if (status === 'Pending') {
-      bindSolidFill(component, requireVariable(variables, 'color.brand.primary'));
+      bindTokenFill(component, variables, 'color.brand.primary', false);
     } else {
       component.fills = [solidPaint('#20D920')];
     }
@@ -519,7 +674,7 @@ function createCard(
   card.setBoundVariable('paddingBottom', requireVariable(variables, 'spacing.md'));
   card.setBoundVariable('paddingLeft', requireVariable(variables, 'spacing.md'));
   card.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
-  bindSolidFill(card, requireVariable(variables, 'color.bg.surface'));
+  bindTokenFill(card, variables, 'color.bg.surface', false);
   card.strokes = [solidPaint('#EEEEEE')];
   card.strokeWeight = 1;
 
@@ -529,8 +684,8 @@ function createCard(
   body.layoutAlign = 'STRETCH';
   title.textAutoResize = 'HEIGHT';
   body.textAutoResize = 'HEIGHT';
-  bindSolidFill(title, requireVariable(variables, 'color.text.primary'));
-  bindSolidFill(body, requireVariable(variables, 'color.text.primary'));
+  bindTokenFill(title, variables, 'color.text.primary', false);
+  bindTokenFill(body, variables, 'color.text.primary', false);
   card.appendChild(title);
   card.appendChild(body);
 
@@ -561,19 +716,18 @@ function updateButtonSet(
     }
 
     const isPrimary = type === 'Primary';
-    bindSolidFill(
+    bindTokenFill(
       component,
-      requireVariable(
-        variables,
-        isPrimary ? 'color.brand.primary' : 'color.bg.surface',
-      ),
+      variables,
+      isPrimary ? 'color.brand.primary' : 'color.bg.surface',
+      true,
     );
 
     const label = requireDirectTextChildren(component, 1)[0];
     if (isPrimary) {
       label.fills = [solidPaint('#FFFFFF')];
     } else {
-      bindSolidFill(label, requireVariable(variables, 'color.text.primary'));
+      bindTokenFill(label, variables, 'color.text.primary', true);
     }
   }
 
@@ -598,7 +752,7 @@ function updateBadgeSet(
     component.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
 
     if (status === 'Pending') {
-      bindSolidFill(component, requireVariable(variables, 'color.brand.primary'));
+      bindTokenFill(component, variables, 'color.brand.primary', true);
     } else {
       component.fills = [solidPaint('#20D920')];
     }
@@ -622,11 +776,11 @@ function updateCard(
   card.setBoundVariable('paddingBottom', requireVariable(variables, 'spacing.md'));
   card.setBoundVariable('paddingLeft', requireVariable(variables, 'spacing.md'));
   card.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
-  bindSolidFill(card, requireVariable(variables, 'color.bg.surface'));
+  bindTokenFill(card, variables, 'color.bg.surface', true);
 
   const textChildren = requireDirectTextChildren(card, 2);
   for (const text of textChildren) {
-    bindSolidFill(text, requireVariable(variables, 'color.text.primary'));
+    bindTokenFill(text, variables, 'color.text.primary', true);
   }
 }
 
@@ -820,6 +974,29 @@ function requireVariable(variables: Map<string, Variable>, name: string): Variab
   return variable;
 }
 
+function requireColorToken(id: string): ColorToken {
+  const token = tokenSchema.tokens.find((candidate) => candidate.id === id);
+  if (!token || token.type !== 'COLOR') {
+    throw new Error(`Missing COLOR token in loaded schema: ${id}`);
+  }
+  return token;
+}
+
+function requireFloatToken(id: string): FloatToken {
+  const token = tokenSchema.tokens.find((candidate) => candidate.id === id);
+  if (!token || token.type !== 'FLOAT') {
+    throw new Error(`Missing FLOAT token in loaded schema: ${id}`);
+  }
+  return token;
+}
+
+function getLoadedSchemaSummary(): LoadedSchemaSummary {
+  return {
+    brand: requireColorToken('color.brand.primary').value,
+    radius: requireFloatToken('radius.md').value,
+  };
+}
+
 function assertVariantLayout(componentSet: ComponentSetNode, expectedCount: number): void {
   const variants = componentSet.children.filter(
     (node): node is ComponentNode => node.type === 'COMPONENT',
@@ -860,13 +1037,46 @@ function createText(value: string, fontSize: number, fontName: FontName): TextNo
   return text;
 }
 
-function bindSolidFill(
-  node: GeometryMixin & MinimalFillsMixin,
-  variable: Variable,
+function bindTokenFill(
+  node: ComponentNode | TextNode,
+  variables: Map<string, Variable>,
+  tokenId: string,
+  preferExistingPaint: boolean,
 ): void {
+  const token = requireColorToken(tokenId);
+  const variable = requireVariable(variables, tokenId);
+  bindSolidFill(node, variable, token.value, preferExistingPaint);
+}
+
+function bindSolidFill(
+  node: ComponentNode | TextNode,
+  variable: Variable,
+  fallbackHex: string,
+  preferExistingPaint: boolean,
+): void {
+  const boundFillVariables = node.boundVariables?.fills ?? [];
+  if (boundFillVariables.some((alias) => alias.id === variable.id)) {
+    return;
+  }
+
+  const currentFills = node.fills === figma.mixed ? [] : [...node.fills];
+  const solidPaintIndex = preferExistingPaint
+    ? currentFills.findIndex((paint) => paint.type === 'SOLID')
+    : -1;
+
+  if (solidPaintIndex >= 0) {
+    currentFills[solidPaintIndex] = figma.variables.setBoundVariableForPaint(
+      currentFills[solidPaintIndex] as SolidPaint,
+      'color',
+      variable,
+    );
+    node.fills = currentFills;
+    return;
+  }
+
   node.fills = [
     figma.variables.setBoundVariableForPaint(
-      solidPaint('#000000'),
+      solidPaint(fallbackHex),
       'color',
       variable,
     ),

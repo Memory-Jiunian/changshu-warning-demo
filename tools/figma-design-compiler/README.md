@@ -1,4 +1,4 @@
-# Figma Design Compiler — Pilot 01
+# Figma Design Compiler — Pilot 03A
 
 This is a deliberately small Figma Development Plugin that validates two paths:
 
@@ -7,7 +7,9 @@ This is a deliberately small Figma Development Plugin that validates two paths:
 `design-system/screens/pending-tasks.json` → existing Components → native Figma
 Instances in a Screen Frame.
 
-It does not implement file import, localhost sync, update logic, or idempotency.
+Pilot 03A adds in-place Design System sync and idempotency checks. It does not
+implement file import, localhost/runtime file loading, Screen sync, or a general
+diff engine.
 
 ## Build
 
@@ -30,6 +32,18 @@ root so it can be imported directly.
 4. Run **Figma Design Compiler** from **Plugins → Development**.
 5. Click **Sync Design System**.
 
+The UI shows the Brand and Radius values from the schema embedded in the bundle
+that is actually running. Because esbuild statically bundles `tokens.json`, every
+schema edit requires this exact lifecycle:
+
+1. Run `npm.cmd run build`.
+2. Close the currently running Figma plugin UI.
+3. Start **Figma Design Compiler** again from **Plugins → Development**.
+4. Confirm the UI Brand/Radius summary before clicking Sync.
+
+Rebuilding does not hot-replace JavaScript in an already running plugin instance.
+The completion notification repeats the actual bundled Brand and Radius values.
+
 The plugin creates missing Pilot objects and updates existing ones in place: one
 `Pilot Design System` local variable collection, five local variables, a
 four-variant `Button` component set, a two-variant `Badge` component set, and one
@@ -43,6 +57,11 @@ their display names and creates `Pending Tasks Pilot` from native instances.
 
 - Repeated **Sync Design System** runs reuse stable Variable and Component identities.
 - Existing Variable values and current Pilot variable bindings are updated in place.
+- A correct existing Variable paint binding is a no-op. Missing or incorrect bindings
+  reuse the node's current solid paint; first-create fallback paints come from the
+  current token schema rather than a fixed color.
+- After sync, the plugin checks both structure counts and resolved consumer values for
+  Primary Button, Pending Badge, Card, and Card text.
 - Variables are resolved by stable `tokenId` plugin data. For the existing Pilot 02
   file only, an untagged variable can be claimed by its exact schema name inside the
   single `Pilot Design System` collection, then receives its stable token ID.
