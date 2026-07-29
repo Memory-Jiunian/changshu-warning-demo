@@ -1,3 +1,20 @@
+.ui-input,
+.ui-select-menu {
+  --color-text-error: var(--color-text-danger);
+  --color-surface-input-default: var(--color-surface-card);
+  --color-surface-input-disabled: var(--color-surface-page);
+  --color-surface-select-menu-selected: var(--color-brand-primary);
+  --color-surface-select-menu-default: var(--color-surface-page);
+  --color-icon-inverse: var(--color-text-inverse);
+  --color-icon-brand: var(--color-brand-primary);
+  --color-border-divider: var(--color-surface-page);
+  --border-width-hairline: 1px;
+  --radius-control-small: var(--radius-small);
+  --font-input-v01: 700 14px/22px "Alibaba PuHuiTi 3.0", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-select-item-v01: var(--font-body);
+}
+
 .ui-button {
   display: inline-flex;
   align-items: center;
@@ -324,6 +341,50 @@
   padding: 0 13px;
 }
 
+.ui-input--figma-v01 {
+  min-height: 46px;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-control-small);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-input-default);
+  font: var(--font-input-v01);
+  box-shadow: none;
+}
+
+.ui-input.ui-input--figma-v01::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+.ui-input--figma-v01:disabled {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-input-disabled);
+  cursor: not-allowed;
+}
+
+.ui-input--figma-v01.ui-input--error,
+.ui-input--figma-v01[aria-invalid='true'] {
+  border: var(--border-width-hairline) solid var(--color-border-danger);
+  color: var(--color-text-error);
+}
+
+.ui-input.ui-input--figma-v01:focus {
+  border-color: transparent;
+  background: var(--color-surface-input-default);
+  box-shadow: none;
+}
+
+.ui-input.ui-input--figma-v01.ui-input--error:focus,
+.ui-input.ui-input--figma-v01[aria-invalid='true']:focus {
+  border-color: var(--color-border-danger);
+}
+
+.ui-input.ui-input--figma-v01:focus-visible {
+  outline: 2px solid var(--color-icon-brand);
+  outline-offset: 2px;
+}
+
 .ui-textarea {
   min-height: 112px;
   padding: 12px 13px;
@@ -343,6 +404,151 @@
     calc(100% - 13px) 21px;
   background-repeat: no-repeat;
   background-size: 5px 5px, 5px 5px;
+}
+
+.ui-select-menu {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.ui-select-menu__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-control-small);
+  color: var(--color-text-primary);
+  background: var(--color-surface-input-default);
+  font: var(--font-input-v01);
+  text-align: left;
+}
+
+.ui-select-menu__trigger:disabled {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-input-disabled);
+  cursor: not-allowed;
+}
+
+.ui-select-menu__trigger:focus-visible,
+.ui-select-menu__item:focus-visible {
+  outline: 2px solid var(--color-icon-brand);
+  outline-offset: 2px;
+}
+
+.ui-select-menu__placeholder {
+  color: var(--color-text-muted);
+}
+
+.ui-select-menu__trigger-icon,
+.ui-select-menu__item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.ui-select-menu__trigger-icon {
+  color: var(--color-icon-brand);
+  transition: transform 0.16s ease;
+}
+
+.ui-select-menu.is-open .ui-select-menu__trigger-icon {
+  transform: rotate(180deg);
+}
+
+.ui-select-menu__trigger-icon svg,
+.ui-select-menu__item-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ui-select-menu__content {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  display: grid;
+  width: 100%;
+  min-width: 220px;
+  max-height: 280px;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  overflow-y: auto;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ui-select-menu__available-options {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ui-select-menu__disabled-section {
+  display: grid;
+  gap: 0;
+}
+
+.ui-select-menu__divider {
+  height: var(--border-width-hairline);
+  background: var(--color-border-divider);
+}
+
+.ui-select-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control-small);
+  color: var(--color-text-primary);
+  background: var(--color-surface-select-menu-default);
+  font: var(--font-select-item-v01);
+  text-align: left;
+}
+
+.ui-select-menu__item--selected {
+  color: var(--color-text-inverse);
+  background: var(--color-surface-select-menu-selected);
+}
+
+.ui-select-menu__item--disabled {
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.ui-select-menu__item-icon {
+  color: var(--color-icon-brand);
+}
+
+.ui-select-menu__item--selected .ui-select-menu__item-icon {
+  color: var(--color-icon-inverse);
+}
+
+.ui-select-menu__item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ui-input:focus,
