@@ -66,6 +66,9 @@ const FONT_REGULAR: FontName = { family: 'Inter', style: 'Regular' };
 const FONT_SEMIBOLD: FontName = { family: 'Inter', style: 'Semi Bold' };
 const PLUGIN_DATA_NAMESPACE = 'figma_design_compiler';
 const COMPONENT_ID_KEY = 'componentId';
+const TOKEN_ID_KEY = 'tokenId';
+const COLLECTION_ID_KEY = 'collectionId';
+const DESIGN_SYSTEM_COLLECTION_ID = 'collection.pilot-design-system';
 
 figma.showUI(__html__, {
   width: 280,
@@ -76,7 +79,7 @@ figma.showUI(__html__, {
 
 figma.ui.onmessage = async (message: { type?: string }) => {
   if (
-    message.type !== 'build-design-system' &&
+    message.type !== 'sync-design-system' &&
     message.type !== 'build-pilot-screen'
   ) {
     return;
@@ -89,13 +92,12 @@ figma.ui.onmessage = async (message: { type?: string }) => {
       figma.loadFontAsync(FONT_SEMIBOLD),
     ]);
 
-    if (message.type === 'build-design-system') {
-      const variables = createVariables();
-      const nodes = buildComponents(variables);
+    if (message.type === 'sync-design-system') {
+      const nodes = await syncDesignSystem();
 
       figma.currentPage.selection = nodes;
       figma.viewport.scrollAndZoomIntoView(nodes);
-      figma.notify('Pilot 01 design system created.');
+      figma.notify('Pilot 03A design system synced.');
     } else {
       const screen = await buildPilotScreen();
       figma.currentPage.selection = [screen];
@@ -179,20 +181,76 @@ function validateSchemas(): void {
   validateScreenSchema(componentIds);
 }
 
-function createVariables(): Map<string, Variable> {
-  const collection = figma.variables.createVariableCollection(tokenSchema.collection.name);
+async function syncVariables(): Promise<Map<string, Variable>> {
+  const [collections, localVariables] = await Promise.all([
+    figma.variables.getLocalVariableCollectionsAsync(),
+    figma.variables.getLocalVariablesAsync(),
+  ]);
+  const collection = resolveDesignSystemCollection(collections);
   const variables = new Map<string, Variable>();
 
   for (const definition of tokenSchema.tokens) {
-    const variable = figma.variables.createVariable(
-      definition.name,
-      collection,
-      definition.type,
+    const taggedMatches = localVariables.filter(
+      (variable) =>
+        variable.getSharedPluginData(PLUGIN_DATA_NAMESPACE, TOKEN_ID_KEY) ===
+        definition.id,
     );
+    if (taggedMatches.length > 1) {
+      throw new Error(`Duplicate variable ID: ${definition.id}`);
+    }
+
+    let variable = taggedMatches[0];
+    if (variable && variable.variableCollectionId !== collection.id) {
+      throw new Error(`Variable identity is in another collection: ${definition.id}`);
+    }
+
+    const nameMatches = localVariables.filter(
+      (candidate) =>
+        candidate.variableCollectionId === collection.id &&
+        candidate.name === definition.name,
+    );
+    if (nameMatches.length > 1) {
+      throw new Error(`Duplicate variable identity: ${definition.id}`);
+    }
+    if (variable && nameMatches.some((candidate) => candidate.id !== variable.id)) {
+      throw new Error(`Duplicate variable identity: ${definition.id}`);
+    }
+
+    if (!variable) {
+      const candidate = nameMatches[0];
+      if (candidate) {
+        const claimedId = candidate.getSharedPluginData(
+          PLUGIN_DATA_NAMESPACE,
+          TOKEN_ID_KEY,
+        );
+        if (claimedId && claimedId !== definition.id) {
+          throw new Error(`Variable name is claimed by another ID: ${definition.name}`);
+        }
+        variable = candidate;
+      } else {
+        variable = figma.variables.createVariable(
+          definition.name,
+          collection,
+          definition.type,
+        );
+      }
+    }
+
+    if (variable.name !== definition.name) {
+      throw new Error(`Variable name mismatch for ${definition.id}: ${variable.name}`);
+    }
+    if (variable.resolvedType !== definition.type) {
+      throw new Error(`Variable type mismatch for ${definition.id}`);
+    }
 
     variable.setValueForMode(
       collection.defaultModeId,
       definition.type === 'COLOR' ? hexToRgb(definition.value) : definition.value,
+    );
+    variable.setSharedPluginData(
+      PLUGIN_DATA_NAMESPACE,
+      TOKEN_ID_KEY,
+      definition.id,
     );
     variables.set(definition.id, variable);
   }
@@ -200,23 +258,108 @@ function createVariables(): Map<string, Variable> {
   return variables;
 }
 
-function buildComponents(variables: Map<string, Variable>): SceneNode[] {
+function resolveDesignSystemCollection(
+  collections: VariableCollection[],
+): VariableCollection {
+  const taggedMatches = collections.filter(
+    (collection) =>
+      collection.getSharedPluginData(
+        PLUGIN_DATA_NAMESPACE,
+        COLLECTION_ID_KEY,
+      ) === DESIGN_SYSTEM_COLLECTION_ID,
+  );
+  if (taggedMatches.length > 1) {
+    throw new Error(`Duplicate variable collection ID: ${DESIGN_SYSTEM_COLLECTION_ID}`);
+  }
+
+  const nameMatches = collections.filter(
+    (collection) => collection.name === tokenSchema.collection.name,
+  );
+  if (nameMatches.length > 1) {
+    throw new Error(`Duplicate variable collection identity: ${tokenSchema.collection.name}`);
+  }
+
+  let collection = taggedMatches[0];
+  if (collection && nameMatches.some((candidate) => candidate.id !== collection.id)) {
+    throw new Error(`Duplicate variable collection identity: ${tokenSchema.collection.name}`);
+  }
+
+  if (!collection) {
+    collection =
+      nameMatches[0] ??
+      figma.variables.createVariableCollection(tokenSchema.collection.name);
+  }
+
+  if (collection.name !== tokenSchema.collection.name) {
+    throw new Error(`Variable collection name mismatch: ${collection.name}`);
+  }
+  collection.setSharedPluginData(
+    PLUGIN_DATA_NAMESPACE,
+    COLLECTION_ID_KEY,
+    DESIGN_SYSTEM_COLLECTION_ID,
+  );
+  return collection;
+}
+
+async function syncDesignSystem(): Promise<SceneNode[]> {
+  const requiredComponentIds = new Set(
+    componentSchema.components.map((component) => component.id),
+  );
+  const existingComponents = await findComponentsByStableId(requiredComponentIds);
+  const variables = await syncVariables();
+  return syncComponents(existingComponents, variables);
+}
+
+function syncComponents(
+  existingComponents: Map<string, ComponentNode | ComponentSetNode>,
+  variables: Map<string, Variable>,
+): SceneNode[] {
   const buttonDefinition = getComponentDefinition('Button', 'COMPONENT_SET');
   const badgeDefinition = getComponentDefinition('Badge', 'COMPONENT_SET');
-  getComponentDefinition('Card', 'COMPONENT');
+  const cardDefinition = getComponentDefinition('Card', 'COMPONENT');
 
   const center = figma.viewport.center;
-  const buttonSet = buildButtonSet(buttonDefinition, variables);
-  buttonSet.x = center.x - buttonSet.width / 2;
-  buttonSet.y = center.y - buttonSet.height / 2;
+  const existingButton = existingComponents.get(buttonDefinition.id);
+  let buttonSet: ComponentSetNode;
+  if (existingButton) {
+    if (existingButton.type !== 'COMPONENT_SET') {
+      throw new Error(`Component type mismatch: ${buttonDefinition.id}`);
+    }
+    updateButtonSet(existingButton, buttonDefinition, variables);
+    buttonSet = existingButton;
+  } else {
+    buttonSet = createButtonSet(buttonDefinition, variables);
+    buttonSet.x = center.x - buttonSet.width / 2;
+    buttonSet.y = center.y - buttonSet.height / 2;
+  }
 
-  const badgeSet = buildBadgeSet(badgeDefinition, variables);
-  badgeSet.x = buttonSet.x + buttonSet.width + 80;
-  badgeSet.y = buttonSet.y;
+  const existingBadge = existingComponents.get(badgeDefinition.id);
+  let badgeSet: ComponentSetNode;
+  if (existingBadge) {
+    if (existingBadge.type !== 'COMPONENT_SET') {
+      throw new Error(`Component type mismatch: ${badgeDefinition.id}`);
+    }
+    updateBadgeSet(existingBadge, badgeDefinition, variables);
+    badgeSet = existingBadge;
+  } else {
+    badgeSet = createBadgeSet(badgeDefinition, variables);
+    badgeSet.x = buttonSet.x + buttonSet.width + 80;
+    badgeSet.y = buttonSet.y;
+  }
 
-  const card = buildCard(variables);
-  card.x = buttonSet.x;
-  card.y = buttonSet.y + buttonSet.height + 80;
+  const existingCard = existingComponents.get(cardDefinition.id);
+  let card: ComponentNode;
+  if (existingCard) {
+    if (existingCard.type !== 'COMPONENT') {
+      throw new Error(`Component type mismatch: ${cardDefinition.id}`);
+    }
+    updateCard(existingCard, variables);
+    card = existingCard;
+  } else {
+    card = createCard(cardDefinition, variables);
+    card.x = buttonSet.x;
+    card.y = buttonSet.y + buttonSet.height + 80;
+  }
 
   return [buttonSet, badgeSet, card];
 }
@@ -232,7 +375,7 @@ function getComponentDefinition(
   return definition;
 }
 
-function buildButtonSet(
+function createButtonSet(
   definition: ComponentDefinition,
   variables: Map<string, Variable>,
 ): ComponentSetNode {
@@ -305,7 +448,7 @@ function buildButtonSet(
   return componentSet;
 }
 
-function buildBadgeSet(
+function createBadgeSet(
   definition: ComponentDefinition,
   variables: Map<string, Variable>,
 ): ComponentSetNode {
@@ -350,8 +493,10 @@ function buildBadgeSet(
   return componentSet;
 }
 
-function buildCard(variables: Map<string, Variable>): ComponentNode {
-  const definition = getComponentDefinition('Card', 'COMPONENT');
+function createCard(
+  definition: ComponentDefinition,
+  variables: Map<string, Variable>,
+): ComponentNode {
   const card = figma.createComponent();
   card.name = definition.name;
   card.setSharedPluginData(
@@ -390,6 +535,134 @@ function buildCard(variables: Map<string, Variable>): ComponentNode {
   card.appendChild(body);
 
   return card;
+}
+
+function updateButtonSet(
+  componentSet: ComponentSetNode,
+  definition: ComponentDefinition,
+  variables: Map<string, Variable>,
+): void {
+  const variants = requireVariants(definition);
+  assertVariantLayout(componentSet, variants.length);
+
+  for (const variant of variants) {
+    const type = requireVariantValue(variant, 'Type');
+    const size = requireVariantValue(variant, 'Size');
+    const component = requireVariantComponent(componentSet, variant);
+    component.setBoundVariable('itemSpacing', requireVariable(variables, 'spacing.md'));
+    component.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
+
+    if (size === 'SM') {
+      component.setBoundVariable('paddingLeft', requireVariable(variables, 'spacing.md'));
+      component.setBoundVariable('paddingRight', requireVariable(variables, 'spacing.md'));
+    } else {
+      component.setBoundVariable('paddingTop', requireVariable(variables, 'spacing.md'));
+      component.setBoundVariable('paddingBottom', requireVariable(variables, 'spacing.md'));
+    }
+
+    const isPrimary = type === 'Primary';
+    bindSolidFill(
+      component,
+      requireVariable(
+        variables,
+        isPrimary ? 'color.brand.primary' : 'color.bg.surface',
+      ),
+    );
+
+    const label = requireDirectTextChildren(component, 1)[0];
+    if (isPrimary) {
+      label.fills = [solidPaint('#FFFFFF')];
+    } else {
+      bindSolidFill(label, requireVariable(variables, 'color.text.primary'));
+    }
+  }
+
+  componentSet.setSharedPluginData(
+    PLUGIN_DATA_NAMESPACE,
+    COMPONENT_ID_KEY,
+    definition.id,
+  );
+}
+
+function updateBadgeSet(
+  componentSet: ComponentSetNode,
+  definition: ComponentDefinition,
+  variables: Map<string, Variable>,
+): void {
+  const variants = requireVariants(definition);
+  assertVariantLayout(componentSet, variants.length);
+
+  for (const variant of variants) {
+    const status = requireVariantValue(variant, 'Status');
+    const component = requireVariantComponent(componentSet, variant);
+    component.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
+
+    if (status === 'Pending') {
+      bindSolidFill(component, requireVariable(variables, 'color.brand.primary'));
+    } else {
+      component.fills = [solidPaint('#20D920')];
+    }
+    requireDirectTextChildren(component, 1)[0].fills = [solidPaint('#FFFFFF')];
+  }
+
+  componentSet.setSharedPluginData(
+    PLUGIN_DATA_NAMESPACE,
+    COMPONENT_ID_KEY,
+    definition.id,
+  );
+}
+
+function updateCard(
+  card: ComponentNode,
+  variables: Map<string, Variable>,
+): void {
+  card.setBoundVariable('itemSpacing', requireVariable(variables, 'spacing.md'));
+  card.setBoundVariable('paddingTop', requireVariable(variables, 'spacing.md'));
+  card.setBoundVariable('paddingRight', requireVariable(variables, 'spacing.md'));
+  card.setBoundVariable('paddingBottom', requireVariable(variables, 'spacing.md'));
+  card.setBoundVariable('paddingLeft', requireVariable(variables, 'spacing.md'));
+  card.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
+  bindSolidFill(card, requireVariable(variables, 'color.bg.surface'));
+
+  const textChildren = requireDirectTextChildren(card, 2);
+  for (const text of textChildren) {
+    bindSolidFill(text, requireVariable(variables, 'color.text.primary'));
+  }
+}
+
+function requireVariantComponent(
+  componentSet: ComponentSetNode,
+  requestedVariant: Record<string, string>,
+): ComponentNode {
+  const matches = componentSet.children.filter(
+    (node): node is ComponentNode =>
+      node.type === 'COMPONENT' &&
+      Object.entries(requestedVariant).every(
+        ([property, value]) => node.variantProperties?.[property] === value,
+      ),
+  );
+  if (matches.length !== 1) {
+    const identity = Object.entries(requestedVariant)
+      .map(([property, value]) => `${property}=${value}`)
+      .join(', ');
+    throw new Error(`Variant identity conflict in ${componentSet.name}: ${identity}`);
+  }
+  return matches[0];
+}
+
+function requireDirectTextChildren(
+  node: ComponentNode,
+  expectedCount: number,
+): TextNode[] {
+  const textChildren = node.children.filter(
+    (child): child is TextNode => child.type === 'TEXT',
+  );
+  if (textChildren.length !== expectedCount) {
+    throw new Error(
+      `${node.name} must contain exactly ${expectedCount} direct TEXT children`,
+    );
+  }
+  return textChildren;
 }
 
 function validateScreenSchema(componentIds: Set<string>): void {
@@ -441,7 +714,7 @@ async function buildPilotScreen(): Promise<FrameNode> {
       .filter((child): child is ScreenInstanceChild => child.type === 'INSTANCE')
       .map((child) => child.componentId),
   );
-  const components = await findDesignSystemComponents(requiredComponentIds);
+  const components = await findComponentsByStableId(requiredComponentIds);
 
   const screen = figma.createFrame();
   screen.name = screenSchema.name;
@@ -474,7 +747,7 @@ async function buildPilotScreen(): Promise<FrameNode> {
     const component = components.get(child.componentId);
     if (!component) {
       throw new Error(
-        `Missing design system component: ${child.componentId}. Run Build Design System first.`,
+        `Missing design system component: ${child.componentId}. Run Sync Design System first.`,
       );
     }
 
@@ -490,8 +763,8 @@ async function buildPilotScreen(): Promise<FrameNode> {
   return screen;
 }
 
-async function findDesignSystemComponents(
-  requiredIds: Set<string>,
+async function findComponentsByStableId(
+  targetIds: Set<string>,
 ): Promise<Map<string, ComponentNode | ComponentSetNode>> {
   await figma.loadAllPagesAsync();
   const components = new Map<string, ComponentNode | ComponentSetNode>();
@@ -505,19 +778,11 @@ async function findDesignSystemComponents(
       PLUGIN_DATA_NAMESPACE,
       COMPONENT_ID_KEY,
     );
-    if (!requiredIds.has(componentId)) continue;
+    if (!targetIds.has(componentId)) continue;
     if (components.has(componentId)) {
-      throw new Error(`Multiple design system components found for: ${componentId}`);
+      throw new Error(`Duplicate component ID: ${componentId}`);
     }
     components.set(componentId, candidate);
-  }
-
-  for (const componentId of requiredIds) {
-    if (!components.has(componentId)) {
-      throw new Error(
-        `Missing design system component: ${componentId}. Run Build Design System first.`,
-      );
-    }
   }
 
   return components;

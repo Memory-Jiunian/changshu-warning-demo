@@ -153,8 +153,11 @@ await access(new URL(manifest.main, pluginRoot));
 await access(new URL(manifest.ui, pluginRoot));
 
 for (const apiCall of [
+  'getLocalVariableCollectionsAsync',
+  'getLocalVariablesAsync',
   'createVariableCollection',
   'createVariable',
+  'setValueForMode',
   'createComponent',
   'combineAsVariants',
   'createInstance',
@@ -165,6 +168,7 @@ for (const apiCall of [
   assert(bundle.includes(apiCall), `built plugin is missing ${apiCall}`);
 }
 
+assert(ui.includes('Sync Design System'), 'plugin UI is missing Sync Design System');
 assert(ui.includes('Build Pilot Screen'), 'plugin UI is missing Build Pilot Screen');
 
 const namespaceDeclaration = pluginSource.match(
@@ -210,6 +214,82 @@ assert(
   'built plugin is missing the valid shared plugin data namespace',
 );
 
+const syncVariablesStart = pluginSource.indexOf('async function syncVariables');
+const collectionResolverStart = pluginSource.indexOf('function resolveDesignSystemCollection');
+const syncDesignSystemStart = pluginSource.indexOf('async function syncDesignSystem');
+const syncComponentsStart = pluginSource.indexOf('function syncComponents');
+const syncComponentsEnd = pluginSource.indexOf('function getComponentDefinition');
+assert(
+  syncVariablesStart >= 0 &&
+    collectionResolverStart > syncVariablesStart &&
+    syncDesignSystemStart > collectionResolverStart &&
+    syncComponentsStart > syncDesignSystemStart &&
+    syncComponentsEnd > syncComponentsStart,
+  'Pilot 03A sync source boundaries not found',
+);
+
+const syncVariablesSource = pluginSource.slice(
+  syncVariablesStart,
+  collectionResolverStart,
+);
+const collectionResolverSource = pluginSource.slice(
+  collectionResolverStart,
+  syncDesignSystemStart,
+);
+const syncComponentsSource = pluginSource.slice(
+  syncComponentsStart,
+  syncComponentsEnd,
+);
+
+assert(
+  /if \(!variable\)[\s\S]*figma\.variables\.createVariable\(/.test(syncVariablesSource),
+  'Variable CREATE must be guarded by a missing-variable branch',
+);
+assert(
+  syncVariablesSource.includes('variable.setValueForMode('),
+  'Variable UPDATE must set the existing value for the collection mode',
+);
+assert(
+  syncVariablesSource.includes('Duplicate variable ID'),
+  'Variable identity conflicts must fail explicitly',
+);
+assert(
+  /if \(!collection\)[\s\S]*figma\.variables\.createVariableCollection\(/.test(
+    collectionResolverSource,
+  ),
+  'Variable Collection CREATE must be guarded by a missing-collection branch',
+);
+assert(
+  pluginSource.match(/figma\.variables\.createVariableCollection\(/g)?.length === 1,
+  'Variable Collection must not have an unconditional second creation path',
+);
+
+for (const component of [
+  ['Button', 'existingButton', 'updateButtonSet', 'createButtonSet'],
+  ['Badge', 'existingBadge', 'updateBadgeSet', 'createBadgeSet'],
+  ['Card', 'existingCard', 'updateCard', 'createCard'],
+]) {
+  const [name, existing, update, create] = component;
+  assert(
+    syncComponentsSource.includes(`if (${existing})`) &&
+      syncComponentsSource.includes(`${update}(`) &&
+      syncComponentsSource.includes(`${create}(`),
+    `${name} sync must contain explicit CREATE and UPDATE branches`,
+  );
+}
+assert(
+  !syncComponentsSource.includes('figma.createComponent('),
+  'Component UPDATE path must not create replacement components',
+);
+assert(
+  pluginSource.includes('Duplicate component ID'),
+  'Duplicate component IDs must fail explicitly',
+);
+assert(
+  !pluginSource.includes('.remove()'),
+  'Pilot 03A must not delete and rebuild existing components',
+);
+
 const screenBuilderStart = pluginSource.indexOf('async function buildPilotScreen');
 const screenBuilderEnd = pluginSource.indexOf('function requireVariants');
 assert(screenBuilderStart >= 0 && screenBuilderEnd > screenBuilderStart, 'screen builder source not found');
@@ -228,7 +308,7 @@ for (const runtimeCheck of [
 }
 
 console.log(
-  'Pilot 02 verification passed: stable component IDs, legal screen references and variants, native instance creation, and no component fallback.',
+  'Pilot 03A verification passed: guarded Variable and Component CREATE/UPDATE paths, stable ID lookup, duplicate protection, and no delete-rebuild update.',
 );
 
 function assert(condition, message) {
