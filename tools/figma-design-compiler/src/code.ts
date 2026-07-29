@@ -408,19 +408,30 @@ function validateVisualBindingIdempotency(
     throw new Error('Visual idempotency failed: synced component identity is incomplete');
   }
 
-  const primaryButton = requireVariantComponent(buttonSet, {
-    Type: 'Primary',
-    Size: 'MD',
-  });
-  const pendingBadge = requireVariantComponent(badgeSet, { Status: 'Pending' });
-  const cardText = requireDirectTextChildren(card, 2)[0];
+  const buttonDefinition = getComponentDefinition('Button', 'COMPONENT_SET');
+  for (const variant of requireVariants(buttonDefinition)) {
+    const type = requireVariantValue(variant, 'Type');
+    const size = requireVariantValue(variant, 'Size');
+    const button = requireVariantComponent(buttonSet, variant);
+    const fillTokenId =
+      type === 'Primary' ? 'color.brand.primary' : 'color.bg.surface';
+    assertResolvedColorBinding(
+      button,
+      variables,
+      fillTokenId,
+      `Button Type=${type}, Size=${size}`,
+    );
+    if (type === 'Secondary') {
+      assertResolvedColorBinding(
+        requireDirectTextChildren(button, 1)[0],
+        variables,
+        'color.text.primary',
+        `Button Type=${type}, Size=${size} text`,
+      );
+    }
+  }
 
-  assertResolvedColorBinding(
-    primaryButton,
-    variables,
-    'color.brand.primary',
-    'Primary Button',
-  );
+  const pendingBadge = requireVariantComponent(badgeSet, { Status: 'Pending' });
   assertResolvedColorBinding(
     pendingBadge,
     variables,
@@ -428,12 +439,15 @@ function validateVisualBindingIdempotency(
     'Pending Badge',
   );
   assertResolvedColorBinding(card, variables, 'color.bg.surface', 'Card');
-  assertResolvedColorBinding(
-    cardText,
-    variables,
-    'color.text.primary',
-    'Card text',
-  );
+  const cardTexts = requireDirectTextChildren(card, 2);
+  cardTexts.forEach((text, index) => {
+    assertResolvedColorBinding(
+      text,
+      variables,
+      'color.text.primary',
+      index === 0 ? 'Card title' : 'Card body',
+    );
+  });
 }
 
 function assertResolvedColorBinding(
@@ -448,18 +462,37 @@ function assertResolvedColorBinding(
     throw new Error(`Visual idempotency failed: ${label} is not bound to ${tokenId}`);
   }
 
+  if (node.fills === figma.mixed) {
+    throw new Error(`Visual idempotency failed: ${label} has mixed fills`);
+  }
+  const solidPaints = node.fills.filter(
+    (paint): paint is SolidPaint => paint.type === 'SOLID',
+  );
+  if (solidPaints.length === 0) {
+    throw new Error(`Visual idempotency failed: ${label} has no SOLID paint`);
+  }
+  const boundSolidPaints = solidPaints.filter(
+    (paint) => paint.boundVariables?.color?.id === variable.id,
+  );
+  if (boundSolidPaints.length !== 1) {
+    throw new Error(
+      `Visual idempotency failed: ${label} must have exactly one SOLID paint bound to ${tokenId}`,
+    );
+  }
+
+  const expected = hexToRgb(requireColorToken(tokenId).value);
+  if (!colorsMatch(boundSolidPaints[0].color, expected)) {
+    throw new Error(
+      `Visual idempotency failed: ${label} base paint does not match ${tokenId}`,
+    );
+  }
+
   const resolved = variable.resolveForConsumer(node);
   if (resolved.resolvedType !== 'COLOR') {
     throw new Error(`Visual idempotency failed: ${label} did not resolve a COLOR`);
   }
   const actual = resolved.value as RGB | RGBA;
-  const expected = hexToRgb(requireColorToken(tokenId).value);
-  const tolerance = 1 / 255 / 2;
-  if (
-    Math.abs(actual.r - expected.r) > tolerance ||
-    Math.abs(actual.g - expected.g) > tolerance ||
-    Math.abs(actual.b - expected.b) > tolerance
-  ) {
+  if (!colorsMatch(actual, expected)) {
     throw new Error(
       `Visual idempotency failed: ${label} resolved value does not match ${tokenId}`,
     );
@@ -571,7 +604,6 @@ function createButtonSet(
       component,
       variables,
       isPrimary ? 'color.brand.primary' : 'color.bg.surface',
-      false,
     );
 
     if (!isPrimary) {
@@ -583,7 +615,7 @@ function createButtonSet(
     if (isPrimary) {
       label.fills = [solidPaint('#FFFFFF')];
     } else {
-      bindTokenFill(label, variables, 'color.text.primary', false);
+      bindTokenFill(label, variables, 'color.text.primary');
     }
     component.appendChild(label);
     component.x = size === 'SM' ? 0 : 160;
@@ -624,7 +656,7 @@ function createBadgeSet(
     component.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
 
     if (status === 'Pending') {
-      bindTokenFill(component, variables, 'color.brand.primary', false);
+      bindTokenFill(component, variables, 'color.brand.primary');
     } else {
       component.fills = [solidPaint('#20D920')];
     }
@@ -674,7 +706,7 @@ function createCard(
   card.setBoundVariable('paddingBottom', requireVariable(variables, 'spacing.md'));
   card.setBoundVariable('paddingLeft', requireVariable(variables, 'spacing.md'));
   card.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
-  bindTokenFill(card, variables, 'color.bg.surface', false);
+  bindTokenFill(card, variables, 'color.bg.surface');
   card.strokes = [solidPaint('#EEEEEE')];
   card.strokeWeight = 1;
 
@@ -684,8 +716,8 @@ function createCard(
   body.layoutAlign = 'STRETCH';
   title.textAutoResize = 'HEIGHT';
   body.textAutoResize = 'HEIGHT';
-  bindTokenFill(title, variables, 'color.text.primary', false);
-  bindTokenFill(body, variables, 'color.text.primary', false);
+  bindTokenFill(title, variables, 'color.text.primary');
+  bindTokenFill(body, variables, 'color.text.primary');
   card.appendChild(title);
   card.appendChild(body);
 
@@ -720,14 +752,13 @@ function updateButtonSet(
       component,
       variables,
       isPrimary ? 'color.brand.primary' : 'color.bg.surface',
-      true,
     );
 
     const label = requireDirectTextChildren(component, 1)[0];
     if (isPrimary) {
       label.fills = [solidPaint('#FFFFFF')];
     } else {
-      bindTokenFill(label, variables, 'color.text.primary', true);
+      bindTokenFill(label, variables, 'color.text.primary');
     }
   }
 
@@ -752,7 +783,7 @@ function updateBadgeSet(
     component.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
 
     if (status === 'Pending') {
-      bindTokenFill(component, variables, 'color.brand.primary', true);
+      bindTokenFill(component, variables, 'color.brand.primary');
     } else {
       component.fills = [solidPaint('#20D920')];
     }
@@ -776,11 +807,11 @@ function updateCard(
   card.setBoundVariable('paddingBottom', requireVariable(variables, 'spacing.md'));
   card.setBoundVariable('paddingLeft', requireVariable(variables, 'spacing.md'));
   card.setBoundVariable('cornerRadius', requireVariable(variables, 'radius.md'));
-  bindTokenFill(card, variables, 'color.bg.surface', true);
+  bindTokenFill(card, variables, 'color.bg.surface');
 
   const textChildren = requireDirectTextChildren(card, 2);
   for (const text of textChildren) {
-    bindTokenFill(text, variables, 'color.text.primary', true);
+    bindTokenFill(text, variables, 'color.text.primary');
   }
 }
 
@@ -1041,32 +1072,33 @@ function bindTokenFill(
   node: ComponentNode | TextNode,
   variables: Map<string, Variable>,
   tokenId: string,
-  preferExistingPaint: boolean,
 ): void {
   const token = requireColorToken(tokenId);
   const variable = requireVariable(variables, tokenId);
-  bindSolidFill(node, variable, token.value, preferExistingPaint);
+  bindSolidFill(node, variable, token.value);
 }
 
 function bindSolidFill(
   node: ComponentNode | TextNode,
   variable: Variable,
-  fallbackHex: string,
-  preferExistingPaint: boolean,
+  tokenHex: string,
 ): void {
-  const boundFillVariables = node.boundVariables?.fills ?? [];
-  if (boundFillVariables.some((alias) => alias.id === variable.id)) {
-    return;
-  }
-
   const currentFills = node.fills === figma.mixed ? [] : [...node.fills];
-  const solidPaintIndex = preferExistingPaint
-    ? currentFills.findIndex((paint) => paint.type === 'SOLID')
-    : -1;
+  const boundSolidPaintIndex = currentFills.findIndex(
+    (paint) =>
+      paint.type === 'SOLID' &&
+      paint.boundVariables?.color?.id === variable.id,
+  );
+  const solidPaintIndex =
+    boundSolidPaintIndex >= 0
+      ? boundSolidPaintIndex
+      : currentFills.findIndex((paint) => paint.type === 'SOLID');
 
   if (solidPaintIndex >= 0) {
+    const existingPaint = currentFills[solidPaintIndex] as SolidPaint;
+    const canonicalPaint = figma.util.solidPaint(tokenHex, existingPaint);
     currentFills[solidPaintIndex] = figma.variables.setBoundVariableForPaint(
-      currentFills[solidPaintIndex] as SolidPaint,
+      canonicalPaint,
       'color',
       variable,
     );
@@ -1076,7 +1108,7 @@ function bindSolidFill(
 
   node.fills = [
     figma.variables.setBoundVariableForPaint(
-      solidPaint(fallbackHex),
+      figma.util.solidPaint(tokenHex),
       'color',
       variable,
     ),
@@ -1101,4 +1133,13 @@ function hexToRgb(hex: string): RGB {
     g: Number.parseInt(normalized.slice(2, 4), 16) / 255,
     b: Number.parseInt(normalized.slice(4, 6), 16) / 255,
   };
+}
+
+function colorsMatch(actual: RGB | RGBA, expected: RGB): boolean {
+  const tolerance = 1 / 255 / 2;
+  return (
+    Math.abs(actual.r - expected.r) <= tolerance &&
+    Math.abs(actual.g - expected.g) <= tolerance &&
+    Math.abs(actual.b - expected.b) <= tolerance
+  );
 }

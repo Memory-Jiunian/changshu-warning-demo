@@ -57,11 +57,13 @@ their display names and creates `Pending Tasks Pilot` from native instances.
 
 - Repeated **Sync Design System** runs reuse stable Variable and Component identities.
 - Existing Variable values and current Pilot variable bindings are updated in place.
-- A correct existing Variable paint binding is a no-op. Missing or incorrect bindings
-  reuse the node's current solid paint; first-create fallback paints come from the
-  current token schema rather than a fixed color.
-- After sync, the plugin checks both structure counts and resolved consumer values for
-  Primary Button, Pending Badge, Card, and Card text.
+- Every controlled fill is canonicalized on Sync, including fills already bound to
+  the correct Variable. The token color replaces a stale base color while
+  `figma.util.solidPaint(color, existingPaint)` preserves non-color paint properties;
+  first-create paints also come directly from the current token schema.
+- After sync, the plugin checks structure counts plus each controlled SolidPaint's
+  base color, specific color binding, and resolved consumer value for Primary Button,
+  Pending Badge, Card, and Card text.
 - Variables are resolved by stable `tokenId` plugin data. For the existing Pilot 02
   file only, an untagged variable can be claimed by its exact schema name inside the
   single `Pilot Design System` collection, then receives its stable token ID.

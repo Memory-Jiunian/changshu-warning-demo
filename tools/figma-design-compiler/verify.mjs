@@ -320,27 +320,40 @@ assert(
   'Variable paint binding must not use a fixed black fallback',
 );
 assert(
-  pluginSource.includes('boundFillVariables.some((alias) => alias.id === variable.id)'),
-  'Variable paint binding must no-op when the desired Variable is already bound',
+  !pluginSource.includes(
+    "if (boundFillVariables.some((alias) => alias.id === variable.id))",
+  ),
+  'A matching node-level Variable binding must not skip canonical paint repair',
 );
 assert(
-  pluginSource.includes('currentFills[solidPaintIndex] as SolidPaint'),
-  'Variable paint repair must reuse the existing SOLID paint',
+  pluginSource.includes('figma.util.solidPaint(tokenHex, existingPaint)'),
+  'Variable paint repair must canonicalize color while preserving existing paint overrides',
 );
 assert(
-  pluginSource.includes('solidPaint(fallbackHex)') &&
+  pluginSource.includes('figma.util.solidPaint(tokenHex)') &&
     pluginSource.includes('const token = requireColorToken(tokenId)'),
   'Variable paint CREATE fallback must come from the bundled token schema',
+);
+assert(
+  pluginSource.includes('paint.boundVariables?.color?.id === variable.id'),
+  'Runtime validation must check the specific SOLID paint color binding',
+);
+assert(
+  pluginSource.includes('base paint does not match') &&
+    pluginSource.includes('colorsMatch(boundSolidPaints[0].color, expected)'),
+  'Runtime validation must compare the SOLID base color with the token schema',
 );
 assert(
   pluginSource.includes('variable.resolveForConsumer(node)'),
   'Visual idempotency must validate the resolved Variable value for each consumer',
 );
 for (const runtimeBindingCheck of [
-  "'Primary Button'",
+  '`Button Type=${type}, Size=${size}`',
+  '`Button Type=${type}, Size=${size} text`',
   "'Pending Badge'",
   "'Card'",
-  "'Card text'",
+  "'Card title'",
+  "'Card body'",
 ]) {
   assert(
     pluginSource.includes(runtimeBindingCheck),
@@ -376,7 +389,7 @@ for (const runtimeCheck of [
 }
 
 console.log(
-  `Pilot 03A verification passed: bundle schema brand=${brandToken.value}, radius=${radiusToken.value}; guarded CREATE/UPDATE, structural checks, resolved binding checks, and no delete-rebuild update.`,
+  `Pilot 03A verification passed: bundle schema brand=${brandToken.value}, radius=${radiusToken.value}; canonical base paint, paint binding, resolved value, structural checks, and no delete-rebuild update.`,
 );
 
 function assert(condition, message) {
