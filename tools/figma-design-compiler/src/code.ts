@@ -43,12 +43,14 @@ type ComponentSchema = {
 };
 
 type ScreenTextChild = {
+  id: string;
   type: 'TEXT';
   style: 'TITLE' | 'BODY';
   text: string;
 };
 
 type ScreenInstanceChild = {
+  id: string;
   type: 'INSTANCE';
   componentId: string;
   variant?: Record<string, string>;
@@ -73,6 +75,8 @@ const PLUGIN_DATA_NAMESPACE = 'figma_design_compiler';
 const COMPONENT_ID_KEY = 'componentId';
 const TOKEN_ID_KEY = 'tokenId';
 const COLLECTION_ID_KEY = 'collectionId';
+const SCREEN_ID_KEY = 'screenId';
+const SCREEN_CHILD_ID_KEY = 'screenChildId';
 const DESIGN_SYSTEM_COLLECTION_ID = 'collection.pilot-design-system';
 
 figma.showUI(__html__, {
@@ -93,7 +97,7 @@ figma.ui.onmessage = async (message: { type?: string }) => {
 
   if (
     message.type !== 'sync-design-system' &&
-    message.type !== 'build-pilot-screen'
+    message.type !== 'sync-pilot-screen'
   ) {
     return;
   }
@@ -115,10 +119,10 @@ figma.ui.onmessage = async (message: { type?: string }) => {
         `Synced: brand=${summary.brand}, radius=${summary.radius}`,
       );
     } else {
-      const screen = await buildPilotScreen();
+      const screen = await syncPilotScreen();
       figma.currentPage.selection = [screen];
       figma.viewport.scrollAndZoomIntoView([screen]);
-      figma.notify('Pilot 02 screen created.');
+      figma.notify(`Synced screen: ${screenSchema.name}`);
     }
 
     figma.ui.postMessage({ type: 'build-complete', action: message.type });
@@ -858,7 +862,16 @@ function validateScreenSchema(componentIds: Set<string>): void {
     throw new Error('Pilot screen must contain children');
   }
 
+  const childIds = new Set<string>();
   for (const child of screenSchema.children) {
+    if (!child.id) {
+      throw new Error('Every screen child must have a stable id');
+    }
+    if (childIds.has(child.id)) {
+      throw new Error(`Duplicate screen child schema ID: ${child.id}`);
+    }
+    childIds.add(child.id);
+
     if (child.type === 'TEXT') {
       if (!child.text || !['TITLE', 'BODY'].includes(child.style)) {
         throw new Error('Invalid screen text child');
@@ -893,20 +906,70 @@ function validateScreenSchema(componentIds: Set<string>): void {
   }
 }
 
-async function buildPilotScreen(): Promise<FrameNode> {
+async function syncPilotScreen(): Promise<FrameNode> {
   const requiredComponentIds = new Set(
     screenSchema.children
       .filter((child): child is ScreenInstanceChild => child.type === 'INSTANCE')
       .map((child) => child.componentId),
   );
   const components = await findComponentsByStableId(requiredComponentIds);
+  for (const componentId of requiredComponentIds) {
+    if (!components.has(componentId)) {
+      throw new Error(
+        `Missing design system component: ${componentId}. Run Sync Design System first.`,
+      );
+    }
+  }
 
-  const screen = figma.createFrame();
+  let screen = await findScreenByStableId(screenSchema.id);
+  const isNewScreen = !screen;
+  const existingScreenNodeId = screen?.id;
+  if (!screen) {
+    screen = figma.createFrame();
+  } else {
+    if (screen.parent?.type !== 'PAGE') {
+      throw new Error('Pilot Screen must remain a top-level Frame');
+    }
+    await figma.setCurrentPageAsync(screen.parent);
+  }
+
+  configureScreenFrame(screen);
+  await syncScreenChildren(screen, components);
+  if (existingScreenNodeId && screen.id !== existingScreenNodeId) {
+    throw new Error('Screen Frame node identity changed during UPDATE');
+  }
+
+  if (isNewScreen) {
+    screen.x = figma.viewport.center.x - screen.width / 2;
+    screen.y = figma.viewport.center.y - screen.height / 2;
+  }
+  return screen;
+}
+
+async function findScreenByStableId(screenId: string): Promise<FrameNode | undefined> {
+  await figma.loadAllPagesAsync();
+  const matches = figma.root.findAll(
+    (node) =>
+      node.type === 'FRAME' &&
+      node.getSharedPluginData(PLUGIN_DATA_NAMESPACE, SCREEN_ID_KEY) === screenId,
+  ).filter((node): node is FrameNode => node.type === 'FRAME');
+  if (matches.length > 1) {
+    throw new Error(`Duplicate screen ID: ${screenId}`);
+  }
+  return matches[0];
+}
+
+function configureScreenFrame(screen: FrameNode): void {
   screen.name = screenSchema.name;
+  screen.setSharedPluginData(
+    PLUGIN_DATA_NAMESPACE,
+    SCREEN_ID_KEY,
+    screenSchema.id,
+  );
   screen.layoutMode = 'VERTICAL';
   screen.primaryAxisSizingMode = 'AUTO';
   screen.counterAxisSizingMode = 'FIXED';
-  screen.resize(screenSchema.width, 100);
+  screen.resize(screenSchema.width, Math.max(screen.height, 100));
   screen.itemSpacing = 16;
   screen.paddingTop = 24;
   screen.paddingRight = 24;
@@ -914,38 +977,204 @@ async function buildPilotScreen(): Promise<FrameNode> {
   screen.paddingLeft = 24;
   screen.fills = [solidPaint('#F5F5F5')];
   screen.clipsContent = false;
+}
+
+async function syncScreenChildren(
+  screen: FrameNode,
+  components: Map<string, ComponentNode | ComponentSetNode>,
+): Promise<void> {
+  const existingChildren = collectManagedScreenChildren(screen);
+  const existingNodeIds = new Map(
+    [...existingChildren.entries()].map(([childId, node]) => [childId, node.id]),
+  );
+  const unmanagedOrderBefore = screen.children
+    .filter(
+      (node) =>
+        !node.getSharedPluginData(
+          PLUGIN_DATA_NAMESPACE,
+          SCREEN_CHILD_ID_KEY,
+        ),
+    )
+    .map((node) => node.id);
+  const schemaChildIds = new Set(screenSchema.children.map((child) => child.id));
+  const syncedChildren: SceneNode[] = [];
 
   for (const child of screenSchema.children) {
-    if (child.type === 'TEXT') {
-      const text = createText(
-        child.text,
-        child.style === 'TITLE' ? 24 : 14,
-        child.style === 'TITLE' ? FONT_SEMIBOLD : FONT_REGULAR,
-      );
-      text.fills = [solidPaint(child.style === 'TITLE' ? '#333333' : '#666666')];
-      screen.appendChild(text);
-      text.layoutAlign = 'STRETCH';
-      text.textAutoResize = 'HEIGHT';
-      continue;
+    let node = existingChildren.get(child.id);
+    if (node) {
+      await updateManagedScreenChild(node, child);
+    } else {
+      node = createManagedScreenChild(child, components);
+      screen.appendChild(node);
     }
+    node.setSharedPluginData(
+      PLUGIN_DATA_NAMESPACE,
+      SCREEN_CHILD_ID_KEY,
+      child.id,
+    );
+    syncedChildren.push(node);
+  }
 
-    const component = components.get(child.componentId);
-    if (!component) {
-      throw new Error(
-        `Missing design system component: ${child.componentId}. Run Sync Design System first.`,
-      );
-    }
-
-    const instance = createScreenInstance(component, child);
-    screen.appendChild(instance);
-    if (child.componentId === 'component.card') {
-      instance.layoutAlign = 'STRETCH';
+  for (const [childId, node] of existingChildren) {
+    if (!schemaChildIds.has(childId)) {
+      node.remove();
     }
   }
 
-  screen.x = figma.viewport.center.x - screen.width / 2;
-  screen.y = figma.viewport.center.y - screen.height / 2;
-  return screen;
+  syncedChildren.forEach((node, index) => {
+    screen.insertChild(index, node);
+  });
+
+  const syncedById = collectManagedScreenChildren(screen);
+  for (const [childId, previousNodeId] of existingNodeIds) {
+    if (!schemaChildIds.has(childId)) continue;
+    if (syncedById.get(childId)?.id !== previousNodeId) {
+      throw new Error(`Screen child node identity changed during UPDATE: ${childId}`);
+    }
+  }
+
+  const managedOrder = screen.children
+    .map((node) =>
+      node.getSharedPluginData(PLUGIN_DATA_NAMESPACE, SCREEN_CHILD_ID_KEY),
+    )
+    .filter(Boolean);
+  if (
+    managedOrder.length !== screenSchema.children.length ||
+    managedOrder.some((childId, index) => childId !== screenSchema.children[index].id)
+  ) {
+    throw new Error('Screen managed child order does not match Schema');
+  }
+
+  const unmanagedOrderAfter = screen.children
+    .filter(
+      (node) =>
+        !node.getSharedPluginData(
+          PLUGIN_DATA_NAMESPACE,
+          SCREEN_CHILD_ID_KEY,
+        ),
+    )
+    .map((node) => node.id);
+  if (
+    unmanagedOrderAfter.length !== unmanagedOrderBefore.length ||
+    unmanagedOrderAfter.some((nodeId, index) => nodeId !== unmanagedOrderBefore[index])
+  ) {
+    throw new Error('Unmanaged screen child order changed during Sync');
+  }
+}
+
+function collectManagedScreenChildren(
+  screen: FrameNode,
+): Map<string, SceneNode> {
+  const children = new Map<string, SceneNode>();
+  for (const node of screen.children) {
+    const childId = node.getSharedPluginData(
+      PLUGIN_DATA_NAMESPACE,
+      SCREEN_CHILD_ID_KEY,
+    );
+    if (!childId) continue;
+    if (children.has(childId)) {
+      throw new Error(`Duplicate screen child ID: ${childId}`);
+    }
+    children.set(childId, node);
+  }
+  return children;
+}
+
+function createManagedScreenChild(
+  child: ScreenChild,
+  components: Map<string, ComponentNode | ComponentSetNode>,
+): TextNode | InstanceNode {
+  if (child.type === 'TEXT') {
+    const text = figma.createText();
+    configureScreenText(text, child);
+    return text;
+  }
+
+  const component = components.get(child.componentId);
+  if (!component) {
+    throw new Error(`Missing design system component: ${child.componentId}`);
+  }
+  const instance = createScreenInstance(component, child);
+  configureScreenInstance(instance, child);
+  assertScreenInstanceVariants(instance, child);
+  return instance;
+}
+
+async function updateManagedScreenChild(
+  node: SceneNode,
+  child: ScreenChild,
+): Promise<void> {
+  if (child.type === 'TEXT') {
+    if (node.type !== 'TEXT') {
+      throw new Error(`Screen child type mismatch: ${child.id} must remain TEXT`);
+    }
+    configureScreenText(node, child);
+    return;
+  }
+
+  if (node.type !== 'INSTANCE') {
+    throw new Error(`Screen child type mismatch: ${child.id} must remain INSTANCE`);
+  }
+  await assertScreenInstanceComponentIdentity(node, child);
+  node.setProperties(child.variant ?? {});
+  configureScreenInstance(node, child);
+  await assertScreenInstanceComponentIdentity(node, child);
+  assertScreenInstanceVariants(node, child);
+}
+
+function configureScreenText(text: TextNode, child: ScreenTextChild): void {
+  const isTitle = child.style === 'TITLE';
+  text.name = child.id;
+  text.fontName = isTitle ? FONT_SEMIBOLD : FONT_REGULAR;
+  text.fontSize = isTitle ? 24 : 14;
+  text.lineHeight = { unit: 'AUTO' };
+  text.characters = child.text;
+  text.fills = [solidPaint(isTitle ? '#333333' : '#666666')];
+  text.layoutAlign = 'STRETCH';
+  text.textAutoResize = 'HEIGHT';
+}
+
+function configureScreenInstance(
+  instance: InstanceNode,
+  child: ScreenInstanceChild,
+): void {
+  instance.name = child.id;
+  instance.layoutAlign =
+    child.componentId === 'component.card' ? 'STRETCH' : 'INHERIT';
+}
+
+async function assertScreenInstanceComponentIdentity(
+  instance: InstanceNode,
+  child: ScreenInstanceChild,
+): Promise<void> {
+  const mainComponent = await instance.getMainComponentAsync();
+  if (!mainComponent) {
+    throw new Error(`Screen child component identity mismatch: ${child.id}`);
+  }
+  const identityNode =
+    mainComponent.parent?.type === 'COMPONENT_SET'
+      ? mainComponent.parent
+      : mainComponent;
+  const actualComponentId = identityNode.getSharedPluginData(
+    PLUGIN_DATA_NAMESPACE,
+    COMPONENT_ID_KEY,
+  );
+  if (actualComponentId !== child.componentId) {
+    throw new Error(`Screen child component identity mismatch: ${child.id}`);
+  }
+}
+
+function assertScreenInstanceVariants(
+  instance: InstanceNode,
+  child: ScreenInstanceChild,
+): void {
+  for (const [property, value] of Object.entries(child.variant ?? {})) {
+    if (instance.componentProperties[property]?.value !== value) {
+      throw new Error(
+        `Screen child Variant update failed: ${child.id} ${property}=${value}`,
+      );
+    }
+  }
 }
 
 async function findComponentsByStableId(

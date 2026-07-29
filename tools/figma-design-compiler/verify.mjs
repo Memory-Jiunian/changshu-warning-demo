@@ -104,18 +104,35 @@ const componentById = new Map(
   components.components.map((component) => [component.id, component]),
 );
 const instanceChildren = screen.children.filter((child) => child.type === 'INSTANCE');
-assert(instanceChildren.length === 5, 'Pilot screen must contain exactly five instances');
-assert(
-  screen.children.filter((child) => child.type === 'TEXT').length === 2,
-  'Pilot screen must contain exactly two text nodes',
-);
+const screenChildIds = new Set();
 
-for (const child of instanceChildren) {
+for (const child of screen.children) {
+  assert(
+    typeof child.id === 'string' && child.id.length > 0,
+    'every Screen child must have a stable id',
+  );
+  assert(!screenChildIds.has(child.id), `duplicate Screen child id: ${child.id}`);
+  screenChildIds.add(child.id);
+
+  if (child.type === 'TEXT') {
+    assert(
+      ['TITLE', 'BODY'].includes(child.style) && typeof child.text === 'string',
+      `invalid Screen TEXT child: ${child.id}`,
+    );
+    assert(
+      Object.keys(child).every((key) =>
+        ['id', 'type', 'style', 'text'].includes(key),
+      ),
+      `Screen TEXT child contains unsupported fields: ${child.id}`,
+    );
+    continue;
+  }
+
   const definition = componentById.get(child.componentId);
   assert(definition, `screen references unknown component id: ${child.componentId}`);
   assert(
     Object.keys(child).every((key) =>
-      ['type', 'componentId', 'variant'].includes(key),
+      ['id', 'type', 'componentId', 'variant'].includes(key),
     ),
     `screen instance duplicates component visuals: ${child.componentId}`,
   );
@@ -130,27 +147,8 @@ for (const child of instanceChildren) {
 }
 
 assert(
-  instanceChildren.filter((child) => child.componentId === 'component.card').length === 2,
-  'Pilot screen must contain two Card instances',
-);
-assert(
-  instanceChildren.some(
-    (child) =>
-      child.componentId === 'component.button' &&
-      child.variant?.Type === 'Primary' &&
-      child.variant?.Size === 'MD',
-  ),
-  'Pilot screen must request Button Type=Primary, Size=MD',
-);
-assert(
-  ['Pending', 'Done'].every((status) =>
-    instanceChildren.some(
-      (child) =>
-        child.componentId === 'component.badge' &&
-        child.variant?.Status === status,
-    ),
-  ),
-  'Pilot screen must request Pending and Done Badge variants',
+  screenChildIds.size === screen.children.length,
+  'Screen child stable IDs must be unique',
 );
 
 await access(new URL(manifest.main, pluginRoot));
@@ -165,6 +163,9 @@ for (const apiCall of [
   'createComponent',
   'combineAsVariants',
   'createInstance',
+  'getMainComponentAsync',
+  'setProperties',
+  'insertChild',
   'setSharedPluginData',
   'getSharedPluginData',
   'setBoundVariableForPaint',
@@ -173,7 +174,11 @@ for (const apiCall of [
 }
 
 assert(ui.includes('Sync Design System'), 'plugin UI is missing Sync Design System');
-assert(ui.includes('Build Pilot Screen'), 'plugin UI is missing Build Pilot Screen');
+assert(ui.includes('Sync Pilot Screen'), 'plugin UI is missing Sync Pilot Screen');
+assert(
+  ui.includes('data-action="sync-pilot-screen"'),
+  'Sync Pilot Screen must use the sync-pilot-screen action',
+);
 assert(ui.includes('schema-summary'), 'plugin UI is missing the bundled schema summary');
 assert(
   ui.includes('message.summary.brand') && ui.includes('message.summary.radius'),
@@ -312,7 +317,7 @@ assert(
   'Duplicate component IDs must fail explicitly',
 );
 assert(
-  !pluginSource.includes('.remove()'),
+  !syncComponentsSource.includes('.remove()'),
   'Pilot 03A must not delete and rebuild existing components',
 );
 assert(
@@ -371,14 +376,134 @@ assert(
   'Sync must verify visual/binding idempotency after CREATE/UPDATE',
 );
 
-const screenBuilderStart = pluginSource.indexOf('async function buildPilotScreen');
-const screenBuilderEnd = pluginSource.indexOf('function requireVariants');
-assert(screenBuilderStart >= 0 && screenBuilderEnd > screenBuilderStart, 'screen builder source not found');
-const screenBuilderSource = pluginSource.slice(screenBuilderStart, screenBuilderEnd);
-assert(screenBuilderSource.includes('.createInstance()'), 'screen builder must create native instances');
+const screenSyncStart = pluginSource.indexOf('async function syncPilotScreen');
+const screenLookupStart = pluginSource.indexOf('async function findScreenByStableId');
+const screenChildrenSyncStart = pluginSource.indexOf('async function syncScreenChildren');
+const managedChildrenCollectorStart = pluginSource.indexOf(
+  'function collectManagedScreenChildren',
+);
+const managedChildCreateStart = pluginSource.indexOf(
+  'function createManagedScreenChild',
+);
+const managedChildUpdateStart = pluginSource.indexOf(
+  'async function updateManagedScreenChild',
+);
+const screenTextConfigureStart = pluginSource.indexOf('function configureScreenText');
+const componentLookupStart = pluginSource.indexOf('async function findComponentsByStableId');
 assert(
-  !screenBuilderSource.includes('figma.createComponent('),
-  'screen builder must not create fallback components',
+  screenSyncStart >= 0 &&
+    screenLookupStart > screenSyncStart &&
+    screenChildrenSyncStart > screenLookupStart &&
+    managedChildrenCollectorStart > screenChildrenSyncStart &&
+    managedChildCreateStart > managedChildrenCollectorStart &&
+    managedChildUpdateStart > managedChildCreateStart &&
+    screenTextConfigureStart > managedChildUpdateStart &&
+    componentLookupStart > screenTextConfigureStart,
+  'Pilot 03B Screen sync source boundaries not found',
+);
+
+const screenSyncSource = pluginSource.slice(screenSyncStart, screenLookupStart);
+const screenChildrenSyncSource = pluginSource.slice(
+  screenChildrenSyncStart,
+  managedChildrenCollectorStart,
+);
+const managedChildrenCollectorSource = pluginSource.slice(
+  managedChildrenCollectorStart,
+  managedChildCreateStart,
+);
+const managedChildCreateSource = pluginSource.slice(
+  managedChildCreateStart,
+  managedChildUpdateStart,
+);
+const managedChildUpdateSource = pluginSource.slice(
+  managedChildUpdateStart,
+  screenTextConfigureStart,
+);
+const pilotScreenSource = pluginSource.slice(screenSyncStart, componentLookupStart);
+
+assert(
+  pluginSource.includes("const SCREEN_ID_KEY = 'screenId'") &&
+    pluginSource.includes("const SCREEN_CHILD_ID_KEY = 'screenChildId'"),
+  'Pilot 03B must define screenId and screenChildId plugin data keys',
+);
+assert(
+  pluginSource.includes('Duplicate screen child schema ID') &&
+    screen.children.every((child) => screenChildIds.has(child.id)),
+  'Runtime and static schema validation must require unique Screen child IDs',
+);
+assert(
+  pilotScreenSource.includes('SCREEN_ID_KEY') &&
+    pilotScreenSource.includes('SCREEN_CHILD_ID_KEY') &&
+    pilotScreenSource.includes('setSharedPluginData(') &&
+    pilotScreenSource.includes('getSharedPluginData('),
+  'Screen and managed children must read and write stable plugin data identities',
+);
+assert(
+  /if \(!screen\)[\s\S]*figma\.createFrame\(\)/.test(screenSyncSource),
+  'Screen CREATE must be guarded by a missing-Screen branch',
+);
+assert(
+  /if \(node\)[\s\S]*updateManagedScreenChild\([\s\S]*else[\s\S]*createManagedScreenChild\(/.test(
+    screenChildrenSyncSource,
+  ),
+  'Screen child CREATE must be guarded by a missing-child branch',
+);
+assert(
+  managedChildUpdateSource.includes("node.type !== 'TEXT'") &&
+    managedChildUpdateSource.includes('configureScreenText(node, child)') &&
+    !managedChildUpdateSource.includes('figma.createText()'),
+  'TEXT UPDATE must reuse the existing TextNode',
+);
+assert(
+  managedChildUpdateSource.includes("node.type !== 'INSTANCE'") &&
+    managedChildUpdateSource.includes('node.setProperties(child.variant ?? {})') &&
+    !managedChildUpdateSource.includes('.createInstance()'),
+  'INSTANCE UPDATE must reuse the existing InstanceNode and update Variants',
+);
+assert(
+  managedChildCreateSource.includes('.createInstance()') ||
+    pilotScreenSource.includes('createScreenInstance(component, child)'),
+  'Screen child CREATE must create native Instances',
+);
+assert(
+  screenChildrenSyncSource.includes('for (const [childId, node] of existingChildren)') &&
+    screenChildrenSyncSource.includes('node.remove()') &&
+    managedChildrenCollectorSource.includes('SCREEN_CHILD_ID_KEY') &&
+    pluginSource.match(/\.remove\(\)/g)?.length === 1,
+  'Screen REMOVE must only process managed direct children',
+);
+assert(
+  pilotScreenSource.includes('Duplicate screen ID:') &&
+    pilotScreenSource.includes('Duplicate screen child ID:'),
+  'Screen and Screen child duplicate identities must fail explicitly',
+);
+assert(
+  pilotScreenSource.includes('Screen child component identity mismatch') &&
+    pilotScreenSource.includes('getMainComponentAsync()'),
+  'Component identity mismatch must fail before Instance Variant update',
+);
+assert(
+  screenChildrenSyncSource.includes('existingNodeIds') &&
+    screenChildrenSyncSource.includes('Screen child node identity changed during UPDATE'),
+  'Screen child UPDATE must protect existing node identity',
+);
+assert(
+  screenSyncSource.includes('existingScreenNodeId') &&
+    screenSyncSource.includes('Screen Frame node identity changed during UPDATE'),
+  'Screen UPDATE must protect the existing Frame node identity',
+);
+assert(
+  screenChildrenSyncSource.includes('screen.insertChild(index, node)'),
+  'Managed Screen children must be reordered in Schema order without recreation',
+);
+assert(
+  screenChildrenSyncSource.includes('unmanagedOrderBefore') &&
+    screenChildrenSyncSource.includes('unmanagedOrderAfter'),
+  'Unmanaged direct children must be retained in stable relative order',
+);
+assert(
+  !pilotScreenSource.includes('figma.createComponent('),
+  'Screen sync must not create fallback components',
 );
 
 for (const runtimeCheck of [
@@ -389,7 +514,7 @@ for (const runtimeCheck of [
 }
 
 console.log(
-  `Pilot 03A verification passed: bundle schema brand=${brandToken.value}, radius=${radiusToken.value}; canonical base paint, paint binding, resolved value, structural checks, and no delete-rebuild update.`,
+  `Pilot 03B verification passed: stable Screen/direct-child sync, guarded CREATE/UPDATE/REMOVE, in-place Text/Instance updates, identity protection, and Pilot 03A checks retained.`,
 );
 
 function assert(condition, message) {

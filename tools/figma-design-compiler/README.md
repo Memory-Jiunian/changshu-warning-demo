@@ -1,4 +1,4 @@
-# Figma Design Compiler — Pilot 03A
+# Figma Design Compiler — Pilot 03B
 
 This is a deliberately small Figma Development Plugin that validates two paths:
 
@@ -7,9 +7,10 @@ This is a deliberately small Figma Development Plugin that validates two paths:
 `design-system/screens/pending-tasks.json` → existing Components → native Figma
 Instances in a Screen Frame.
 
-Pilot 03A adds in-place Design System sync and idempotency checks. It does not
-implement file import, localhost/runtime file loading, Screen sync, or a general
-diff engine.
+Pilot 03A adds in-place Design System sync and idempotency checks. Pilot 03B adds
+in-place sync for one top-level Screen and its direct managed children. It does
+not implement file import, localhost/runtime file loading, nested Screen diffing,
+or a general diff engine.
 
 ## Build
 
@@ -49,9 +50,27 @@ The plugin creates missing Pilot objects and updates existing ones in place: one
 four-variant `Button` component set, a two-variant `Badge` component set, and one
 `Card` component.
 
-To validate Pilot 02, keep those generated components in the file and click
-**Build Pilot Screen**. The plugin locates them by shared plugin data rather than
-their display names and creates `Pending Tasks Pilot` from native instances.
+To sync the Pilot Screen, keep those generated components in the file and click
+**Sync Pilot Screen**. The plugin locates components, the Screen Frame, and its
+managed direct children by shared plugin data rather than display names.
+
+## Pilot Screen sync
+
+- The Screen Frame uses `screenId`; each managed direct child uses
+  `screenChildId`.
+- Missing Screen/children are created. Existing Text and Instance nodes are
+  updated in place. Managed children removed from the schema are removed
+  individually.
+- Instance updates verify the stable ID of the current main Component or
+  Component Set before applying Variant values with `setProperties`.
+- Managed children are moved to the beginning of the Frame in schema order.
+  Unmanaged direct children are retained after them in their existing relative
+  order.
+- Existing node IDs are checked after update, so retained Screen children cannot
+  be replaced during an ordinary property or Variant update.
+- Frames created before Pilot 03B have no `screenId` and are not adopted by name.
+  The first Pilot 03B sync creates one tagged Screen; subsequent syncs update that
+  Frame.
 
 ## Pilot boundary
 
@@ -69,8 +88,8 @@ their display names and creates `Pending Tasks Pilot` from native instances.
   single `Pilot Design System` collection, then receives its stable token ID.
 - Existing Components and Component Sets are never deleted and recreated during sync,
   so their Instances keep their main-component association.
-- Pilot 03A does not sync Screens, delete removed schema items, rename identities,
-  migrate arbitrary structures, or add/remove component variants.
+- Pilot 03B does not sync nested Screen trees, migrate child types or component
+  identities, rename stable identities, or add/remove design-system variants.
 - The Screen Builder stops if a required stable component ID is missing or duplicated.
 - Components created before Pilot 02 do not contain stable component IDs and are not
   adopted by display name; legacy untagged nodes are outside Pilot 03A.
