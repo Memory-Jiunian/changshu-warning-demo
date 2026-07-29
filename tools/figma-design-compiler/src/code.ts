@@ -228,12 +228,15 @@ function buildButtonSet(
       bindSolidFill(label, requireVariable(variables, 'color.text.primary'));
     }
     component.appendChild(label);
+    component.x = size === 'SM' ? 0 : 160;
+    component.y = type === 'Primary' ? 0 : 80;
 
     return component;
   });
 
   const componentSet = figma.combineAsVariants(components, figma.currentPage);
   componentSet.name = definition.name;
+  assertVariantLayout(componentSet, 4);
   return componentSet;
 }
 
@@ -266,11 +269,14 @@ function buildBadgeSet(
     const label = createText(status, 12, FONT_SEMIBOLD);
     label.fills = [solidPaint('#FFFFFF')];
     component.appendChild(label);
+    component.x = status === 'Pending' ? 0 : 120;
+    component.y = 0;
     return component;
   });
 
   const componentSet = figma.combineAsVariants(components, figma.currentPage);
   componentSet.name = definition.name;
+  assertVariantLayout(componentSet, 2);
   return componentSet;
 }
 
@@ -327,6 +333,36 @@ function requireVariable(variables: Map<string, Variable>, name: string): Variab
   const variable = variables.get(name);
   if (!variable) throw new Error(`Variable was not created: ${name}`);
   return variable;
+}
+
+function assertVariantLayout(componentSet: ComponentSetNode, expectedCount: number): void {
+  const variants = componentSet.children.filter(
+    (node): node is ComponentNode => node.type === 'COMPONENT',
+  );
+
+  if (variants.length !== expectedCount) {
+    throw new Error(
+      `${componentSet.name} must contain exactly ${expectedCount} COMPONENT variants`,
+    );
+  }
+
+  for (let index = 0; index < variants.length; index += 1) {
+    for (let comparisonIndex = index + 1; comparisonIndex < variants.length; comparisonIndex += 1) {
+      const first = variants[index];
+      const second = variants[comparisonIndex];
+      const overlaps =
+        first.x < second.x + second.width &&
+        first.x + first.width > second.x &&
+        first.y < second.y + second.height &&
+        first.y + first.height > second.y;
+
+      if (overlaps) {
+        throw new Error(
+          `${componentSet.name} variants overlap: ${first.name} and ${second.name}`,
+        );
+      }
+    }
+  }
 }
 
 function createText(value: string, fontSize: number, fontName: FontName): TextNode {

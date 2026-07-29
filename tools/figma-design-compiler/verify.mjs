@@ -44,6 +44,29 @@ assert(badge?.nodeType === 'COMPONENT_SET', 'Badge must be a component set');
 assert(badge?.variants?.length === 2, 'Badge must contain two variants');
 assert(card?.nodeType === 'COMPONENT', 'Card must be a component');
 
+const expectedButtonVariants = new Set([
+  'Primary/SM',
+  'Primary/MD',
+  'Secondary/SM',
+  'Secondary/MD',
+]);
+const actualButtonVariants = new Set(
+  button.variants.map((variant) => `${variant.Type}/${variant.Size}`),
+);
+assert(
+  actualButtonVariants.size === expectedButtonVariants.size &&
+    [...expectedButtonVariants].every((variant) => actualButtonVariants.has(variant)),
+  'Button variants must be the exact 2 x 2 Type/Size matrix',
+);
+
+const expectedBadgeVariants = new Set(['Pending', 'Done']);
+const actualBadgeVariants = new Set(badge.variants.map((variant) => variant.Status));
+assert(
+  actualBadgeVariants.size === expectedBadgeVariants.size &&
+    [...expectedBadgeVariants].every((variant) => actualBadgeVariants.has(variant)),
+  'Badge variants must be exactly Pending and Done',
+);
+
 await access(new URL(manifest.main, pluginRoot));
 await access(new URL(manifest.ui, pluginRoot));
 
@@ -57,7 +80,16 @@ for (const apiCall of [
   assert(bundle.includes(apiCall), `built plugin is missing ${apiCall}`);
 }
 
-console.log('Pilot 01 verification passed: schemas, manifest artifacts, and native API calls.');
+for (const runtimeCheck of [
+  'must contain exactly',
+  'variants overlap',
+]) {
+  assert(bundle.includes(runtimeCheck), `built plugin is missing runtime check: ${runtimeCheck}`);
+}
+
+console.log(
+  'Pilot 01 verification passed: exact variant schemas, manifest artifacts, native API calls, and runtime layout guards.',
+);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
