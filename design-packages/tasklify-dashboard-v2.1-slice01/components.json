@@ -1,0 +1,614 @@
+{
+  "schemaVersion": "2.1.0",
+  "designSystemId": "design-system.tasklify.reference",
+  "components": [
+    {
+      "id": "component.button",
+      "name": "Button",
+      "description": "Text action with primary/secondary emphasis.",
+      "purpose": "Text action with primary/secondary emphasis.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT_SET",
+        "name": "Button",
+        "variantPropertyOrder": [
+          "Type"
+        ]
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [
+        {
+          "id": "property.button.type",
+          "name": "Type",
+          "kind": "variant",
+          "required": true,
+          "default": "primary",
+          "values": [
+            "primary",
+            "secondary"
+          ],
+          "target": "root",
+          "description": "Candidate visual/semantic variation inferred from the reference."
+        }
+      ],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.icon-button",
+      "name": "Icon Button",
+      "description": "Compact square icon-only action.",
+      "purpose": "Compact square icon-only action.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT",
+        "name": "Icon Button"
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.search-field",
+      "name": "Search Field",
+      "description": "Sidebar search input with shortcut hint.",
+      "purpose": "Sidebar search input with shortcut hint.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT",
+        "name": "Search Field"
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.sidebar-nav-item",
+      "name": "Sidebar Nav Item",
+      "description": "Navigation row with icon, label and optional badge.",
+      "purpose": "Navigation row with icon, label and optional badge.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT_SET",
+        "name": "Sidebar Nav Item",
+        "variantPropertyOrder": [
+          "Type"
+        ]
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [
+        {
+          "id": "property.sidebar-nav-item.type",
+          "name": "Type",
+          "kind": "variant",
+          "required": true,
+          "default": "default",
+          "values": [
+            "default",
+            "selected"
+          ],
+          "target": "root",
+          "description": "Candidate visual/semantic variation inferred from the reference."
+        }
+      ],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.badge",
+      "name": "Badge",
+      "description": "Shared semantic badge used for both workflow status and task priority labels.",
+      "purpose": "Represent compact status or priority semantics with a shared visual grammar.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT_SET",
+        "name": "Badge",
+        "variantPropertyOrder": [
+          "Type"
+        ]
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [
+        {
+          "id": "property.badge.type",
+          "name": "Type",
+          "kind": "variant",
+          "required": true,
+          "default": "neutral",
+          "values": [
+            "neutral",
+            "urgent",
+            "low",
+            "medium",
+            "pending",
+            "completed",
+            "review"
+          ],
+          "target": "root",
+          "description": "Candidate visual/semantic variation inferred from the reference."
+        }
+      ],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.avatar",
+      "name": "Avatar",
+      "description": "Person avatar used in ownership and collaboration metadata.",
+      "purpose": "Person avatar used in ownership and collaboration metadata.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT",
+        "name": "Avatar"
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.avatar-group",
+      "name": "Avatar Group",
+      "description": "Overlapping avatar collection with overflow count.",
+      "purpose": "Overlapping avatar collection with overflow count.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT",
+        "name": "Avatar Group"
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.inline-banner",
+      "name": "Inline Banner",
+      "description": "Full-width dashboard announcement with action.",
+      "purpose": "Full-width dashboard announcement with action.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT",
+        "name": "Inline Banner"
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "vertical",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.stat-card",
+      "name": "Stat Card",
+      "description": "Dashboard KPI card with icon, value, label and details action.",
+      "purpose": "Dashboard KPI card with icon, value, label and details action.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT",
+        "name": "Stat Card"
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "vertical",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.segmented-tab",
+      "name": "Segmented Tab",
+      "description": "View selector tab inside the board toolbar.",
+      "purpose": "View selector tab inside the board toolbar.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT_SET",
+        "name": "Segmented Tab",
+        "variantPropertyOrder": [
+          "Type"
+        ]
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [
+        {
+          "id": "property.segmented-tab.type",
+          "name": "Type",
+          "kind": "variant",
+          "required": true,
+          "default": "default",
+          "values": [
+            "default",
+            "selected"
+          ],
+          "target": "root",
+          "description": "Candidate visual/semantic variation inferred from the reference."
+        }
+      ],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.task-card",
+      "name": "Task Card",
+      "description": "Kanban task summary card.",
+      "purpose": "Kanban task summary card.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT",
+        "name": "Task Card"
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "vertical",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "component.kanban-column-header",
+      "name": "Kanban Column Header",
+      "description": "Status pill/count and overflow action for a board column.",
+      "purpose": "Status pill/count and overflow action for a board column.",
+      "documentation": {
+        "usage": [
+          "Use where the dashboard reference demonstrates this role."
+        ],
+        "dont": [
+          "Do not treat screenshot-specific content as a new component variant without review."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT_SET",
+        "name": "Kanban Column Header",
+        "variantPropertyOrder": [
+          "Type"
+        ]
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": []
+      },
+      "properties": [
+        {
+          "id": "property.kanban-column-header.type",
+          "name": "Type",
+          "kind": "variant",
+          "required": true,
+          "default": "not-started",
+          "values": [
+            "not-started",
+            "pending",
+            "completed",
+            "under-review"
+          ],
+          "target": "root",
+          "description": "Candidate visual/semantic variation inferred from the reference."
+        }
+      ],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "horizontal",
+        "sizing": {
+          "width": "hug",
+          "height": "hug"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [],
+      "contentRules": {},
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    }
+  ]
+}

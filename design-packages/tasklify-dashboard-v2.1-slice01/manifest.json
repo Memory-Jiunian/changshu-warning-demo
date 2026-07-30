@@ -1,0 +1,133 @@
+{
+  "packageId": "package.tasklify.dashboard-overview-reference",
+  "packageVersion": "0.3.0",
+  "schemaVersion": "2.1.0",
+  "name": "Tasklify Dashboard Overview Reference",
+  "description": "Reviewed V2.1 candidate derived from the supplied Tasklify dashboard reference. Core desktop facts were human-reviewed; tablet behavior remains a proposed test design.",
+  "platform": [
+    "web",
+    "desktop"
+  ],
+  "createdAt": "2026-07-30T11:29:39+09:00",
+  "updatedAt": "2026-07-30T11:55:00+09:00",
+  "designSystem": {
+    "id": "design-system.tasklify.reference",
+    "name": "Tasklify Reference Design System",
+    "version": "0.1.0"
+  },
+  "sourceReferences": [
+    {
+      "id": "source.upload.fig",
+      "kind": "figma",
+      "uri": "uploaded://参考页面.fig",
+      "label": "Supplied Figma source container",
+      "capturedAt": "2026-07-30T02:25:41.919Z",
+      "checksum": "sha256:855145f0d713c18a77fda0f2e1607462073fe45561d8cb84ae9fde1ec12affc7",
+      "notes": "The .fig container metadata and embedded image assets were inspected. Native canvas node structure was not treated as decoded evidence in this draft."
+    },
+    {
+      "id": "source.upload.render",
+      "kind": "screenshot",
+      "uri": "references/images/dashboard-overview.png",
+      "label": "Supplied dashboard render",
+      "capturedAt": "2026-07-30T11:29:39+09:00",
+      "checksum": "sha256:cc2da5c770a307a24927ced1b932ce27ef211bcea804b30d52c0f53e0f5487d7",
+      "defaultLocator": {
+        "kind": "image-region",
+        "value": {
+          "assetRef": "reference.dashboard-overview",
+          "x": 0,
+          "y": 0,
+          "width": 975,
+          "height": 694
+        }
+      },
+      "defaultExtractionMethod": "measured"
+    },
+    {
+      "id": "source.manual.status-palette",
+      "kind": "screenshot",
+      "uri": "references/images/status-palette.png",
+      "label": "Human-provided status palette",
+      "capturedAt": "2026-07-30T11:45:00+09:00",
+      "checksum": "sha256:c715f7790ee042495ec982b4f90db7a35106004c2f58ea680e6d44c59bb1e7c9",
+      "notes": "Explicitly provided during human review; used to approve status foreground/background color pairs."
+    }
+  ],
+  "screens": [
+    {
+      "id": "screen.tasklify.dashboard-overview",
+      "name": "Dashboard Overview",
+      "file": "screens.json"
+    }
+  ],
+  "dataContracts": [
+    {
+      "id": "data.dashboard-summary",
+      "kind": "object",
+      "file": "data-contracts.json"
+    },
+    {
+      "id": "data.kanban-task",
+      "kind": "object",
+      "file": "data-contracts.json"
+    },
+    {
+      "id": "data.kanban-column",
+      "kind": "object",
+      "file": "data-contracts.json"
+    },
+    {
+      "id": "data.kanban-board",
+      "kind": "object",
+      "file": "data-contracts.json"
+    }
+  ],
+  "codeTargets": [
+    {
+      "id": "code-target.react-web",
+      "language": "TypeScript",
+      "framework": "React",
+      "status": "requested"
+    }
+  ],
+  "auditGovernance": {
+    "file": "audit-governance.json"
+  },
+  "requestedReadiness": [
+    "figma-ready"
+  ],
+  "compatibility": {
+    "figmaCompiler": {
+      "minVersion": "pilot-03b",
+      "maxTestedVersion": "pilot-03b"
+    },
+    "codexHandoff": "v2.1-core-candidate",
+    "codeTargetRefs": [
+      "code-target.react-web"
+    ],
+    "features": [
+      "semantic-token-alias",
+      "component-contract",
+      "screen-region",
+      "data-contract",
+      "state-ref",
+      "source-confidence-review"
+    ]
+  },
+  "entrypoints": {
+    "foundations": "foundations.json",
+    "dataContracts": "data-contracts.json",
+    "components": "components.json",
+    "patterns": "patterns.json",
+    "screens": "screens.json",
+    "interactions": "interactions.json",
+    "decisions": "decisions.json",
+    "implementationHints": "implementation-hints.json",
+    "codeMapping": "code-mapping.json",
+    "auditGovernance": "audit-governance.json",
+    "references": "references/index.json"
+  },
+  "locale": "en-US",
+  "status": "review"
+}

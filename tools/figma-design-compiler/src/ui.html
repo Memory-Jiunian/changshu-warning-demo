@@ -31,6 +31,23 @@
         line-height: 16px;
       }
 
+      #tasklify-summary {
+        display: grid;
+        gap: 2px;
+        margin: 4px 0 8px;
+        padding: 8px;
+        border: 1px solid var(--figma-color-border);
+        border-radius: 6px;
+        color: var(--figma-color-text-secondary);
+        font-size: 10px;
+        line-height: 14px;
+      }
+
+      #tasklify-summary strong {
+        color: var(--figma-color-text);
+        font-size: 11px;
+      }
+
       button {
         width: 100%;
         min-height: 32px;
@@ -55,10 +72,18 @@
     <p id="schema-summary">Loading bundled schema…</p>
     <button type="button" data-action="sync-design-system">Sync Design System</button>
     <button type="button" data-action="sync-pilot-screen">Sync Pilot Screen</button>
+    <div id="tasklify-summary">
+      <strong>Tasklify V2 Slice 01</strong>
+      <span>Loading bundled package…</span>
+    </div>
+    <button type="button" data-action="sync-tasklify-slice01">
+      Sync Tasklify V2 Slice 01
+    </button>
     <script>
       const buttons = [...document.querySelectorAll('button')];
       const labels = new Map(buttons.map((button) => [button.dataset.action, button.textContent]));
       const schemaSummary = document.querySelector('#schema-summary');
+      const tasklifySummary = document.querySelector('#tasklify-summary');
 
       parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
 
@@ -79,6 +104,12 @@
         if (message.type === 'schema-summary') {
           schemaSummary.textContent =
             `Brand: ${message.summary.brand} · Radius: ${message.summary.radius}`;
+          tasklifySummary.innerHTML = `
+            <strong>Package: ${message.tasklify.name}</strong>
+            <span>Schema: ${message.tasklify.schemaVersion} · Package: ${message.tasklify.packageVersion}</span>
+            <span>Design System: ${message.tasklify.designSystemId}</span>
+            <span>Desktop: ${message.tasklify.desktop} · Tablet: ${message.tasklify.tablet}</span>
+          `;
           return;
         }
 

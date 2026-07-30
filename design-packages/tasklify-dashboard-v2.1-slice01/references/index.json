@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "2.1.0",
+  "references": [
+    {
+      "id": "reference.dashboard-overview",
+      "kind": "image",
+      "path": "references/images/dashboard-overview.png",
+      "label": "Tasklify dashboard overview render",
+      "purpose": "Primary visual evidence for layout, hierarchy, components and visible content.",
+      "sourceRef": "source.upload.render",
+      "checksum": "sha256:cc2da5c770a307a24927ced1b932ce27ef211bcea804b30d52c0f53e0f5487d7",
+      "dimensions": {
+        "width": 975,
+        "height": 694
+      },
+      "confidence": "exact",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "reference.dashboard-overview-fig",
+      "kind": "figma-node",
+      "uri": "uploaded://参考页面.fig",
+      "label": "Tasklify dashboard Figma source container",
+      "purpose": "Source artifact for later native-Figma inspection and exact node/token extraction.",
+      "sourceRef": "source.upload.fig",
+      "checksum": "sha256:855145f0d713c18a77fda0f2e1607462073fe45561d8cb84ae9fde1ec12affc7",
+      "confidence": "exact",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "reference.status-palette",
+      "kind": "image",
+      "path": "references/images/status-palette.png",
+      "label": "Status palette",
+      "purpose": "Human-approved foreground/background colors for Pending, Completed and Under Review states.",
+      "sourceRef": "source.manual.status-palette",
+      "checksum": "sha256:c715f7790ee042495ec982b4f90db7a35106004c2f58ea680e6d44c59bb1e7c9",
+      "dimensions": {
+        "width": 275,
+        "height": 306
+      },
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    }
+  ]
+}

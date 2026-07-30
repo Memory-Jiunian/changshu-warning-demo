@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "2.1.0",
+  "auditProfile": {
+    "id": "audit-profile.design-package.standard",
+    "version": "2.1.0",
+    "uri": "governance://design-package/standard/2.1.0",
+    "checksum": "unresolved"
+  },
+  "approvedExceptions": [],
+  "extensions": {
+    "draftStatus": "needs-review",
+    "note": "The trusted audit-profile registry has not been implemented yet. This draft must not be treated as figma-ready or codex-ready."
+  }
+}

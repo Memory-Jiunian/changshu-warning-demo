@@ -1,6 +1,19 @@
 import tokenSchemaJson from '../../../design-system/tokens.json';
 import componentSchemaJson from '../../../design-system/components.json';
 import screenSchemaJson from '../../../design-system/screens/pending-tasks.json';
+import {
+  COLLECTION_ID_KEY,
+  COMPONENT_ID_KEY,
+  PLUGIN_DATA_NAMESPACE,
+  SCREEN_CHILD_ID_KEY,
+  SCREEN_ID_KEY,
+  TOKEN_ID_KEY,
+} from './plugin-data';
+import {
+  getTasklifySliceSummary,
+  syncTasklifySlice01,
+  validateTasklifySlicePackage,
+} from './tasklify-slice01';
 
 type ColorToken = {
   id: string;
@@ -71,17 +84,11 @@ const screenSchema = screenSchemaJson as ScreenSchema;
 
 const FONT_REGULAR: FontName = { family: 'Inter', style: 'Regular' };
 const FONT_SEMIBOLD: FontName = { family: 'Inter', style: 'Semi Bold' };
-const PLUGIN_DATA_NAMESPACE = 'figma_design_compiler';
-const COMPONENT_ID_KEY = 'componentId';
-const TOKEN_ID_KEY = 'tokenId';
-const COLLECTION_ID_KEY = 'collectionId';
-const SCREEN_ID_KEY = 'screenId';
-const SCREEN_CHILD_ID_KEY = 'screenChildId';
 const DESIGN_SYSTEM_COLLECTION_ID = 'collection.pilot-design-system';
 
 figma.showUI(__html__, {
   width: 280,
-  height: 184,
+  height: 304,
   themeColors: true,
   title: 'Figma Design Compiler',
 });
@@ -91,13 +98,15 @@ figma.ui.onmessage = async (message: { type?: string }) => {
     figma.ui.postMessage({
       type: 'schema-summary',
       summary: getLoadedSchemaSummary(),
+      tasklify: getTasklifySliceSummary(),
     });
     return;
   }
 
   if (
     message.type !== 'sync-design-system' &&
-    message.type !== 'sync-pilot-screen'
+    message.type !== 'sync-pilot-screen' &&
+    message.type !== 'sync-tasklify-slice01'
   ) {
     return;
   }
@@ -118,11 +127,24 @@ figma.ui.onmessage = async (message: { type?: string }) => {
       figma.notify(
         `Synced: brand=${summary.brand}, radius=${summary.radius}`,
       );
-    } else {
+    } else if (message.type === 'sync-pilot-screen') {
       const screen = await syncPilotScreen();
       figma.currentPage.selection = [screen];
       figma.viewport.scrollAndZoomIntoView([screen]);
       figma.notify(`Synced screen: ${screenSchema.name}`);
+    } else {
+      validateTasklifySlicePackage();
+      const result = await syncTasklifySlice01();
+      const selectable = result.selection.filter(
+        (node) => node.parent === figma.currentPage,
+      );
+      if (selectable.length) {
+        figma.currentPage.selection = selectable;
+        figma.viewport.scrollAndZoomIntoView(selectable);
+      }
+      figma.notify(
+        `Synced Tasklify Slice 01: ${result.variableCount} variables, desktop + tablet`,
+      );
     }
 
     figma.ui.postMessage({ type: 'build-complete', action: message.type });

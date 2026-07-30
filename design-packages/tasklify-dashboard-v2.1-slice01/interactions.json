@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "2.1.0",
+  "interactions": [
+    {
+      "id": "interaction.dashboard.create-task",
+      "name": "Create task",
+      "description": "Activate the primary Create Task action.",
+      "trigger": {
+        "sourceRef": "screen.tasklify.dashboard-overview",
+        "event": "click:create-task"
+      },
+      "guard": [],
+      "action": {
+        "type": "open",
+        "target": "task-create-flow"
+      },
+      "target": {
+        "ref": "screen.tasklify.dashboard-overview"
+      },
+      "dataRefs": [],
+      "transitions": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "needs-review"
+    },
+    {
+      "id": "interaction.dashboard.switch-view",
+      "name": "Switch board view",
+      "description": "Switch between Kanban, Timeline, Spreadsheet and Calendar views.",
+      "trigger": {
+        "sourceRef": "pattern.kanban-board",
+        "event": "select:view-tab"
+      },
+      "guard": [],
+      "action": {
+        "type": "select-view"
+      },
+      "target": {
+        "ref": "pattern.kanban-board"
+      },
+      "dataRefs": [],
+      "transitions": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "interaction.dashboard.filter",
+      "name": "Filter board",
+      "description": "Apply board filters from the toolbar.",
+      "trigger": {
+        "sourceRef": "pattern.kanban-board",
+        "event": "click:filter"
+      },
+      "guard": [],
+      "action": {
+        "type": "open-filter"
+      },
+      "target": {
+        "ref": "pattern.kanban-board"
+      },
+      "dataRefs": [],
+      "transitions": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "needs-review"
+    },
+    {
+      "id": "interaction.dashboard.search",
+      "name": "Search",
+      "description": "Use the sidebar or board search entry to find content.",
+      "trigger": {
+        "sourceRef": "screen.tasklify.dashboard-overview",
+        "event": "input:search"
+      },
+      "guard": [],
+      "action": {
+        "type": "search"
+      },
+      "target": {
+        "ref": "screen.tasklify.dashboard-overview"
+      },
+      "dataRefs": [],
+      "transitions": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "needs-review"
+    },
+    {
+      "id": "interaction.dashboard.open-task",
+      "name": "Open task",
+      "description": "Open a task from a Kanban card.",
+      "trigger": {
+        "sourceRef": "component.task-card",
+        "event": "click"
+      },
+      "guard": [],
+      "action": {
+        "type": "open"
+      },
+      "target": {
+        "ref": "task-detail-flow"
+      },
+      "dataRefs": [
+        "data.kanban-task#"
+      ],
+      "transitions": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "needs-review"
+    },
+    {
+      "id": "interaction.dashboard.view-details",
+      "name": "View KPI details",
+      "description": "Open details from a summary KPI card.",
+      "trigger": {
+        "sourceRef": "component.stat-card",
+        "event": "click:view-details"
+      },
+      "guard": [],
+      "action": {
+        "type": "open"
+      },
+      "target": {
+        "ref": "metric-detail-flow"
+      },
+      "dataRefs": [
+        "data.dashboard-summary#"
+      ],
+      "transitions": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "needs-review"
+    }
+  ]
+}

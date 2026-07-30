@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "2.1.0",
+  "screens": [
+    {
+      "id": "screen.tasklify.dashboard-overview",
+      "name": "Dashboard Overview",
+      "description": "Task-management dashboard with summary metrics and a Kanban board.",
+      "purpose": "Help a user orient to current work, scan team/task metrics and manage work items by status.",
+      "figma": {
+        "nodeType": "FRAME",
+        "name": "Dashboard Overview",
+        "platformPreset": "desktop-reference-975x694"
+      },
+      "layout": {
+        "mode": "horizontal",
+        "width": {
+          "value": 975,
+          "unit": "px"
+        },
+        "height": {
+          "value": 694,
+          "unit": "px"
+        },
+        "scroll": "vertical",
+        "regionOrder": [
+          "region.sidebar",
+          "region.workspace"
+        ]
+      },
+      "regions": [
+        {
+          "id": "region.sidebar",
+          "role": "navigation",
+          "description": "Persistent navigation sidebar.",
+          "layout": {
+            "mode": "vertical",
+            "widthCandidate": 187
+          },
+          "children": [
+            {
+              "id": "brand",
+              "kind": "region",
+              "role": "workspace-brand"
+            },
+            {
+              "id": "search",
+              "kind": "component",
+              "componentRef": "component.search-field",
+              "role": "global-search"
+            },
+            {
+              "id": "primary-nav",
+              "kind": "component",
+              "componentRef": "component.sidebar-nav-item",
+              "role": "primary-navigation"
+            },
+            {
+              "id": "secondary-nav",
+              "kind": "component",
+              "componentRef": "component.sidebar-nav-item",
+              "role": "tool-navigation"
+            },
+            {
+              "id": "profile",
+              "kind": "region",
+              "role": "user-profile"
+            }
+          ]
+        },
+        {
+          "id": "region.workspace",
+          "role": "workspace",
+          "description": "Top utility bar and main dashboard surface.",
+          "layout": {
+            "mode": "vertical",
+            "width": "fill"
+          },
+          "children": [
+            {
+              "id": "topbar",
+              "kind": "region",
+              "role": "utility-bar"
+            },
+            {
+              "id": "summary",
+              "kind": "pattern",
+              "patternRef": "pattern.dashboard-summary",
+              "role": "dashboard-summary",
+              "content": {
+                "bindingRef": "data.dashboard-summary#"
+              }
+            },
+            {
+              "id": "board",
+              "kind": "pattern",
+              "patternRef": "pattern.kanban-board",
+              "role": "task-board",
+              "content": {
+                "bindingRef": "data.kanban-board#"
+              }
+            }
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "state.default",
+          "name": "Default",
+          "required": true,
+          "entryCondition": {
+            "data": "available"
+          },
+          "childOverrides": [],
+          "interactionAvailability": [
+            "interaction.dashboard.create-task",
+            "interaction.dashboard.switch-view",
+            "interaction.dashboard.filter",
+            "interaction.dashboard.search"
+          ]
+        }
+      ],
+      "interactionRefs": [
+        "interaction.dashboard.create-task",
+        "interaction.dashboard.switch-view",
+        "interaction.dashboard.filter",
+        "interaction.dashboard.search",
+        "interaction.dashboard.open-task",
+        "interaction.dashboard.view-details"
+      ],
+      "responsive": {
+        "strategy": "desktop-with-tablet-adaptation",
+        "baseWidth": 975,
+        "breakpoints": [
+          {
+            "id": "breakpoint.tablet",
+            "range": {
+              "min": 768,
+              "max": 1023
+            },
+            "testViewport": {
+              "width": 834,
+              "height": 1112
+            },
+            "reviewStatus": "approved",
+            "confidence": "medium",
+            "behavior": {
+              "sidebar": {
+                "mode": "collapsed-icon-rail",
+                "widthCandidate": 72,
+                "preservePrimaryNavigation": true
+              },
+              "summaryMetrics": {
+                "layout": "2x2-grid"
+              },
+              "kanbanBoard": {
+                "layout": "horizontal-scroll",
+                "columnWidth": "preserve-readable",
+                "doNotCompressToFourNarrowColumns": true
+              },
+              "topbar": {
+                "allowControlWrapping": false,
+                "prioritizePrimaryAction": true
+              }
+            },
+            "notes": "Proposed as a deliberate test case for later adaptation to the Changshu admin product. Not inferred as an exact fact from the supplied reference.",
+            "reviewedBy": "user",
+            "reviewedAt": "2026-07-30T11:55:00+09:00",
+            "reviewMethod": "explicit-human-review"
+          }
+        ],
+        "overflowPolicy": "vertical-page-scroll + horizontal-kanban-scroll"
+      },
+      "referenceAssetRefs": [
+        "reference.dashboard-overview"
+      ],
+      "sourceRefs": [
+        "source.upload.render",
+        "source.upload.fig"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "decisionRefs": [
+        "decision.reference.tablet-adaptation"
+      ]
+    }
+  ]
+}

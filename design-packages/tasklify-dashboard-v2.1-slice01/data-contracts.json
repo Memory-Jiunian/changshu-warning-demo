@@ -1,0 +1,265 @@
+{
+  "schemaVersion": "2.1.0",
+  "contracts": [
+    {
+      "id": "data.dashboard-summary",
+      "name": "Dashboard summary",
+      "description": "Summary metrics shown above the board.",
+      "kind": "object",
+      "fields": [
+        {
+          "id": "field.dashboard.active-employees",
+          "name": "activeEmployees",
+          "description": "Active employee count.",
+          "type": "number",
+          "required": true,
+          "nullable": false,
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.dashboard.active-projects",
+          "name": "activeProjects",
+          "description": "Active project count.",
+          "type": "number",
+          "required": true,
+          "nullable": false,
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.dashboard.task-count",
+          "name": "taskCount",
+          "description": "Task count.",
+          "type": "number",
+          "required": true,
+          "nullable": false,
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.dashboard.target-completion",
+          "name": "targetCompletion",
+          "description": "Target percentage completed.",
+          "type": "number",
+          "required": true,
+          "nullable": false,
+          "formatting": {
+            "style": "percent"
+          },
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        }
+      ],
+      "example": {
+        "activeEmployees": 216,
+        "activeProjects": 312,
+        "taskCount": 184,
+        "targetCompletion": 0.8412
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "data.kanban-task",
+      "name": "Kanban task",
+      "description": "Task card data visible in the board.",
+      "kind": "object",
+      "fields": [
+        {
+          "id": "field.task.id",
+          "name": "id",
+          "description": "Task identifier such as WEB-21.",
+          "type": "string",
+          "required": true,
+          "nullable": false,
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.task.title",
+          "name": "title",
+          "description": "Primary task title.",
+          "type": "string",
+          "required": true,
+          "nullable": false,
+          "formatting": {
+            "maxLines": 2,
+            "overflow": "ellipsis"
+          },
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.task.project",
+          "name": "project",
+          "description": "Secondary project/product label.",
+          "type": "string",
+          "required": false,
+          "nullable": true,
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.task.priority",
+          "name": "priority",
+          "description": "Priority label.",
+          "type": "string",
+          "required": false,
+          "nullable": true,
+          "enum": [
+            "urgent",
+            "medium",
+            "low"
+          ],
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.task.due-date",
+          "name": "dueDate",
+          "description": "Due date displayed in metadata.",
+          "type": "date",
+          "required": false,
+          "nullable": true,
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.task.comment-count",
+          "name": "commentCount",
+          "description": "Visible comment count.",
+          "type": "number",
+          "required": false,
+          "nullable": true,
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        }
+      ],
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "data.kanban-column",
+      "name": "Kanban column",
+      "description": "Board column state and tasks.",
+      "kind": "object",
+      "fields": [
+        {
+          "id": "field.column.status",
+          "name": "status",
+          "description": "Column status.",
+          "type": "string",
+          "required": true,
+          "nullable": false,
+          "enum": [
+            "not-started",
+            "pending",
+            "completed",
+            "under-review"
+          ],
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.column.count",
+          "name": "count",
+          "description": "Displayed task count.",
+          "type": "number",
+          "required": true,
+          "nullable": false,
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        },
+        {
+          "id": "field.column.tasks",
+          "name": "tasks",
+          "description": "Task list.",
+          "type": "collection-ref",
+          "required": true,
+          "nullable": false,
+          "itemRef": "data.kanban-task",
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        }
+      ],
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "data.kanban-board",
+      "name": "Kanban board",
+      "description": "Overview board shown on the dashboard.",
+      "kind": "object",
+      "fields": [
+        {
+          "id": "field.board.columns",
+          "name": "columns",
+          "description": "Kanban columns.",
+          "type": "collection-ref",
+          "required": true,
+          "nullable": false,
+          "itemRef": "data.kanban-column",
+          "sourceRefs": [
+            "source.upload.render"
+          ],
+          "confidence": "medium",
+          "reviewStatus": "unreviewed"
+        }
+      ],
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    }
+  ]
+}

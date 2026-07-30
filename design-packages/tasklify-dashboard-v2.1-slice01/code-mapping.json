@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "2.1.0",
+  "codeTargetRefs": [
+    "code-target.react-web"
+  ],
+  "componentMappings": [],
+  "tokenMappings": [],
+  "screenMappings": [],
+  "slotMappings": [],
+  "dataMappings": [],
+  "notes": "No repository-specific mapping is asserted in this first reference-only draft. Mapping must be generated against the target product repository before codex-ready."
+}

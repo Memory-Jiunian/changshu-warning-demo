@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "2.1.0",
+  "patterns": [
+    {
+      "id": "pattern.app-shell",
+      "name": "Desktop App Shell",
+      "description": "Persistent left sidebar, top utility bar and main content surface.",
+      "purpose": "Provide stable navigation and utility framing around dashboard content.",
+      "composition": [
+        {
+          "role": "sidebar",
+          "kind": "region"
+        },
+        {
+          "role": "topbar",
+          "kind": "region"
+        },
+        {
+          "role": "main",
+          "kind": "region"
+        }
+      ],
+      "layout": {
+        "strategy": "desktop-shell",
+        "sidebarWidthCandidate": 187,
+        "content": "fill"
+      },
+      "behavior": {},
+      "states": [],
+      "contentRules": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "pattern.dashboard-summary",
+      "name": "Dashboard Summary",
+      "description": "Welcome heading, announcement banner and KPI cards.",
+      "purpose": "Expose greeting/context and top-level metrics before task management content.",
+      "composition": [
+        {
+          "role": "heading",
+          "kind": "text"
+        },
+        {
+          "role": "announcement",
+          "kind": "component",
+          "componentRef": "component.inline-banner"
+        },
+        {
+          "role": "stats",
+          "kind": "component",
+          "componentRef": "component.stat-card"
+        }
+      ],
+      "layout": {
+        "mode": "vertical",
+        "gapTokenRef": "semantic.spacing.component"
+      },
+      "behavior": {},
+      "states": [],
+      "contentRules": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "pattern.kanban-board",
+      "name": "Kanban Board",
+      "description": "Toolbar followed by four status columns containing task cards.",
+      "purpose": "Group work items by lifecycle status while retaining quick view controls.",
+      "composition": [
+        {
+          "role": "view-tabs",
+          "kind": "component",
+          "componentRef": "component.segmented-tab"
+        },
+        {
+          "role": "board-columns",
+          "kind": "region"
+        },
+        {
+          "role": "task-card",
+          "kind": "component",
+          "componentRef": "component.task-card"
+        }
+      ],
+      "layout": {
+        "mode": "vertical",
+        "columnCountCandidate": 4,
+        "columnGapTokenRef": "semantic.spacing.component"
+      },
+      "behavior": {
+        "supportsViewSwitching": true,
+        "supportsFiltering": true,
+        "supportsSorting": true
+      },
+      "states": [],
+      "contentRules": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    }
+  ]
+}

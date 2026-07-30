@@ -1,0 +1,896 @@
+{
+  "schemaVersion": "2.1.0",
+  "designSystemId": "design-system.tasklify.reference",
+  "primitives": [
+    {
+      "id": "primitive.color.white",
+      "figmaName": "primitive/color/white",
+      "name": "White",
+      "description": "Pure white used on cards and controls.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": "#FFFFFF"
+    },
+    {
+      "id": "primitive.color.neutral.950",
+      "figmaName": "primitive/color/neutral/950",
+      "name": "Neutral 950",
+      "description": "Near-black text and primary action fill.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": "#141414"
+    },
+    {
+      "id": "primitive.color.neutral.700",
+      "figmaName": "primitive/color/neutral/700",
+      "name": "Neutral 700",
+      "description": "Secondary dark text.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": "#4A4A4A"
+    },
+    {
+      "id": "primitive.color.neutral.500",
+      "figmaName": "primitive/color/neutral/500",
+      "name": "Neutral 500",
+      "description": "Muted text.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": "#6A6969"
+    },
+    {
+      "id": "primitive.color.neutral.200",
+      "figmaName": "primitive/color/neutral/200",
+      "name": "Neutral 200",
+      "description": "Subtle borders and separators.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": "#EDEBE9"
+    },
+    {
+      "id": "primitive.color.neutral.100",
+      "figmaName": "primitive/color/neutral/100",
+      "name": "Neutral 100",
+      "description": "Panel and input surfaces.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": "#F1F0EE"
+    },
+    {
+      "id": "primitive.color.neutral.50",
+      "figmaName": "primitive/color/neutral/50",
+      "name": "Neutral 50",
+      "description": "Page background and soft surfaces.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": "#F8F8F7"
+    },
+    {
+      "id": "primitive.color.red.500",
+      "figmaName": "primitive/color/red/500",
+      "name": "Red 500",
+      "description": "Urgent and warning accent candidate.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "value": "#F43F5E"
+    },
+    {
+      "id": "primitive.color.green.500",
+      "figmaName": "primitive/color/green/500",
+      "name": "Green 500",
+      "description": "Completed and low-priority accent candidate.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "value": "#22C55E"
+    },
+    {
+      "id": "primitive.color.purple.500",
+      "figmaName": "primitive/color/purple/500",
+      "name": "Purple 500",
+      "description": "Under-review and medium-priority accent candidate.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "value": "#8B5CF6"
+    },
+    {
+      "id": "primitive.spacing.4",
+      "figmaName": "primitive/spacing/4",
+      "name": "Spacing 4",
+      "description": "Base micro spacing candidate.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": 4
+    },
+    {
+      "id": "primitive.spacing.8",
+      "figmaName": "primitive/spacing/8",
+      "name": "Spacing 8",
+      "description": "Small related-content spacing candidate.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": 8
+    },
+    {
+      "id": "primitive.spacing.12",
+      "figmaName": "primitive/spacing/12",
+      "name": "Spacing 12",
+      "description": "Control/card spacing candidate.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": 12
+    },
+    {
+      "id": "primitive.spacing.16",
+      "figmaName": "primitive/spacing/16",
+      "name": "Spacing 16",
+      "description": "Common component gap candidate.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": 16
+    },
+    {
+      "id": "primitive.spacing.24",
+      "figmaName": "primitive/spacing/24",
+      "name": "Spacing 24",
+      "description": "Section spacing candidate.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "value": 24
+    },
+    {
+      "id": "primitive.radius.6",
+      "figmaName": "primitive/radius/6",
+      "name": "Radius 6",
+      "description": "Small control radius candidate.",
+      "category": "radius",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "value": 6
+    },
+    {
+      "id": "primitive.radius.10",
+      "figmaName": "primitive/radius/10",
+      "name": "Radius 10",
+      "description": "Card/control radius candidate.",
+      "category": "radius",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "approved",
+      "value": 10,
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "visual-reference-review"
+    },
+    {
+      "id": "primitive.radius.14",
+      "figmaName": "primitive/radius/14",
+      "name": "Radius 14",
+      "description": "Large container radius candidate.",
+      "category": "radius",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "approved",
+      "value": 14,
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "visual-reference-review"
+    },
+    {
+      "id": "primitive.color.status.green.600",
+      "figmaName": "primitive/color/status/green/600",
+      "name": "Status Green 600",
+      "description": "Human-approved status palette color #0DBA36.",
+      "category": "color",
+      "type": "COLOR",
+      "value": "#0DBA36",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "primitive.color.status.green.100",
+      "figmaName": "primitive/color/status/green/100",
+      "name": "Status Green 100",
+      "description": "Human-approved status palette color #D9FCE1.",
+      "category": "color",
+      "type": "COLOR",
+      "value": "#D9FCE1",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "primitive.color.status.purple.600",
+      "figmaName": "primitive/color/status/purple/600",
+      "name": "Status Purple 600",
+      "description": "Human-approved status palette color #8A43E1.",
+      "category": "color",
+      "type": "COLOR",
+      "value": "#8A43E1",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "primitive.color.status.purple.100",
+      "figmaName": "primitive/color/status/purple/100",
+      "name": "Status Purple 100",
+      "description": "Human-approved status palette color #E9DCF9.",
+      "category": "color",
+      "type": "COLOR",
+      "value": "#E9DCF9",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "primitive.color.status.red.600",
+      "figmaName": "primitive/color/status/red/600",
+      "name": "Status Red 600",
+      "description": "Human-approved status palette color #FF2F2F.",
+      "category": "color",
+      "type": "COLOR",
+      "value": "#FF2F2F",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "primitive.color.status.red.100",
+      "figmaName": "primitive/color/status/red/100",
+      "name": "Status Red 100",
+      "description": "Human-approved status palette color #FFD6D6.",
+      "category": "color",
+      "type": "COLOR",
+      "value": "#FFD6D6",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    }
+  ],
+  "semantics": [
+    {
+      "id": "semantic.surface.canvas",
+      "figmaName": "semantic/surface/canvas",
+      "name": "Canvas surface",
+      "description": "App-level background.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.neutral.50"
+    },
+    {
+      "id": "semantic.surface.sidebar",
+      "figmaName": "semantic/surface/sidebar",
+      "name": "Sidebar surface",
+      "description": "Persistent navigation rail surface.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.neutral.100"
+    },
+    {
+      "id": "semantic.surface.card",
+      "figmaName": "semantic/surface/card",
+      "name": "Card surface",
+      "description": "Cards, header controls and content panels.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.white"
+    },
+    {
+      "id": "semantic.text.primary",
+      "figmaName": "semantic/text/primary",
+      "name": "Primary text",
+      "description": "Primary headings and labels.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.neutral.950"
+    },
+    {
+      "id": "semantic.text.secondary",
+      "figmaName": "semantic/text/secondary",
+      "name": "Secondary text",
+      "description": "Descriptions and metadata.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.neutral.500"
+    },
+    {
+      "id": "semantic.border.subtle",
+      "figmaName": "semantic/border/subtle",
+      "name": "Subtle border",
+      "description": "Low-contrast card and divider borders.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.neutral.200"
+    },
+    {
+      "id": "semantic.action.primary",
+      "figmaName": "semantic/action/primary",
+      "name": "Primary action",
+      "description": "Create/New primary action fill.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.neutral.950"
+    },
+    {
+      "id": "semantic.status.pending",
+      "figmaName": "semantic/status/pending",
+      "name": "Pending",
+      "description": "Pending board state accent.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.red.500"
+    },
+    {
+      "id": "semantic.status.completed",
+      "figmaName": "semantic/status/completed",
+      "name": "Completed",
+      "description": "Completed board state accent.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.green.500"
+    },
+    {
+      "id": "semantic.status.review",
+      "figmaName": "semantic/status/review",
+      "name": "Under review",
+      "description": "Under-review board state accent.",
+      "category": "color",
+      "type": "COLOR",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.color.purple.500"
+    },
+    {
+      "id": "semantic.spacing.inline-tight",
+      "figmaName": "semantic/spacing/inline-tight",
+      "name": "Inline tight",
+      "description": "Icon-to-label and compact metadata spacing.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.spacing.8"
+    },
+    {
+      "id": "semantic.spacing.component",
+      "figmaName": "semantic/spacing/component",
+      "name": "Component gap",
+      "description": "Default spacing between sibling controls/cards.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.spacing.12"
+    },
+    {
+      "id": "semantic.spacing.section",
+      "figmaName": "semantic/spacing/section",
+      "name": "Section gap",
+      "description": "Spacing between major dashboard groups.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.spacing.16"
+    },
+    {
+      "id": "semantic.spacing.page",
+      "figmaName": "semantic/spacing/page",
+      "name": "Page inset",
+      "description": "Main page/content inset candidate.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.spacing.16"
+    },
+    {
+      "id": "semantic.radius.control",
+      "figmaName": "semantic/radius/control",
+      "name": "Control radius",
+      "description": "Buttons, tabs and compact controls.",
+      "category": "radius",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.radius.6"
+    },
+    {
+      "id": "semantic.radius.card",
+      "figmaName": "semantic/radius/card",
+      "name": "Card radius",
+      "description": "KPI and task card radius.",
+      "category": "radius",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.radius.10"
+    },
+    {
+      "id": "semantic.radius.container",
+      "figmaName": "semantic/radius/container",
+      "name": "Container radius",
+      "description": "Large dashboard content container radius.",
+      "category": "radius",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "low",
+      "reviewStatus": "unreviewed",
+      "alias": "primitive.radius.14"
+    },
+    {
+      "id": "semantic.status.pending.foreground",
+      "figmaName": "semantic/status/pending/foreground",
+      "name": "Pending foreground",
+      "description": "Pending foreground used by shared Badge component semantics.",
+      "category": "color",
+      "type": "COLOR",
+      "alias": "primitive.color.status.red.600",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "semantic.status.pending.background",
+      "figmaName": "semantic/status/pending/background",
+      "name": "Pending background",
+      "description": "Pending background used by shared Badge component semantics.",
+      "category": "color",
+      "type": "COLOR",
+      "alias": "primitive.color.status.red.100",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "semantic.status.completed.foreground",
+      "figmaName": "semantic/status/completed/foreground",
+      "name": "Completed foreground",
+      "description": "Completed foreground used by shared Badge component semantics.",
+      "category": "color",
+      "type": "COLOR",
+      "alias": "primitive.color.status.green.600",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "semantic.status.completed.background",
+      "figmaName": "semantic/status/completed/background",
+      "name": "Completed background",
+      "description": "Completed background used by shared Badge component semantics.",
+      "category": "color",
+      "type": "COLOR",
+      "alias": "primitive.color.status.green.100",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "semantic.status.review.foreground",
+      "figmaName": "semantic/status/review/foreground",
+      "name": "Under review foreground",
+      "description": "Under review foreground used by shared Badge component semantics.",
+      "category": "color",
+      "type": "COLOR",
+      "alias": "primitive.color.status.purple.600",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    },
+    {
+      "id": "semantic.status.review.background",
+      "figmaName": "semantic/status/review/background",
+      "name": "Under review background",
+      "description": "Under review background used by shared Badge component semantics.",
+      "category": "color",
+      "type": "COLOR",
+      "alias": "primitive.color.status.purple.100",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "reviewedBy": "user",
+      "reviewedAt": "2026-07-30T11:45:00+09:00",
+      "reviewMethod": "explicit-value-review"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "2.1.0",
+  "hints": [
+    {
+      "id": "hint.reference.reuse-shell-primitives",
+      "name": "Reuse existing shell primitives",
+      "description": "When adapting this visual language to the product, reuse existing sidebar, button, avatar, badge and card primitives before creating new ones.",
+      "scope": [
+        "screen.tasklify.dashboard-overview"
+      ],
+      "recommendation": "Map the reference roles to existing project components first; only create a new shared component when no compatible abstraction exists.",
+      "reason": "Prevents a screenshot reference from creating a parallel component library.",
+      "priority": "high",
+      "deviationPolicy": {
+        "allowed": true,
+        "when": [
+          "Existing component cannot satisfy an approved design contract."
+        ],
+        "mustReport": [
+          "Why reuse failed.",
+          "Which shared abstraction is proposed instead."
+        ]
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "high",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "hint.reference.layout-rhythm-audit",
+      "name": "Run layout rhythm audit",
+      "description": "Treat hierarchy spacing, repeated card gaps and edge alignment as a dedicated audit pass.",
+      "scope": [
+        "pattern.dashboard-summary",
+        "pattern.kanban-board",
+        "screen.tasklify.dashboard-overview"
+      ],
+      "recommendation": "Audit token compliance, repeated-gap outliers, hierarchy rhythm, alignment consistency and density before handoff.",
+      "reason": "The reference relies heavily on restrained, repeated spacing to create hierarchy.",
+      "priority": "high",
+      "deviationPolicy": {
+        "allowed": true,
+        "when": [
+          "An approved product constraint intentionally breaks the reference rhythm."
+        ],
+        "mustReport": [
+          "The intentional exception and affected scope."
+        ]
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "schemaVersion": "2.1.0",
+  "decisions": [
+    {
+      "id": "decision.reference.desktop-shell",
+      "name": "Use persistent desktop shell",
+      "description": "Candidate decision inferred from the reference: persistent left navigation with workspace content on the right.",
+      "scope": [
+        "pattern.app-shell",
+        "screen.tasklify.dashboard-overview"
+      ],
+      "decision": "Keep navigation persistently visible on the desktop reference breakpoint.",
+      "rationale": "The supplied screen dedicates a stable left rail to navigation and user context.",
+      "mustNotChange": [],
+      "alternativesRejected": [],
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "decision.reference.board-status-columns",
+      "name": "Use status-driven Kanban columns",
+      "description": "Candidate decision inferred from the reference: four lifecycle columns.",
+      "scope": [
+        "pattern.kanban-board"
+      ],
+      "decision": "Organize tasks into Not Started, Pending, Completed and Under Review columns.",
+      "rationale": "The visual hierarchy and colored column labels treat lifecycle status as the board's primary grouping dimension.",
+      "mustNotChange": [],
+      "alternativesRejected": [],
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
+      "id": "decision.reference.badge-shared-semantics",
+      "name": "Share Badge for status and priority",
+      "description": "Status and priority labels use one Badge component with semantic variants/tokens.",
+      "scope": [
+        "component.badge",
+        "pattern.kanban-board"
+      ],
+      "decision": "Use a single Badge component for workflow status and task priority labels; semantic meaning is expressed by property values and token bindings.",
+      "rationale": "Human review confirmed shared component semantics for the reference system.",
+      "mustNotChange": [
+        "Do not create separate visual Badge components solely for Status versus Priority without a new reviewed requirement."
+      ],
+      "alternativesRejected": [],
+      "sourceRefs": [
+        "source.upload.render",
+        "source.manual.status-palette"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "approvedBy": "user",
+      "approvedAt": "2026-07-30T11:45:00+09:00"
+    },
+    {
+      "id": "decision.reference.kanban-column-pattern",
+      "name": "Keep Kanban Column as pattern",
+      "description": "Kanban Column is not forced into a publishable component in the first implementation slice.",
+      "scope": [
+        "pattern.kanban-board"
+      ],
+      "decision": "Treat Kanban Column as a pattern/composition in the first slice rather than publishing it as a standalone component.",
+      "rationale": "Human review preferred avoiding an unnecessary component abstraction.",
+      "mustNotChange": [
+        "Do not create a standalone Kanban Column component solely to mirror the screenshot."
+      ],
+      "alternativesRejected": [],
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "approvedBy": "user",
+      "approvedAt": "2026-07-30T11:45:00+09:00"
+    },
+    {
+      "id": "decision.reference.task-card-drag-state",
+      "name": "Tilted Task Card is a drag state",
+      "description": "The tilted Pending task card is treated as a transient drag/dynamic state, not a permanent variant.",
+      "scope": [
+        "component.task-card",
+        "pattern.kanban-board"
+      ],
+      "decision": "Do not create a permanent rotated Task Card variant; treat the tilted card as a transient drag/dynamic presentation state.",
+      "rationale": "Human review confirmed the tilt is behavioral/transient rather than a distinct design variant.",
+      "mustNotChange": [
+        "Do not add a Rotated variant solely to reproduce the reference snapshot."
+      ],
+      "alternativesRejected": [],
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "exact",
+      "reviewStatus": "approved",
+      "approvedBy": "user",
+      "approvedAt": "2026-07-30T11:45:00+09:00"
+    },
+    {
+      "id": "decision.reference.tablet-adaptation",
+      "name": "Tablet adaptation strategy",
+      "description": "Approved responsive strategy for the Tasklify dashboard tablet test case.",
+      "scope": [
+        "screen.tasklify.dashboard-overview",
+        "pattern.app-shell",
+        "pattern.dashboard-summary",
+        "pattern.kanban-board"
+      ],
+      "decision": "For tablet widths 768–1023px, use an 834×1112 test viewport, collapse the 187px sidebar to an approximately 72px icon rail, reflow KPI cards to a 2×2 grid, preserve readable Kanban card/column widths with horizontal board scrolling, and keep the primary top-bar action visible without wrapping the control group.",
+      "rationale": "This preserves information hierarchy and task-card readability while testing a tablet adaptation suitable for later Changshu admin use.",
+      "mustNotChange": [
+        "Do not squeeze all four Kanban columns into the tablet viewport at unreadable widths.",
+        "Do not remove the primary Create Task action solely because of tablet width.",
+        "Do not replace the persistent desktop shell with an unrelated mobile navigation pattern in this tablet range."
+      ],
+      "alternativesRejected": [],
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "approved",
+      "approvedBy": "user",
+      "approvedAt": "2026-07-30T11:55:00+09:00"
+    }
+  ]
+}

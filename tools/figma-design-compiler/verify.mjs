@@ -1,7 +1,12 @@
 import { access, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
 const root = new URL('../../', import.meta.url);
 const pluginRoot = new URL('./', import.meta.url);
+const tasklifyRoot = new URL(
+  'design-packages/tasklify-dashboard-v2.1-slice01/',
+  root,
+);
 const tokens = JSON.parse(await readFile(new URL('design-system/tokens.json', root), 'utf8'));
 const components = JSON.parse(await readFile(new URL('design-system/components.json', root), 'utf8'));
 const screen = JSON.parse(
@@ -10,7 +15,49 @@ const screen = JSON.parse(
 const manifest = JSON.parse(await readFile(new URL('manifest.json', pluginRoot), 'utf8'));
 const bundle = await readFile(new URL('dist/code.js', pluginRoot), 'utf8');
 const pluginSource = await readFile(new URL('src/code.ts', pluginRoot), 'utf8');
+const pluginDataSource = await readFile(
+  new URL('src/plugin-data.ts', pluginRoot),
+  'utf8',
+);
+const tasklifySource = await readFile(
+  new URL('src/tasklify-slice01.ts', pluginRoot),
+  'utf8',
+);
 const ui = await readFile(new URL('src/ui.html', pluginRoot), 'utf8');
+const tasklifyManifest = JSON.parse(
+  await readFile(new URL('manifest.json', tasklifyRoot), 'utf8'),
+);
+const tasklifyFoundations = JSON.parse(
+  await readFile(new URL('foundations.json', tasklifyRoot), 'utf8'),
+);
+const tasklifyComponents = JSON.parse(
+  await readFile(new URL('components.json', tasklifyRoot), 'utf8'),
+);
+const tasklifyScreens = JSON.parse(
+  await readFile(new URL('screens.json', tasklifyRoot), 'utf8'),
+);
+const tasklifyReferences = JSON.parse(
+  await readFile(new URL('references/index.json', tasklifyRoot), 'utf8'),
+);
+const tasklifySchemaFiles = [
+  'foundations.json',
+  'data-contracts.json',
+  'components.json',
+  'patterns.json',
+  'screens.json',
+  'interactions.json',
+  'decisions.json',
+  'implementation-hints.json',
+  'code-mapping.json',
+  'audit-governance.json',
+  'references/index.json',
+];
+const tasklifySchemaDocuments = await Promise.all(
+  tasklifySchemaFiles.map(async (path) => [
+    path,
+    JSON.parse(await readFile(new URL(path, tasklifyRoot), 'utf8')),
+  ]),
+);
 const expectedPluginDataNamespace = 'figma_design_compiler';
 const brandToken = tokens.tokens.find((token) => token.id === 'color.brand.primary');
 const radiusToken = tokens.tokens.find((token) => token.id === 'radius.md');
@@ -202,7 +249,7 @@ assert(
   'Sync notification must report the values from the loaded schema summary',
 );
 
-const namespaceDeclaration = pluginSource.match(
+const namespaceDeclaration = pluginDataSource.match(
   /const PLUGIN_DATA_NAMESPACE = '([^']+)'/,
 );
 assert(namespaceDeclaration, 'PLUGIN_DATA_NAMESPACE declaration not found');
@@ -215,7 +262,9 @@ assert(
   'shared plugin data namespace must not contain "-"',
 );
 assert(
-  pluginSource.match(/figma_design_compiler/g)?.length === 1,
+  [pluginSource, pluginDataSource, tasklifySource]
+    .join('\n')
+    .match(/figma_design_compiler/g)?.length === 1,
   'shared plugin data namespace must be defined only once',
 );
 
@@ -225,7 +274,7 @@ for (const method of [
   'getSharedPluginDataKeys',
 ]) {
   const calls = [
-    ...pluginSource.matchAll(
+    ...[pluginSource, tasklifySource].join('\n').matchAll(
       new RegExp(`\\.${method}\\(\\s*([^,\\n\\)]+)`, 'g'),
     ),
   ];
@@ -422,8 +471,8 @@ const managedChildUpdateSource = pluginSource.slice(
 const pilotScreenSource = pluginSource.slice(screenSyncStart, componentLookupStart);
 
 assert(
-  pluginSource.includes("const SCREEN_ID_KEY = 'screenId'") &&
-    pluginSource.includes("const SCREEN_CHILD_ID_KEY = 'screenChildId'"),
+  pluginDataSource.includes("const SCREEN_ID_KEY = 'screenId'") &&
+    pluginDataSource.includes("const SCREEN_CHILD_ID_KEY = 'screenChildId'"),
   'Pilot 03B must define screenId and screenChildId plugin data keys',
 );
 assert(
@@ -513,8 +562,246 @@ for (const runtimeCheck of [
   assert(bundle.includes(runtimeCheck), `built plugin is missing runtime check: ${runtimeCheck}`);
 }
 
+const tasklifyRequiredFiles = [
+  'manifest.json',
+  'foundations.json',
+  'data-contracts.json',
+  'components.json',
+  'patterns.json',
+  'screens.json',
+  'interactions.json',
+  'decisions.json',
+  'implementation-hints.json',
+  'code-mapping.json',
+  'audit-governance.json',
+  'review-summary.md',
+  'references/index.json',
+  'references/images/dashboard-overview.png',
+];
+for (const relativePath of tasklifyRequiredFiles) {
+  await access(new URL(relativePath, tasklifyRoot));
+}
+
+assert(
+  tasklifyManifest.schemaVersion === '2.1.0',
+  'Tasklify manifest schemaVersion must be 2.1.0',
+);
+assert(
+  tasklifyManifest.packageVersion === '0.3.0',
+  'Tasklify packageVersion must be 0.3.0',
+);
+assert(
+  tasklifyManifest.designSystem?.id === 'design-system.tasklify.reference',
+  'Tasklify Design System ID is incorrect',
+);
+for (const [path, document] of tasklifySchemaDocuments) {
+  assert(
+    document.schemaVersion === tasklifyManifest.schemaVersion,
+    `${path} schemaVersion must match the Tasklify manifest`,
+  );
+}
+assert(
+  tasklifyFoundations.schemaVersion === tasklifyManifest.schemaVersion &&
+    tasklifyComponents.schemaVersion === tasklifyManifest.schemaVersion &&
+    tasklifyScreens.schemaVersion === tasklifyManifest.schemaVersion &&
+    tasklifyReferences.schemaVersion === tasklifyManifest.schemaVersion,
+  'Tasklify entrypoint schemaVersions must match the manifest',
+);
+
+for (const reference of tasklifyReferences.references.filter(
+  (candidate) => candidate.path,
+)) {
+  const bytes = await readFile(new URL(reference.path, tasklifyRoot));
+  const actualChecksum = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+  assert(
+    actualChecksum === reference.checksum,
+    `Tasklify reference checksum mismatch: ${reference.id}`,
+  );
+}
+
+const tasklifyTokens = [
+  ...tasklifyFoundations.primitives,
+  ...tasklifyFoundations.semantics,
+];
+const tasklifyTokenById = new Map();
+const tasklifyVariableNames = new Set();
+for (const token of tasklifyTokens) {
+  assert(!tasklifyTokenById.has(token.id), `duplicate Tasklify token ID: ${token.id}`);
+  assert(
+    !tasklifyVariableNames.has(token.figmaName),
+    `duplicate Tasklify Variable name: ${token.figmaName}`,
+  );
+  assert(
+    token.figmaRepresentation?.kind === 'variable',
+    `unsupported Tasklify representation: ${token.id}`,
+  );
+  tasklifyTokenById.set(token.id, token);
+  tasklifyVariableNames.add(token.figmaName);
+}
+for (const token of tasklifyFoundations.semantics) {
+  const alias = tasklifyTokenById.get(token.alias);
+  assert(alias, `unresolved Tasklify semantic alias: ${token.id} -> ${token.alias}`);
+  assert(alias.type === token.type, `Tasklify alias type mismatch: ${token.id}`);
+}
+
+const expectedTasklifyComponents = new Set([
+  'component.button',
+  'component.badge',
+  'component.stat-card',
+  'component.task-card',
+]);
+const tasklifyComponentIds = new Set();
+for (const component of tasklifyComponents.components) {
+  assert(
+    !tasklifyComponentIds.has(component.id),
+    `duplicate Tasklify Component ID: ${component.id}`,
+  );
+  tasklifyComponentIds.add(component.id);
+}
+for (const componentId of expectedTasklifyComponents) {
+  assert(tasklifyComponentIds.has(componentId), `missing Slice Component: ${componentId}`);
+}
+
+const tasklifyScreen = tasklifyScreens.screens.find(
+  (candidate) => candidate.id === 'screen.tasklify.dashboard-overview',
+);
+assert(tasklifyScreen, 'Tasklify Dashboard Screen is missing');
+assert(
+  tasklifyScreen.layout.width.value === 975 &&
+    tasklifyScreen.layout.height.value === 694,
+  'Tasklify Desktop viewport must be 975 x 694',
+);
+const tabletBreakpoint = tasklifyScreen.responsive.breakpoints.find(
+  (candidate) => candidate.id === 'breakpoint.tablet',
+);
+assert(tabletBreakpoint, 'Tasklify Tablet breakpoint is missing');
+assert(
+  tabletBreakpoint.testViewport.width === 834 &&
+    tabletBreakpoint.testViewport.height === 1112,
+  'Tasklify Tablet viewport must be 834 x 1112',
+);
+
+for (const sourceMarker of [
+  "const DESIGN_SYSTEM_ID = 'design-system.tasklify.reference'",
+  "const DESKTOP_RENDER_ID = `${SCREEN_ID}@desktop`",
+  "const TABLET_RENDER_ID = `${SCREEN_ID}@tablet-834`",
+  'DESIGN_SYSTEM_ID_KEY',
+  'RENDER_ID_KEY',
+  'hasDesignSystemIdentity(candidate)',
+  'figma.variables.createVariableAlias(aliasTarget)',
+  'instance.getMainComponentAsync()',
+  'syncTasklifyRender(',
+  'removeStaleManagedChildren(',
+]) {
+  assert(
+    tasklifySource.includes(sourceMarker),
+    `Tasklify Slice source is missing: ${sourceMarker}`,
+  );
+}
+assert(
+  tasklifySource.includes('if (!screen)') &&
+    tasklifySource.includes('Tasklify render node identity changed during UPDATE'),
+  'Tasklify render CREATE/UPDATE must preserve Frame identity',
+);
+assert(
+  tasklifySource.includes('if (!variable)') &&
+    tasklifySource.includes('Duplicate Tasklify Variable ID'),
+  'Tasklify Variable CREATE must be scoped and duplicate-safe',
+);
+assert(
+  tasklifySource.includes('if (!existing)') &&
+    tasklifySource.includes('Duplicate Tasklify component ID'),
+  'Tasklify Component CREATE must be scoped and duplicate-safe',
+);
+
+const tasklifyLookupStart = tasklifySource.indexOf(
+  'async function findTasklifyComponents',
+);
+const tasklifyLookupEnd = tasklifySource.indexOf('function syncButton', tasklifyLookupStart);
+const tasklifyLookupSource = tasklifySource.slice(tasklifyLookupStart, tasklifyLookupEnd);
+assert(
+  tasklifyLookupSource.includes('hasDesignSystemIdentity(candidate)') &&
+    tasklifyLookupSource.includes('COMPONENT_ID_KEY'),
+  'Tasklify Component lookup must use designSystemId + componentId',
+);
+assert(
+  !tasklifyLookupSource.includes(
+    "candidate.getSharedPluginData(PLUGIN_DATA_NAMESPACE, COMPONENT_ID_KEY) === componentId",
+  ) || tasklifyLookupSource.includes('hasDesignSystemIdentity(candidate)'),
+  'Tasklify lookup must not use global componentId-only identity',
+);
+
+for (const forbiddenRasterPath of [
+  'figma.createImage(',
+  'figma.createImageAsync(',
+  'imageHash',
+  "import dashboard",
+]) {
+  assert(
+    !tasklifySource.includes(forbiddenRasterPath),
+    `Tasklify Slice must not rasterize the Screen: ${forbiddenRasterPath}`,
+  );
+}
+for (const forbiddenGenericEngine of [
+  'renderRecursive',
+  'syncTreeRecursive',
+  'genericDiffEngine',
+]) {
+  assert(
+    !tasklifySource.includes(forbiddenGenericEngine),
+    `Tasklify Slice must not add a recursive diff engine: ${forbiddenGenericEngine}`,
+  );
+}
+assert(
+  !/(padding|itemSpacing|gap)[A-Za-z]*\s*=\s*(13|19|27)\b/.test(tasklifySource),
+  'Tasklify layout must not introduce orphan 13/19/27px spacing',
+);
+
+assert(
+  ui.includes('Sync Tasklify V2 Slice 01') &&
+    ui.includes('data-action="sync-tasklify-slice01"'),
+  'Plugin UI is missing the Tasklify Slice sync entry',
+);
+assert(
+  ui.includes('message.tasklify.schemaVersion') &&
+    ui.includes('message.tasklify.packageVersion') &&
+    ui.includes('message.tasklify.designSystemId') &&
+    ui.includes('message.tasklify.desktop') &&
+    ui.includes('message.tasklify.tablet'),
+  'Plugin UI must render bundled Tasklify Package summary fields',
+);
+assert(
+  pluginSource.includes("message.type !== 'sync-tasklify-slice01'") &&
+    pluginSource.includes('syncTasklifySlice01()'),
+  'Main thread is missing the isolated Tasklify Slice action',
+);
+assert(
+  pluginSource.includes('async function syncDesignSystem') &&
+    pluginSource.includes('async function syncPilotScreen') &&
+    ui.includes('Sync Design System') &&
+    ui.includes('Sync Pilot Screen'),
+  'Pilot sync paths must remain available',
+);
+for (const bundledMarker of [
+  tasklifyManifest.packageId,
+  tasklifyManifest.packageVersion,
+  tasklifyManifest.designSystem.id,
+  'primitive/color/status/green/600',
+  'semantic/status/review/background',
+  'tablet-834',
+]) {
+  assert(bundle.includes(bundledMarker), `built plugin is missing Tasklify marker: ${bundledMarker}`);
+}
+assert(
+  bundle.includes('createVariableAlias') &&
+    bundle.includes('setBoundVariableForPaint') &&
+    bundle.includes('combineAsVariants') &&
+    bundle.includes('createInstance'),
+  'built plugin is missing native Tasklify Variable/Component/Instance APIs',
+);
+
 console.log(
-  `Pilot 03B verification passed: stable Screen/direct-child sync, guarded CREATE/UPDATE/REMOVE, in-place Text/Instance updates, identity protection, and Pilot 03A checks retained.`,
+  `Pilot 03B + Tasklify V2 Slice 01 verification passed: Package/alias validation, designSystem-scoped identity, deterministic desktop/tablet renders, native Components/Instances, and Pilot paths retained. Runtime visual acceptance remains manual in Figma.`,
 );
 
 function assert(condition, message) {
