@@ -8,7 +8,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FormField } from '../components/ui/FormField';
 import { Input } from '../components/ui/Input';
 import { RadioGroup } from '../components/ui/RadioGroup';
-import { Select } from '../components/ui/Select';
+import { SelectMenu } from '../components/ui/SelectMenu';
 import { Textarea } from '../components/ui/Textarea';
 import {
   emptyAbnormalReportFormValues,
@@ -43,6 +43,8 @@ const sceneOptions: Array<{ value: ObservationScene; label: string }> = [
 const sceneLabels = Object.fromEntries(
   sceneOptions.map((item) => [item.value, item.label]),
 ) as Record<ObservationScene, string>;
+
+const reportStudentErrorId = 'reportStudent-error';
 
 function toLocalInputValue(value: string) {
   const date = new Date(value);
@@ -240,6 +242,13 @@ export function AbnormalReportPage({
   const selectedStudent = students.find(
     (student) => student.id === values.studentId,
   );
+  const studentOptions = useMemo(
+    () => students.map((student) => ({
+      value: student.id,
+      label: `${student.name} · ${student.gradeName} · ${student.className}`,
+    })),
+    [students],
+  );
   const classLabels = Array.from(
     new Set(students.map((student) => student.className)),
   ).join('、');
@@ -271,19 +280,21 @@ export function AbnormalReportPage({
               htmlFor="reportStudent"
               required
               error={errors.studentId}
+              errorId={reportStudentErrorId}
             >
-              <Select
+              <SelectMenu
                 id="reportStudent"
                 value={values.studentId}
-                onChange={(event) => update('studentId', event.target.value)}
-              >
-                <option value="">请选择学生</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name} · {student.gradeName} · {student.className}
-                  </option>
-                ))}
-              </Select>
+                options={studentOptions}
+                placeholder="请选择学生"
+                required
+                error={Boolean(errors.studentId)}
+                aria-describedby={
+                  errors.studentId ? reportStudentErrorId : undefined
+                }
+                showDisabledSection={false}
+                onValueChange={(value) => update('studentId', value)}
+              />
             </FormField>
           </section>
 

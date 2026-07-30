@@ -6,11 +6,20 @@ export interface FormFieldProps {
   children: ReactNode;
   hint?: string;
   error?: string;
+  errorId?: string;
   required?: boolean;
   htmlFor?: string;
 }
 
-export function FormField({ label, children, hint, error, required = false, htmlFor }: FormFieldProps) {
+export function FormField({
+  label,
+  children,
+  hint,
+  error,
+  errorId,
+  required = false,
+  htmlFor,
+}: FormFieldProps) {
   const helper = error || hint;
 
   return (
@@ -20,7 +29,14 @@ export function FormField({ label, children, hint, error, required = false, html
         {required ? <span aria-hidden="true"> *</span> : null}
       </label>
       {children}
-      {helper ? <span className={error ? 'ui-form-field__error' : 'ui-form-field__hint'}>{helper}</span> : null}
+      {helper ? (
+        <span
+          id={error ? errorId : undefined}
+          className={error ? 'ui-form-field__error' : 'ui-form-field__hint'}
+        >
+          {helper}
+        </span>
+      ) : null}
     </div>
   );
 }

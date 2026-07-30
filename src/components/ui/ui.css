@@ -475,6 +475,12 @@
   cursor: not-allowed;
 }
 
+.ui-select-menu--error .ui-select-menu__trigger,
+.ui-select-menu__trigger[aria-invalid='true'] {
+  border: var(--border-width-hairline) solid var(--color-border-danger);
+  color: var(--color-text-error);
+}
+
 .ui-select-menu__trigger:focus-visible,
 .ui-select-menu__item:focus-visible {
   outline: 2px solid var(--color-icon-brand);
