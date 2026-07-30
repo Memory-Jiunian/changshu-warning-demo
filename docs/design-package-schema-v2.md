@@ -1,6 +1,6 @@
-# Design Package Schema V2.1（草案）
+# Design Package Schema V2.1 Core Candidate
 
-> 状态：V2.1 Draft for second human review
+> 状态：V2.1 Core Candidate
 > 适用阶段：Design Package 数据合同设计
 > 不包含：Plugin 修改、V2.1 migration、Import、Audit 执行器、Export 实现
 
@@ -78,6 +78,8 @@ Codex 静默猜测。
 - 每个核心对象必须具有 `sourceRefs`、`confidence` 与 `reviewStatus`。
 - 关键字段可通过 `provenance` 提供字段级来源和置信度。
 - 人工 override 不覆盖历史证据；它以显式记录说明覆盖值、原因和审核人。
+- AI、parser 和 importer 只能初始化 `unreviewed` 或 `needs-review`；可信的
+  `approved` / `rejected` 只能来自 Human Review Action。
 - Audit Governance 与 Audit Result 分离：Package 只引用外部 versioned Audit
   Profile 并记录已批准例外；`audit.json` 是未来导出的执行结果。
 
@@ -119,8 +121,9 @@ design-package/
 
 1. `references/index.json` 为二进制图片、HTML 快照和说明文件提供稳定 ID、校验值和来源信息。
 2. 不建议把 JSON Schema 定义文件放进每个 Design Package。未来若实现机器校验，应在仓库级维护版本化的 `schemas/design-package/v2.1/`，避免数据包同时携带并修改自己的验证规则。
-3. `audit-governance.json` 只保存外部 Audit Profile 引用和已批准例外，不能
-   复制、改写或弱化外部 blocking rules。
+3. `audit-governance.json` 只保存 requested external Audit Profile 和候选
+   approved exceptions；可信性由外部 policy 判定，Package 不能复制、改写或
+   弱化 blocking rules。
 4. 不在源包中加入 `audit.json`。它是按 Audit Profile 执行后产生的结果，
    应出现在 Export for Codex 中。
 
@@ -128,7 +131,7 @@ design-package/
 
 | 文件 | 主要职责 | 禁止承载 |
 | --- | --- | --- |
-| `manifest.json` | 包身份、版本、平台、来源索引、设计系统身份、Screen 清单、兼容性 | 具体 Component、Token 或业务页面内容 |
+| `manifest.json` | 包身份、版本、平台、来源索引、设计系统身份、Screen 清单、兼容性、requested readiness | 具体 Component/Token、动态 gate 状态或 Audit Result |
 | `foundations.json` | Primitive/Semantic Token，覆盖 Color、Typography、Spacing、Radius、Effects、Border、Sizing | Component 私有结构和 Screen 布局 |
 | `data-contracts.json` | UI 消费的数据形状、字段、格式化和 mock；不定义后端 API | endpoint、transport、鉴权或数据库模型 |
 | `components.json` | Component 的结构、属性、状态、布局、Token 绑定、内容和实现契约 | Screen 特有文案和页面排列 |
@@ -137,8 +140,8 @@ design-package/
 | `interactions.json` | trigger、guard、action、target、loading/success/failure 状态转换 | 具体代码事件处理实现 |
 | `decisions.json` | 已人工确认且不允许 Codex 自行推翻的稳定决策 | 可随代码条件调整的建议 |
 | `implementation-hints.json` | 可调整的工程建议和偏离说明要求 | 设计事实和不可变产品决策 |
-| `code-mapping.json` | Figma/Schema 到现有代码组件、props、events、tokens 的映射 | 设计事实本身 |
-| `audit-governance.json` | 外部 versioned Audit Profile 引用和 approved exceptions | Package 自定义或弱化 governance rules |
+| `code-mapping.json` | Schema 到各 code target 的 Component、Slot、Token、Data 映射 | 平台中立设计事实或后端 endpoint |
+| `audit-governance.json` | requested external Audit Profile 和候选 approved exceptions | Package 自定义/弱化规则或自行建立信任 |
 | `references/index.json` | 参考资产的稳定身份、路径、媒体类型、来源和校验值 | 未登记的散落文件 |
 
 ## 4. 公共类型和字段约定
@@ -169,6 +172,9 @@ design-package/
 | `sourceRefs` | R | string[] | 引用 Manifest 中的来源 ID；人工创建也必须引用 `manual` 来源 |
 | `confidence` | R | enum | 证据强度：`exact`、`high`、`medium`、`low` |
 | `reviewStatus` | R | enum | 人工审核：`unreviewed`、`needs-review`、`approved`、`rejected` |
+| `reviewedBy` | C | string | `reviewStatus=approved/rejected` 时 REQUIRED；可信审核主体 |
+| `reviewedAt` | C | ISO 8601 | `reviewStatus=approved/rejected` 时 REQUIRED |
+| `reviewMethod` | C | enum | `reviewStatus=approved/rejected` 时 REQUIRED；`human-review` 或 `governance-action` |
 | `provenance` | O | Provenance[] | 字段级来源、置信度和人工 override |
 | `tags` | O | string[] | 搜索、分组和审计标签，不参与身份 |
 | `extensions` | O | object | 命名空间化扩展；核心消费者可安全忽略 |
@@ -212,6 +218,22 @@ Manifest 中统一登记来源：
 | `approved` | 已由授权角色确认 | 可满足对应人工审核 gate |
 | `rejected` | 已明确否决，不能消费 | 对所有生成和 Handoff blocking |
 
+#### Review trust boundary
+
+- AI、parser、crawler、importer 或普通转换器不得产生可信的
+  `reviewStatus=approved/rejected`。
+- 自动生成对象的初始状态只能是 `unreviewed` 或 `needs-review`。
+- `approved/rejected` 必须由外部可信 Human Review Action 写入，并同时记录
+  `reviewedBy`、`reviewedAt`、`reviewMethod`。
+- `reviewMethod=governance-action` 只用于经授权的治理动作；不能由 Package 内容
+  自我声明为可信。
+- Importer 即使读到 `approved/rejected`，也必须验证对应 Review Action 的可信
+  来源；无法验证时按 `needs-review` 处理，并由 Audit 报告降级原因。
+
+对象顶层 `reviewStatus=approved` 不会覆盖字段级 Provenance。只要 readiness
+相关字段的 Provenance 仍为 `unreviewed`、`needs-review` 或 `rejected`，对应
+readiness gate 必须 blocking。消费者不得只检查对象顶层状态。
+
 ### 4.6 Locator、Extraction Method 与 Provenance
 
 Locator 是结构化对象：
@@ -249,6 +271,9 @@ Locator 是结构化对象：
   "extractionMethod": "parsed",
   "confidence": "exact",
   "reviewStatus": "approved",
+  "reviewedBy": "designer@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review",
   "observedValue": {
     "tokenRef": "semantic.spacing.control-inline"
   },
@@ -258,7 +283,8 @@ Locator 是结构化对象：
     },
     "reason": "人工验收确认移动端使用紧凑间距",
     "reviewedBy": "designer@example.com",
-    "reviewedAt": "2026-07-30T10:00:00+08:00"
+    "reviewedAt": "2026-07-30T10:00:00+08:00",
+    "reviewMethod": "human-review"
   }
 }
 ```
@@ -271,6 +297,7 @@ Locator 是结构化对象：
 - `observedValue` 保留原始证据。
 - 存在 `override` 时，消费者使用 `override.value`。
 - 人工 override 不自动提高 `confidence`；审核结果由 `reviewStatus` 表达。
+- Provenance 的 review metadata 与对象顶层遵循同一 trust boundary。
 
 ## 5. Manifest Schema
 
@@ -292,7 +319,7 @@ Locator 是结构化对象：
 | `dataContracts` | R | object[] | 仅列出 Data Contract ID、kind 和所在文件 |
 | `codeTargets` | R | object[] | 一个或多个目标代码环境的稳定身份 |
 | `auditGovernance` | R | object | 指向 `audit-governance.json`；Profile 引用只在该文件拥有 |
-| `readiness` | R | object | draft/figma-ready/codex-ready 的评估声明和结果 |
+| `requestedReadiness` | R | object[] | Source 只声明目标 readiness；不保存执行时 gate 结果 |
 | `compatibility` | R | object | Compiler、Exporter、目标代码栈兼容信息 |
 | `entrypoints` | R | object | 各合同文件的相对路径 |
 | `locale` | O | string | 默认内容语言，例如 `zh-CN` |
@@ -405,7 +432,10 @@ key、Swift/Kotlin 名称由 `code-mapping.json.tokenMappings` 分别维护。
       "value": "#3D73FF",
       "sourceRefs": ["source.existing-code.tokens"],
       "confidence": "exact",
-      "reviewStatus": "approved"
+      "reviewStatus": "approved",
+      "reviewedBy": "design-reviewer@example.com",
+      "reviewedAt": "2026-07-30T10:00:00+08:00",
+      "reviewMethod": "human-review"
     }
   ],
   "semantics": [
@@ -426,7 +456,10 @@ key、Swift/Kotlin 名称由 `code-mapping.json.tokenMappings` 分别维护。
       "scope": ["FILL_COLOR"],
       "sourceRefs": ["source.manual.design-review"],
       "confidence": "exact",
-      "reviewStatus": "approved"
+      "reviewStatus": "approved",
+      "reviewedBy": "design-reviewer@example.com",
+      "reviewedAt": "2026-07-30T10:00:00+08:00",
+      "reviewMethod": "human-review"
     }
   ]
 }
@@ -526,7 +559,10 @@ Screen 的 `bindingRef`、Pattern content binding 和 Interaction 的 `dataRef`
       "example": "Complete observation feedback",
       "sourceRefs": ["source.existing-code.pending-task"],
       "confidence": "exact",
-      "reviewStatus": "approved"
+      "reviewStatus": "approved",
+      "reviewedBy": "design-reviewer@example.com",
+      "reviewedAt": "2026-07-30T10:00:00+08:00",
+      "reviewMethod": "human-review"
     },
     {
       "id": "field.pending-task.status",
@@ -545,7 +581,10 @@ Screen 的 `bindingRef`、Pattern content binding 和 Interaction 的 `dataRef`
       "example": "pending",
       "sourceRefs": ["source.existing-code.pending-task"],
       "confidence": "exact",
-      "reviewStatus": "approved"
+      "reviewStatus": "approved",
+      "reviewedBy": "design-reviewer@example.com",
+      "reviewedAt": "2026-07-30T10:00:00+08:00",
+      "reviewMethod": "human-review"
     }
   ],
   "example": {
@@ -561,7 +600,10 @@ Screen 的 `bindingRef`、Pattern content binding 和 Interaction 的 `dataRef`
     "source.manual.design-review"
   ],
   "confidence": "exact",
-  "reviewStatus": "approved"
+  "reviewStatus": "approved",
+  "reviewedBy": "design-reviewer@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
 }
 ```
 
@@ -641,11 +683,11 @@ Component 的 `slots` 是正式合同，不是任意嵌套节点树。每个 Slo
 | `cardinality` | R | `{ "min": number, "max": number \| "many" }` |
 | `allowedContent` | R | 允许的 text/component/pattern 类型和 refs |
 | `figmaRepresentation` | R | `instance-swap`、`nested-instance`、`text-property`、`documentation-only` |
-| `codeMappingRef` | C | codex-ready 时 REQUIRED，引用目标 code mapping |
 | `fallback` | O | Slot 空缺时的明确行为 |
 
 `figmaRepresentation=instance-swap` 必须引用对应 Property；
-`codeMappingRef` 只引用 Code Mapping，不在 Component 内复制 prop 名。
+Slot 只定义平台中立的设计合同。各 code target 的 prop、children、render
+function 或 content model 映射全部由 `code-mapping.json.slotMappings` 拥有。
 
 ### 8.5 Anatomy
 
@@ -717,15 +759,15 @@ Compiler 不得把所有 State 自动扩张为 Variant 笛卡尔积：
 | 字段 | 要求 | 说明 |
 | --- | --- | --- |
 | `reusePolicy` | R | 唯一 owner；`must-reuse`、`prefer-reuse`、`may-implement`、`reference-only` |
-| `preferredCodeComponent` | O | 人工可读代码组件名 |
-| `mappingRef` | O | 指向 `code-mapping.json` |
 | `requiredBehavior` | R | 必须保留的行为列表 |
 | `forbiddenImplementation` | R | 禁止事项列表 |
 | `missingMappingPolicy` | R | `block`、`abstract-first`、`allow-local`、`review-required` |
 
 `components.json.implementationContract.reusePolicy` 是唯一 source of truth。
-`code-mapping.json` 只能通过 `implementationContractRef` 引用它，不得再次声明
-独立 `reusePolicy`。
+Component Contract 保持平台中立，不拥有 code component、source path、import
+或 Mapping ID。`code-mapping.json` 按 `codeTargetRef` 拥有这些 target-specific
+事实，只能通过 `implementationContractRef` 引用实现约束，不得再次声明独立
+`reusePolicy`。
 
 语义：
 
@@ -844,7 +886,6 @@ Compiler 不得把所有 State 自动扩张为 Variant 笛卡尔积：
         "kind": "instance-swap",
         "propertyRef": "property.button.leading-icon"
       },
-      "codeMappingRef": "mapping.slot.button.leading-content.react",
       "fallback": "omit"
     }
   ],
@@ -961,8 +1002,6 @@ Compiler 不得把所有 State 自动扩张为 Variant 笛卡尔积：
   "implementationHintRefs": ["hint.component.button.use-existing"],
   "implementationContract": {
     "reusePolicy": "must-reuse",
-    "preferredCodeComponent": "Button",
-    "mappingRef": "mapping.component.button.react",
     "requiredBehavior": [
       "保留 disabled 语义。",
       "保留键盘激活行为。",
@@ -980,7 +1019,10 @@ Compiler 不得把所有 State 自动扩张为 Variant 笛卡尔积：
     "source.manual.design-review"
   ],
   "confidence": "exact",
-  "reviewStatus": "approved"
+  "reviewStatus": "approved",
+  "reviewedBy": "design-reviewer@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
 }
 ```
 
@@ -1332,7 +1374,10 @@ Region 不允许继续嵌套 Region，从而避免无限递归节点树。
     "source.manual.design-review"
   ],
   "confidence": "exact",
-  "reviewStatus": "approved"
+  "reviewStatus": "approved",
+  "reviewedBy": "design-reviewer@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
 }
 ```
 
@@ -1421,7 +1466,10 @@ Component、Pattern 或 Screen。
     "source.manual.product-review"
   ],
   "confidence": "exact",
-  "reviewStatus": "approved"
+  "reviewStatus": "approved",
+  "reviewedBy": "design-reviewer@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
 }
 ```
 
@@ -1443,8 +1491,6 @@ Component、Pattern 或 Screen。
 | `mustNotChange` | R | Codex 不得自行改变的具体事项 |
 | `alternativesRejected` | R | 可为空数组；记录被否决方案和原因 |
 | `supersededBy` | O | 被新 Decision 替代时提供 |
-| `approvedBy` | C | `reviewStatus=approved` 时 REQUIRED |
-| `approvedAt` | C | `reviewStatus=approved` 时 REQUIRED |
 | `sourceRefs`、`confidence`、`reviewStatus` | R | 来源、证据强度和审核状态 |
 
 ### 14.2 示例
@@ -1474,13 +1520,14 @@ Component、Pattern 或 Screen。
       "reason": "会显著拉长任务详情页面。"
     }
   ],
-  "approvedBy": "product-design-review",
-  "approvedAt": "2026-07-30T10:00:00+08:00",
   "sourceRefs": [
     "source.manual.product-review"
   ],
   "confidence": "exact",
-  "reviewStatus": "approved"
+  "reviewStatus": "approved",
+  "reviewedBy": "design-reviewer@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
 }
 ```
 
@@ -1536,7 +1583,10 @@ Component、Pattern 或 Screen。
     "source.existing-code.components"
   ],
   "confidence": "high",
-  "reviewStatus": "approved"
+  "reviewStatus": "approved",
+  "reviewedBy": "design-reviewer@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
 }
 ```
 
@@ -1554,12 +1604,14 @@ Component、Pattern 或 Screen。
   "componentMappings": [],
   "tokenMappings": [],
   "screenMappings": [],
-  "slotMappings": []
+  "slotMappings": [],
+  "dataMappings": []
 }
 ```
 
 一个 Design Package 可以面向多个 `codeTargets`。每条 Mapping 必须声明
 `codeTargetRef`，不同目标可以拥有不同 Token 名、组件路径和 prop mapping。
+Component 与 Slot Contract 不保存任何单一 target 的 Mapping ID。
 
 ### 16.2 Component Mapping 字段
 
@@ -1579,6 +1631,20 @@ Component、Pattern 或 Screen。
 | `freshness` | R | 路径、import 和 prop mapping 的验证新鲜度 |
 | `searchEvidence` | C | status=missing/partial 时记录搜索范围和结果 |
 | `sourceRefs`、`confidence`、`reviewStatus` | R | 来源、证据强度和审核状态 |
+
+`slotMappings` 按目标拥有 Slot 的代码表示：
+
+| 字段 | 要求 | 说明 |
+| --- | --- | --- |
+| `id` | R | Mapping 稳定 ID |
+| `codeTargetRef` | R | 目标代码环境 |
+| `designRef` | R | 全限定 Slot ref |
+| `status` | R | `matched`、`partial`、`missing`、`blocked` |
+| `codeRepresentation` | C | matched/partial 时 REQUIRED；prop、children、render function 或 content model |
+| `sourcePath` | C | matched/partial 时 REQUIRED |
+| `fieldMapping` | C | Slot cardinality/content 到目标代码字段的映射 |
+| `freshness` | R | 与目标 repository revision 对齐的验证信息 |
+| `sourceRefs`、`confidence`、review metadata | R | 公共来源与审核合同 |
 
 `freshness`：
 
@@ -1603,7 +1669,82 @@ Token Code Name 由 `tokenMappings` 按目标拥有：
 | `sourcePath` | O | 已存在定义的位置 |
 | `freshness` | R | 验证信息 |
 
-### 16.3 示例
+### 16.3 Data Code Mapping
+
+`dataMappings` 连接 UI Data Contract 与目标仓库中已经存在的 Type、Model、
+Selector 或 Adapter。它不向 Data Contract 添加 endpoint、HTTP method 或后端
+transport 信息。
+
+| 字段 | 要求 | 说明 |
+| --- | --- | --- |
+| `id` | R | Mapping 稳定 ID |
+| `codeTargetRef` | R | 引用 Manifest 中一个 code target |
+| `designRef` | R | Data Contract ID |
+| `status` | R | `matched`、`partial`、`missing`、`blocked` |
+| `codeType` | C | matched/partial 时提供目标语言类型名 |
+| `codeSymbol` | C | matched/partial 时提供可定位 symbol；可与 codeType 相同 |
+| `sourcePath` | C | matched/partial 时 REQUIRED |
+| `import` | O | 目标需要显式 import 时提供 |
+| `fieldMapping` | C | matched/partial 时 REQUIRED；Data field 到 code field/select path |
+| `adapter` | O | 已存在或已批准的转换函数/selector；不得内嵌后端 endpoint |
+| `missingPolicy` | C | status=missing 时 REQUIRED；`block`、`define-local`、`review-required` |
+| `freshness` | R | verified revision/time/status |
+| `searchEvidence` | C | missing/partial 时记录搜索证据 |
+| `sourceRefs`、`confidence`、review metadata | R | 公共来源与可信审核合同 |
+
+已有数据模型时，Codex 不得跳过 verified `dataMapping` 并重新定义重复
+TypeScript interface、Swift model 或其他本地模型。没有对应模型时必须使用
+`status=missing` 并明确 `missingPolicy`，不能把“没有找到”伪装成新模型授权。
+
+Data Mapping 示例：
+
+```json
+{
+  "id": "mapping.data.pending-task.react",
+  "codeTargetRef": "code-target.react-web",
+  "designRef": "data.pending-task",
+  "status": "matched",
+  "codeType": "PendingTask",
+  "codeSymbol": "selectPendingTaskViewModel",
+  "sourcePath": "src/features/tasks/model/pendingTask.ts",
+  "import": {
+    "kind": "named",
+    "name": "PendingTask",
+    "from": "@/features/tasks/model/pendingTask"
+  },
+  "fieldMapping": [
+    {
+      "designField": "title",
+      "codeField": "title"
+    },
+    {
+      "designField": "status",
+      "codeField": "status"
+    }
+  ],
+  "adapter": {
+    "kind": "selector",
+    "symbol": "selectPendingTaskViewModel",
+    "sourcePath": "src/features/tasks/model/selectors.ts"
+  },
+  "freshness": {
+    "verifiedRevision": "git:abc123",
+    "verifiedAt": "2026-07-30T10:00:00+08:00",
+    "verificationStatus": "verified",
+    "verifiedBy": "manual-code-review"
+  },
+  "sourceRefs": [
+    "source.existing-code.pending-task"
+  ],
+  "confidence": "exact",
+  "reviewStatus": "approved",
+  "reviewedBy": "frontend-owner@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
+}
+```
+
+### 16.4 Component Mapping 示例
 
 ```json
 {
@@ -1670,7 +1811,10 @@ Token Code Name 由 `tokenMappings` 按目标拥有：
     "source.existing-code.button"
   ],
   "confidence": "exact",
-  "reviewStatus": "approved"
+  "reviewStatus": "approved",
+  "reviewedBy": "frontend-owner@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
 }
 ```
 
@@ -1702,7 +1846,10 @@ Token Code Name 由 `tokenMappings` 按目标拥有：
     "source.existing-code.inventory"
   ],
   "confidence": "high",
-  "reviewStatus": "approved"
+  "reviewStatus": "approved",
+  "reviewedBy": "frontend-owner@example.com",
+  "reviewedAt": "2026-07-30T10:00:00+08:00",
+  "reviewMethod": "human-review"
 }
 ```
 
@@ -1713,17 +1860,18 @@ Token Code Name 由 `tokenMappings` 按目标拥有：
 ## 17. Audit Governance
 
 完整 Governance Rule 不由每个 Design Package 定义。规则由独立、版本化、只读的
-Audit Profile 发布；Package 只引用 Profile 并记录经过批准的例外。
+Audit Profile 发布；Package 只能请求 Profile 并携带候选例外。Profile 和例外
+是否可信，由 Compiler / Exporter 外部的 Trusted Profile Policy 决定。
 
 ### 17.1 `audit-governance.json`
 
 | 字段 | 要求 | 说明 |
 | --- | --- | --- |
 | `schemaVersion` | R | V2.1 使用 `2.1.0` |
-| `auditProfile` | R | 外部 Profile 的 ID、version、URI 和 checksum |
-| `approvedExceptions` | R | 可为空；不能覆盖 Profile 中的规则定义 |
+| `requestedAuditProfile` | R | Package 请求的外部 Profile ID、version、URI 和 checksum |
+| `approvedExceptions` | R | 可为空；只有可信 Governance Action 批准后才有效 |
 
-`auditProfile`：
+`requestedAuditProfile`：
 
 | 字段 | 要求 | 说明 |
 | --- | --- | --- |
@@ -1740,19 +1888,33 @@ Approved Exception：
 | `ruleRef` | R | 外部 Profile 中的 Rule ID |
 | `scopeRef` | R | 例外的最小对象/字段范围 |
 | `rationale` | R | 为什么允许例外 |
-| `approvedBy`、`approvedAt` | R | 授权人和时间 |
 | `expiresAt` | O | 到期后自动失效 |
-| `reviewStatus` | R | 必须是 `approved` 才生效 |
+| review metadata | R | 必须是可信 `approved + governance-action` 才生效 |
 
 Package 禁止覆盖 Rule 的 `severity`、`blocking`、`condition` 或 `appliesTo`。
 blocking rule 只能通过 Profile 允许的 exception mechanism 豁免，不能在包内降级。
+
+#### Audit Profile trust boundary
+
+- Package 声明的是 requested Profile，不是可信性的 source of truth。
+- Audit evaluator 必须从外部 trusted profile registry / allowlist 验证 Profile
+  `id`、`version`、`checksum` 三者的精确组合。
+- 只匹配 ID、使用浮动版本、checksum 不一致或 registry 中不存在，均视为
+  untrusted Profile，并对 figma-ready / codex-ready blocking。
+- `uri` 用于定位，不替代 allowlist 验证。
+- 当前 Core 不要求数字签名；可信 registry、Review Action 和 Governance Action
+  均属于 Package 之外的执行环境。
+
+AI Import 不能自行创建有效 exception。`approvedExceptions` 中的条目必须能关联
+可信 Human Review / Governance Action，并包含完整 review metadata；验证失败时
+该例外不得应用，原 blocking issue 继续存在。
 
 ### 17.2 Governance 示例
 
 ```json
 {
   "schemaVersion": "2.1.0",
-  "auditProfile": {
+  "requestedAuditProfile": {
     "id": "audit-profile.design-package.standard",
     "version": "2.1.0",
     "uri": "governance://design-package/standard/2.1.0",
@@ -1764,10 +1926,11 @@ blocking rule 只能通过 Profile 允许的 exception mechanism 豁免，不能
       "ruleRef": "rule.screen.required-state-coverage",
       "scopeRef": "screen.pending-tasks#state.timeout",
       "rationale": "Pilot 范围内复用 approved error state。",
-      "approvedBy": "design-governance-review",
-      "approvedAt": "2026-07-30T10:00:00+08:00",
       "expiresAt": "2026-09-30T23:59:59+08:00",
-      "reviewStatus": "approved"
+      "reviewStatus": "approved",
+      "reviewedBy": "design-governance-review",
+      "reviewedAt": "2026-07-30T10:00:00+08:00",
+      "reviewMethod": "governance-action"
     }
   ]
 }
@@ -1789,7 +1952,14 @@ Standard Profile 至少应覆盖：
 - unmapped Token；
 - unsafe implementation freedom；
 - readiness gate；
-- required state coverage。
+- required state coverage；
+- `untrusted-review-approval`；
+- untrusted audit profile / exception。
+
+`untrusted-review-approval` 检测 AI、parser 或 importer 直接声明
+`approved/rejected`，却不存在可验证 Human Review Action 的对象或字段。该问题
+对相关 readiness gate blocking，不能由对象顶层 `approved` 或 Package 自己声明
+的 exception 消除。
 
 ### 17.4 Required State Coverage Audit
 
@@ -1818,35 +1988,34 @@ Schema valid ≠ figma-ready ≠ codex-ready
 Readiness 是对 Package 当前状态的可审计评估，不通过增加大量 universally
 REQUIRED 字段迫使 AI 编造未知事实。
 
-### 18.1 Manifest Readiness
+### 18.1 Source Readiness Declaration
 
 ```json
 {
-  "declaredProfile": "draft",
-  "evaluatedAt": "2026-07-30T10:00:00+08:00",
-  "auditGovernanceRef": "audit-governance.json",
-  "auditResultRef": "audit.result.package-2026-07-30",
-  "gates": [
+  "requestedReadiness": [
     {
-      "id": "gate.schema-valid",
-      "status": "passed",
-      "evidenceRefs": ["audit.result.schema-valid"]
+      "profile": "figma-ready"
     },
     {
-      "id": "gate.figma-ready",
-      "status": "not-evaluated",
-      "evidenceRefs": []
-    },
-    {
-      "id": "gate.codex-ready",
-      "status": "not-evaluated",
-      "evidenceRefs": []
+      "profile": "codex-ready",
+      "codeTargetRef": "code-target.react-web"
     }
   ]
 }
 ```
 
-Gate status：`passed`、`failed`、`not-evaluated`、`blocked`。
+Source Manifest 只表达 Package 希望被评估到哪个目标。它不得保存：
+
+- `evaluatedAt`；
+- gate runtime status；
+- blocking issues；
+- applied exceptions；
+- `auditResultRef` 或 Profile 执行结果。
+
+上述动态事实全部由 OUTPUT-ONLY `audit.json` 拥有。`audit.json` 至少记录
+evaluation identity/time、实际可信 Profile identity、每个 gate result、
+blocking issues、可信且实际应用的 exceptions，以及对应 `codeTargetRef`。
+Source Package 声明 `requestedReadiness` 不代表已通过该 readiness。
 
 ### 18.2 Draft
 
@@ -1871,12 +2040,17 @@ Draft 允许：
 除 Schema valid 外，以下任一情况 blocking：
 
 - Figma 消费范围内对象不是 `reviewStatus=approved`；
+- Figma readiness-relevant 字段的 Provenance 仍为
+  `unreviewed/needs-review/rejected`，即使对象顶层已 approved；
+- approved/rejected 缺少可信 Human Review Action；
 - Foundation Token 缺失明确 `figmaRepresentation`；
 - Compiler 需要的 Component/Property/Slot/Screen Region 合同缺失；
 - Figma 使用的引用无法解析；
 - `requiredIn` 包含 `figma` 的 State 没有对应 representation 和 coverage；
 - Required Screen State 没有可呈现 override/Pattern/approved fallback；
 - 外部 Audit Profile 存在未豁免的 Figma blocking issue；
+- requested Audit Profile 不在外部 trusted registry/allowlist，或
+  id/version/checksum 不匹配；
 - Compiler compatibility gate 未通过。
 
 低 confidence 不自动 blocking；若人工已批准，可以进入 Figma Ready，但 Audit
@@ -1888,13 +2062,19 @@ Result 必须保留其证据强度。
 
 - 目标流程要求 Figma 人工验收但 `gate.figma-ready` 未 passed；
 - Design Decision 未 approved；
+- Codex readiness-relevant 字段的 Provenance 仍为
+  `unreviewed/needs-review/rejected`，即使对象顶层已 approved；
+- approved/rejected 缺少可信 Human Review Action；
 - Screen/Interaction 的 Data Contract ref 无法解析；
 - Component 缺失 implementation contract；
 - 当前 code target 的 Mapping 缺失、stale、unverified 或 failed，且没有批准例外；
+- 活动 Data Contract 在目标仓库已有模型但没有 verified Data Mapping；
+- 活动 Data Contract 无对应模型时没有 `status=missing` 和明确 missing policy；
 - `requiredIn` 包含 `code` 的 State 没有可实现 presentation/fallback；
 - Required State Coverage Audit 未通过；
 - reusePolicy、missingMappingPolicy 或 forbiddenImplementation 无唯一 owner；
 - 外部 Audit Profile 存在未豁免的 Codex blocking issue；
+- requested Audit Profile 不受外部 Trusted Profile Policy 信任；
 - Handoff 必需文件缺失。
 
 Codex Ready 按 `codeTargetRef` 分别评估。同一个 Package 可以对 React target
@@ -1937,16 +2117,16 @@ Schema-valid 强迫 AI 编造。
 
 | 对象 | figma-ready | codex-ready |
 | --- | --- |
-| Manifest | platform、designSystem、sources、screens、compatibility、auditGovernance、readiness | 前述字段 + codeTargets + Handoff entrypoints |
+| Manifest | platform、designSystem、sources、screens、compatibility、auditGovernance、requestedReadiness | 前述字段 + codeTargets + Handoff entrypoints |
 | Token | name/description、category/type、value/alias、figmaRepresentation | name/description、value/alias；目标 tokenMapping |
-| Data Contract | 被 Screen/Interaction 引用时必须完整解析 | 所有活动 data refs、fields、formatting |
+| Data Contract | 被 Screen/Interaction 引用时必须完整解析 | 所有活动 data refs、fields、formatting + verified/missing Data Mapping |
 | Component | purpose、documentation、figma、anatomy、properties、slots、State(Figma)、layout、tokenBindings | anatomy、properties、slots、State(Code)、content/accessibility、implementationContract |
 | Pattern | composition、layout、Figma required states | composition、behavior、Code required states |
 | Screen | figma、layout、regions、Figma required states、responsive | regions、Data binding、Code required states、interactions、responsive |
 | Interaction | Figma Prototype 需要的无歧义 StateRef | trigger/guard/action/dataRefs/transitions |
 | Decision | 所有影响 Figma 的 Decision approved | 所有活动 Decision approved |
-| Mapping | 非必须，除非 Compiler 依赖 Code mapping | 当前 code target mapping + freshness verified |
-| Audit Governance | Profile 固定引用；Figma blocking issues 清零 | Profile 固定引用；Codex blocking issues 清零 |
+| Mapping | 非必须，除非 Compiler 依赖 Code mapping | 当前 code target 的 Component/Slot/Token/Data mappings + freshness |
+| Audit Governance | requested Profile 通过外部 trust policy；Figma blocking issues 清零 | requested Profile 通过外部 trust policy；Codex blocking issues 清零 |
 
 ### 20.3 常见 OPTIONAL
 
@@ -1968,11 +2148,11 @@ OPTIONAL 不表示可以随意猜测；只有存在证据或明确需要时才�
 | --- | --- | --- | --- |
 | stable `id` / refs | 共享 | 共享 | 共享 |
 | name / description / purpose | 共享 | 共享 | 共享 |
-| sourceRefs / confidence / reviewStatus / provenance | 共享 | 共享 | 共享 |
+| sourceRefs / confidence / reviewStatus / review metadata / provenance | 共享 | 共享 | 人工审核 owner |
 | Primitive/Semantic Token value/alias | 共享 | 共享 | 共享 |
 | `figmaRepresentation`、figmaName、nodeType、variant order | **Figma-only** | 可忽略 | 可查看 |
 | OUTPUT-ONLY Plugin Data / descriptionMarkdown | Compiler 输出 | 可忽略 | 可查看 |
-| target-specific codeName、importPath、code component、prop/event mapping | 可忽略 | **Codex-only** | 可查看 |
+| target-specific codeName、sourcePath、code component/type、prop/event/slot/data mapping | 可忽略 | **Codex-only** | 可查看 |
 | Data Contract | 内容生成可消费 | **Codex-only** 强约束 | 共享 |
 | Component anatomy / properties / states / layout | 共享 | 共享 | 共享 |
 | Component tokenBindings | 共享 | 共享 | 共享 |
@@ -1981,7 +2161,8 @@ OPTIONAL 不表示可以随意猜测；只有存在证据或明确需要时才�
 | Screen Regions / children / states / responsive | 共享 | 共享 | 共享 |
 | Decision | 可用于文档和审计 | 共享且强约束 | 共享 |
 | Implementation Hint | 可忽略 | **Codex-only** | 共享 |
-| Audit Profile / approved exceptions / readiness | 按范围 | 按范围 | 共享 |
+| requested Audit Profile / exceptions / requested readiness | 按范围 | 按范围 | 外部 trust policy |
+| Audit Result / actual readiness / applied exceptions | OUTPUT-ONLY | OUTPUT-ONLY | 外部 evaluator |
 
 ### 21.2 只服务 Figma 的字段
 
@@ -1998,11 +2179,11 @@ OPTIONAL 不表示可以随意猜测；只有存在证据或明确需要时才�
 ### 21.3 只服务 Codex 的字段
 
 - `implementationContract`
-- `preferredCodeComponent`
 - Component-owned `reusePolicy`
 - `missingMappingPolicy`
 - `forbiddenImplementation`
-- `code-mapping.json` 的 target-specific codeName、source path、import、prop/event mapping、freshness
+- `code-mapping.json` 的 target-specific codeName、source path、import、
+  Component/Slot/Token/Data mapping 与 freshness
 - Implementation Hint 及偏离报告要求
 
 ### 21.4 两边共享的字段
@@ -2025,6 +2206,7 @@ OPTIONAL 不表示可以随意猜测；只有存在证据或明确需要时才�
 codex-handoff/
 ├─ AGENTS.md
 ├─ README.md
+├─ handoff-manifest.json
 ├─ tokens.json
 ├─ data-contracts.json
 ├─ components.json
@@ -2044,6 +2226,7 @@ codex-handoff/
 | --- | --- |
 | `AGENTS.md` | 高层不可违反规则、工作边界、验证要求和决策优先级 |
 | `README.md` | 包范围、入口、目标平台、使用顺序、已知限制 |
+| `handoff-manifest.json` | 本次导出的 Package、code target、repository revision、Audit 与文件校验身份 |
 | `tokens.json` | 代码 Token、alias 和 Semantic 用途 |
 | `data-contracts.json` | UI 数据形状、nullable/enum/formatting 和 mock；不暴露后端 API |
 | `components.json` | 可复用组件合同、状态、布局、内容和强制实现约束 |
@@ -2052,11 +2235,70 @@ codex-handoff/
 | `interactions.json` | trigger/guard/action/result 状态流 |
 | `decisions.json` | 不允许 Codex 自行优化的已确认选择 |
 | `implementation-hints.json` | 可调整的工程建议和偏离说明 |
-| `code-mapping.json` | 现有组件、路径、import、props 和 events 的直接映射 |
-| `audit.json` | 外部 Profile 执行结果、readiness gates、blocking 问题和已批准例外 |
+| `code-mapping.json` | 当前 target 的 Component、Slot、Token、Data 代码映射与 freshness |
+| `audit.json` | 可信 Profile 执行结果、readiness gates、blocking 问题和实际应用的可信例外 |
 | `references/` | 经登记的视觉或结构参考，不替代合同 |
 
-### 22.2 AGENTS.md 边界
+### 22.2 `handoff-manifest.json`
+
+Export for Codex 必须为每个 `codeTargetRef` 生成独立 Handoff Manifest：
+
+```json
+{
+  "packageId": "package.campus-warning-mobile",
+  "packageVersion": "2.1.0",
+  "schemaVersion": "2.1.0",
+  "designSystem": {
+    "id": "design-system.campus-warning",
+    "version": "3.0.0"
+  },
+  "codeTargetRef": "code-target.react-web",
+  "exportedAt": "2026-07-30T10:00:00+08:00",
+  "repository": {
+    "revision": "git:abc123"
+  },
+  "auditProfile": {
+    "id": "audit-profile.design-package.standard",
+    "version": "2.1.0",
+    "checksum": "sha256:profile-checksum"
+  },
+  "auditResult": {
+    "id": "audit.result.package-2026-07-30",
+    "checksum": "sha256:audit-result-checksum"
+  },
+  "readinessResult": {
+    "profile": "codex-ready",
+    "status": "passed"
+  },
+  "files": [
+    {
+      "path": "components.json",
+      "checksum": "sha256:components-checksum"
+    },
+    {
+      "path": "code-mapping.json",
+      "checksum": "sha256:mapping-checksum"
+    }
+  ]
+}
+```
+
+最小 REQUIRED：
+
+- `packageId`、`packageVersion`、`schemaVersion`；
+- Design System ID/version；
+- 单一 `codeTargetRef`；
+- `exportedAt`；
+- verified repository revision；
+- 实际使用且已信任的 Audit Profile ID/version/checksum；
+- Audit Result identity；
+- 该 target 的 readiness result。
+
+`files/checksums` 强烈建议提供，用于发现 Handoff 文件在导出后被修改。若当前
+repository revision 与 Handoff 的 verified revision 不一致，Codex 必须先检查
+Component、Slot、Token 和 Data Mapping freshness，不得静默假定 Mapping 仍有效。
+
+### 22.3 AGENTS.md 边界
 
 AGENTS.md 只保存：
 
@@ -2181,8 +2423,8 @@ AGENTS.md 不复制：
 9. 外部 Audit Profile、例外审批和 blocking rule 治理责任。
 10. Pilot stable IDs 中哪些可以直接成为正式稳定 ID。
 
-本草案通过人工评审后，下一步应先冻结 Schema V2.1 的最小 REQUIRED 集和
-readiness gates，再单独规划 JSON Schema、迁移和工具实现。
+本 Core Candidate 冻结 Schema V2.1 的最小 REQUIRED 集、ownership 与 trust
+boundary。任何 JSON Schema、迁移或工具实现必须另行规划，不在本文执行。
 
 ## 26. V2 → V2.1 人工评审变更摘要
 
@@ -2198,7 +2440,7 @@ readiness gates，再单独规划 JSON Schema、迁移和工具实现。
 - Source/Provenance `locator` 与 `extractionMethod`。
 - owner + state 的无歧义 StateRef。
 - Code Mapping `freshness` / verification。
-- 外部 versioned Audit Profile、Package approved exceptions。
+- requested external versioned Audit Profile、候选 approved exceptions。
 - draft / figma-ready / codex-ready Readiness Profile。
 - Required State Coverage Audit。
 
@@ -2227,8 +2469,8 @@ readiness gates，再单独规划 JSON Schema、迁移和工具实现。
 - Foundation 只拥有设计 Token；各 code target 的 `codeName` 由 Token Mapping 拥有。
 - Stable ID 与 documentation 是源；Plugin Data 与 descriptionMarkdown 是
   OUTPUT-ONLY 派生物。
-- Governance Rule 由外部 Audit Profile 拥有；Package 只拥有 Profile 引用和
-  approved exceptions。
+- Governance Rule 由外部 Audit Profile 拥有；Package 只拥有 requested Profile
+  与候选 exceptions，信任和实际应用结果由外部 evaluator 拥有。
 
 ### 新 Readiness Gate
 
@@ -2240,3 +2482,48 @@ readiness gates，再单独规划 JSON Schema、迁移和工具实现。
   Handoff 完整性。
 - `confidence=exact` 不再被视为人工批准；readiness 以 `reviewStatus` 和 Audit
   Result 为准。
+
+## 27. V2.1 Core Freeze Summary
+
+- **Review trust ownership**：AI/parser/importer 只产生
+  `unreviewed/needs-review`；可信 Human Review Action 独占
+  `approved/rejected`，并记录 `reviewedBy/reviewedAt/reviewMethod`。对象级批准
+  不覆盖 readiness-relevant 字段的未解决 Provenance。
+- **Code target ownership**：Component 和 Slot 保持平台中立；
+  Component/Slot/Token 的 target-specific 名称、symbol、path、import 与字段映射
+  由 `code-mapping.json` 按 `codeTargetRef` 独占。
+- **Data mapping**：`dataMappings` 连接 Data Contract 与已有 Type、Model、
+  Selector 或 Adapter；verified reuse 与明确 missing policy 防止 Codex 重复建模。
+- **Audit trust boundary**：Package 只能请求 Profile 和携带候选 exception；
+  Profile ID/version/checksum 与 Human/Governance Action 的可信性由外部 policy /
+  registry 验证。
+- **Source/output separation**：Source Manifest 只声明
+  `requestedReadiness`；evaluation time、gate result、blocking issue、applied
+  exception 与实际 Profile result 只属于 OUTPUT `audit.json`。
+- **Handoff reproducibility**：`handoff-manifest.json` 固定 Package、Design
+  System、code target、repository revision、可信 Audit、readiness 与文件校验
+  身份；revision 漂移时必须先复核 Mapping freshness。
+
+### FROZEN CORE
+
+- 现有 Source 文件边界以及 stable ID / reference / provenance 基础合同。
+- Foundation、Data Contract、Component、Pattern、Screen Region、Interaction、
+  Decision、Hint 和平台中立 implementation contract。
+- Component/Slot/Token/Data 的 per-`codeTargetRef` Mapping ownership。
+- review trust、Audit trust、Readiness gate 与 Required State Coverage 规则。
+
+### EXTENSION POINTS
+
+- 命名空间化 `extensions`，核心消费者可安全忽略。
+- 外部版本化 Audit Profile 与 Trusted Profile Policy。
+- 新 code target 的独立 Mapping 集，不反向修改平台中立 Component/Slot。
+- 新 Source locator、Reference asset 和 Implementation Hint；不得改变冻结核心
+  字段语义。
+
+### OUTPUT-ONLY
+
+- `audit.json`：实际 Profile、evaluation、gate、blocking issue 与 applied
+  exception。
+- `handoff-manifest.json`：单 code target 的可复现导出身份与 checksums。
+- Figma stable Plugin Data、`descriptionMarkdown` 和 Compiler 派生节点元数据。
+- Codex `AGENTS.md`、README、审计报告及其他确定性生成文档。
