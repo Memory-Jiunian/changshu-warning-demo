@@ -10,20 +10,15 @@ export function FeedbackRecord({
 }) {
   return (
     <article className="ff-feedback-record">
-      <dl>
-        <div>
-          <dt>观察时间</dt>
-          <dd>{formatCompactDateTime(record.observedAt)}</dd>
-        </div>
-        <div>
-          <dt>观察内容</dt>
-          <dd>{record.facts}</dd>
-        </div>
-        <div>
-          <dt>提交时间</dt>
-          <dd>{formatCompactDateTime(record.submittedAt)}</dd>
-        </div>
-      </dl>
+      <p className="ff-feedback-record__meta">
+        <span>观察时间：</span>
+        <time>{formatCompactDateTime(record.observedAt)}</time>
+      </p>
+      <p className="ff-feedback-record__facts">{record.facts}</p>
+      <p className="ff-feedback-record__meta">
+        <span>提交时间：</span>
+        <time>{formatCompactDateTime(record.submittedAt)}</time>
+      </p>
       {psychologistView ? (
         <p className="ff-feedback-record__view-state">
           {record.viewedAt

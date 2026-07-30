@@ -22,7 +22,8 @@ export function BottomSheet({
     <div className="ff-sheet-layer">
       <section className="ff-sheet" role="dialog" aria-modal="true" aria-labelledby="ff-sheet-title">
         <header className="ff-sheet__header">
-          <div>
+          <span className="ff-sheet__header-spacer" aria-hidden="true" />
+          <div className="ff-sheet__heading">
             <h2 id="ff-sheet-title">{title}</h2>
             {meta}
           </div>

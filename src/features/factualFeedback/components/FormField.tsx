@@ -6,6 +6,7 @@ export function FormField({
   required = false,
   hint,
   error,
+  counter,
   children,
 }: {
   id: string;
@@ -13,8 +14,11 @@ export function FormField({
   required?: boolean;
   hint?: string;
   error?: string;
+  counter?: ReactNode;
   children: ReactNode;
 }) {
+  const message = error || hint;
+
   return (
     <div
       className={`ff-form-field${error ? ' ff-form-field--error' : ''}`}
@@ -26,12 +30,19 @@ export function FormField({
         {label}
       </label>
       {children}
-      {error ? (
-        <p id={`${id}-error`} className="ff-field-message ff-field-message--error" role="alert">
-          {error}
-        </p>
-      ) : hint ? (
-        <p className="ff-field-message">{hint}</p>
+      {message || counter ? (
+        <div className="ff-field-helper-row">
+          {error ? (
+            <p id={`${id}-error`} className="ff-field-message ff-field-message--error" role="alert">
+              {error}
+            </p>
+          ) : hint ? (
+            <p className="ff-field-message">{hint}</p>
+          ) : (
+            <span />
+          )}
+          {counter ? <span className="ff-character-count">{counter}</span> : null}
+        </div>
       ) : null}
     </div>
   );

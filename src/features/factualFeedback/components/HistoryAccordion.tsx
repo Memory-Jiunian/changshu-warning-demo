@@ -13,8 +13,11 @@ export function HistoryAccordion({ records }: { records: ObservationRecord[] }) 
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        <span>历史反馈</span>
-        <span>{records.length} 条</span>
+        <span className="ff-history__title">历史反馈（{records.length}条）</span>
+        <span
+          className={`ff-history__chevron${open ? ' ff-history__chevron--open' : ''}`}
+          aria-hidden="true"
+        />
       </button>
       {open ? (
         <div className="ff-history__records">

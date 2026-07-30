@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button } from './Button';
+import { Button } from '../../../components/ui/Button';
 
 export function Dialog({
   open,
@@ -33,11 +33,23 @@ export function Dialog({
         </div>
         <footer className={`ff-dialog__actions${cancelLabel ? '' : ' ff-dialog__actions--single'}`}>
           {cancelLabel ? (
-            <Button variant="secondary" fullWidth disabled={submitting} onClick={onCancel}>
+            <Button
+              variant="secondary"
+              size="md"
+              fullWidth
+              disabled={submitting}
+              onClick={onCancel}
+            >
               {cancelLabel}
             </Button>
           ) : null}
-          <Button fullWidth disabled={submitting} onClick={onConfirm}>
+          <Button
+            variant="primary"
+            size="md"
+            fullWidth
+            disabled={submitting}
+            onClick={onConfirm}
+          >
             {submitting ? '提交中' : confirmLabel}
           </Button>
         </footer>
