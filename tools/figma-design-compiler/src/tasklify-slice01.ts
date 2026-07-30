@@ -121,6 +121,27 @@ type SyncResult = {
 type ContainerNode = PageNode | FrameNode | ComponentNode | ComponentSetNode;
 type AutoLayoutNode = FrameNode | ComponentNode;
 type PaintNode = FrameNode | ComponentNode | TextNode | RectangleNode | EllipseNode;
+type StrokeNode = FrameNode | ComponentNode | VectorNode | LineNode | RectangleNode | EllipseNode;
+type IconName =
+  | 'Search'
+  | 'Overview'
+  | 'Tasks'
+  | 'Calendar'
+  | 'Chat'
+  | 'Reporting'
+  | 'Workflow'
+  | 'Settings'
+  | 'Help'
+  | 'Filter'
+  | 'Sort'
+  | 'Automation'
+  | 'More'
+  | 'Plus'
+  | 'Link'
+  | 'Flag'
+  | 'Comment'
+  | 'Check'
+  | 'ChevronDown';
 
 const manifest = manifestJson;
 const foundations = foundationsJson as FoundationsSchema;
@@ -135,11 +156,33 @@ const SCREEN_ID = 'screen.tasklify.dashboard-overview';
 const DESKTOP_RENDER_ID = `${SCREEN_ID}@desktop`;
 const TABLET_RENDER_ID = `${SCREEN_ID}@tablet-834`;
 const TARGET_COMPONENT_IDS = [
+  'component.icon',
   'component.button',
   'component.badge',
   'component.stat-card',
   'component.task-card',
 ] as const;
+const ICON_NAMES: IconName[] = [
+  'Search',
+  'Overview',
+  'Tasks',
+  'Calendar',
+  'Chat',
+  'Reporting',
+  'Workflow',
+  'Settings',
+  'Help',
+  'Filter',
+  'Sort',
+  'Automation',
+  'More',
+  'Plus',
+  'Link',
+  'Flag',
+  'Comment',
+  'Check',
+  'ChevronDown',
+];
 
 const FONT_REGULAR: FontName = { family: 'Inter', style: 'Regular' };
 const FONT_SEMIBOLD: FontName = { family: 'Inter', style: 'Semi Bold' };
@@ -232,6 +275,7 @@ export function validateTasklifySlicePackage(): void {
 
   const button = requireComponentDefinition('component.button');
   const badge = requireComponentDefinition('component.badge');
+  const icon = requireComponentDefinition('component.icon');
   assertVariantValues(button, 'Type', ['primary', 'secondary']);
   assertVariantValues(badge, 'Type', [
     'neutral',
@@ -242,6 +286,7 @@ export function validateTasklifySlicePackage(): void {
     'completed',
     'review',
   ]);
+  assertVariantValues(icon, 'Name', ICON_NAMES);
 
   const screen = requireTasklifyScreen();
   if (screen.layout.width.value !== 975 || screen.layout.height.value !== 694) {
@@ -298,6 +343,7 @@ export function validateTasklifySlicePackage(): void {
 
 export async function syncTasklifySlice01(): Promise<SyncResult> {
   validateTasklifySlicePackage();
+  await preflightTasklifySlice();
   const { collection, variables } = await syncTasklifyVariables();
   const components = await syncTasklifyComponents(variables);
   const desktop = await syncTasklifyRender(
@@ -320,6 +366,215 @@ export async function syncTasklifySlice01(): Promise<SyncResult> {
   );
   await validateTasklifyStructure(collection, variables, components, desktop, tablet);
   return { selection: [desktop, tablet], variableCount: variables.size };
+}
+
+async function preflightTasklifySlice(): Promise<void> {
+  await figma.loadAllPagesAsync();
+  const [collections, localVariables] = await Promise.all([
+    figma.variables.getLocalVariableCollectionsAsync(),
+    figma.variables.getLocalVariablesAsync(),
+  ]);
+
+  const collectionMatches = collections.filter(
+    (candidate) =>
+      hasDesignSystemIdentity(candidate) &&
+      candidate.getSharedPluginData(PLUGIN_DATA_NAMESPACE, COLLECTION_ID_KEY) ===
+        FOUNDATION_COLLECTION_ID,
+  );
+  if (collectionMatches.length > 1) {
+    throw new Error(`Duplicate Tasklify Collection ID: ${FOUNDATION_COLLECTION_ID}`);
+  }
+
+  const variableIdentityCounts = new Map<string, Variable[]>();
+  for (const variable of localVariables) {
+    if (!hasDesignSystemIdentity(variable)) continue;
+    const tokenId = variable.getSharedPluginData(
+      PLUGIN_DATA_NAMESPACE,
+      TOKEN_ID_KEY,
+    );
+    if (!tokenId) continue;
+    const matches = variableIdentityCounts.get(tokenId) ?? [];
+    matches.push(variable);
+    variableIdentityCounts.set(tokenId, matches);
+  }
+  for (const [tokenId, matches] of variableIdentityCounts) {
+    if (matches.length > 1) {
+      throw new Error(`Duplicate Tasklify Variable ID: ${tokenId}`);
+    }
+    const token = tokenById.get(tokenId);
+    if (token && matches[0].resolvedType !== token.type) {
+      throw new Error(`Tasklify Variable type mismatch: ${tokenId}`);
+    }
+    if (
+      token &&
+      collectionMatches[0] &&
+      matches[0].variableCollectionId !== collectionMatches[0].id
+    ) {
+      throw new Error(`Tasklify Variable is in another Collection: ${tokenId}`);
+    }
+  }
+
+  const componentMatches = new Map<string, Array<ComponentNode | ComponentSetNode>>();
+  const componentCandidates = figma.root.findAll(
+    (node) => node.type === 'COMPONENT' || node.type === 'COMPONENT_SET',
+  );
+  for (const candidate of componentCandidates) {
+    if (candidate.type !== 'COMPONENT' && candidate.type !== 'COMPONENT_SET') continue;
+    if (!hasDesignSystemIdentity(candidate)) continue;
+    const componentId = candidate.getSharedPluginData(
+      PLUGIN_DATA_NAMESPACE,
+      COMPONENT_ID_KEY,
+    );
+    if (!TARGET_COMPONENT_IDS.includes(componentId as (typeof TARGET_COMPONENT_IDS)[number])) {
+      continue;
+    }
+    const matches = componentMatches.get(componentId) ?? [];
+    matches.push(candidate);
+    componentMatches.set(componentId, matches);
+  }
+  for (const [componentId, matches] of componentMatches) {
+    if (matches.length > 1) {
+      throw new Error(`Duplicate Tasklify component ID: ${componentId}`);
+    }
+    const mustBeSet = ['component.icon', 'component.button', 'component.badge'].includes(
+      componentId,
+    );
+    if (
+      (mustBeSet && matches[0].type !== 'COMPONENT_SET') ||
+      (!mustBeSet && matches[0].type !== 'COMPONENT')
+    ) {
+      throw new Error(`Tasklify Component type mismatch: ${componentId}`);
+    }
+  }
+
+  for (const renderId of [DESKTOP_RENDER_ID, TABLET_RENDER_ID]) {
+    const renderCandidates = figma.root.findAll(
+      (node) =>
+        hasDesignSystemIdentity(node) &&
+        node.getSharedPluginData(PLUGIN_DATA_NAMESPACE, SCREEN_ID_KEY) === SCREEN_ID &&
+        node.getSharedPluginData(PLUGIN_DATA_NAMESPACE, RENDER_ID_KEY) === renderId,
+    );
+    if (renderCandidates.length > 1) {
+      throw new Error(`Duplicate Tasklify render ID: ${renderId}`);
+    }
+    if (renderCandidates[0] && renderCandidates[0].type !== 'FRAME') {
+      throw new Error(`Tasklify render type mismatch: ${renderId}`);
+    }
+    const render = renderCandidates[0] as FrameNode | undefined;
+    if (!render) continue;
+
+    const managedById = new Map<string, SceneNode[]>();
+    const managedNodes = render.findAll(
+      (node) =>
+        hasDesignSystemIdentity(node) &&
+        node.getSharedPluginData(PLUGIN_DATA_NAMESPACE, RENDER_ID_KEY) === renderId &&
+        Boolean(
+          node.getSharedPluginData(
+            PLUGIN_DATA_NAMESPACE,
+            SLICE_NODE_ID_KEY,
+          ),
+        ),
+    );
+    for (const node of managedNodes) {
+      const nodeId = node.getSharedPluginData(
+        PLUGIN_DATA_NAMESPACE,
+        SLICE_NODE_ID_KEY,
+      );
+      const matches = managedById.get(nodeId) ?? [];
+      matches.push(node);
+      managedById.set(nodeId, matches);
+      const expectedType = expectedManagedNodeType(nodeId);
+      if (expectedType && node.type !== expectedType) {
+        throw new Error(
+          `Tasklify managed node type mismatch: ${nodeId}; expected ${expectedType}, got ${node.type}`,
+        );
+      }
+    }
+    for (const [nodeId, matches] of managedById) {
+      if (matches.length > 1) {
+        throw duplicateManagedIdentityError(nodeId);
+      }
+    }
+
+    for (const requiredRoot of ['sidebar', 'workspace']) {
+      const rootMatches = render.children.filter(
+        (child) =>
+          hasDesignSystemIdentity(child) &&
+          child.getSharedPluginData(PLUGIN_DATA_NAMESPACE, RENDER_ID_KEY) === renderId &&
+          child.getSharedPluginData(PLUGIN_DATA_NAMESPACE, SLICE_NODE_ID_KEY) ===
+            requiredRoot,
+      );
+      if (rootMatches.length !== 1 || rootMatches[0].type !== 'FRAME') {
+        throw new Error(
+          `Tasklify existing render is missing required Frame root: ${renderId}/${requiredRoot}`,
+        );
+      }
+    }
+
+    const taggedInstances = render.findAll(
+      (node) =>
+        node.type === 'INSTANCE' &&
+        hasDesignSystemIdentity(node) &&
+        Boolean(
+          node.getSharedPluginData(
+            PLUGIN_DATA_NAMESPACE,
+            COMPONENT_ID_KEY,
+          ),
+        ),
+    ) as InstanceNode[];
+    for (const instance of taggedInstances) {
+      const expectedComponentId = instance.getSharedPluginData(
+        PLUGIN_DATA_NAMESPACE,
+        COMPONENT_ID_KEY,
+      );
+      const mainComponent = await instance.getMainComponentAsync();
+      const owner =
+        mainComponent?.parent?.type === 'COMPONENT_SET'
+          ? mainComponent.parent
+          : mainComponent;
+      if (
+        !owner ||
+        !hasDesignSystemIdentity(owner) ||
+        owner.getSharedPluginData(
+          PLUGIN_DATA_NAMESPACE,
+          COMPONENT_ID_KEY,
+        ) !== expectedComponentId
+      ) {
+        throw new Error(
+          `Tasklify tagged Instance component identity mismatch: ${instance.name}`,
+        );
+      }
+    }
+  }
+}
+
+function expectedManagedNodeType(
+  nodeId: string,
+): 'FRAME' | 'TEXT' | 'INSTANCE' | undefined {
+  if (
+    nodeId === 'topbar.create-task' ||
+    /^summary\.stat\.\d+$/.test(nodeId) ||
+    /^board\.column\.[^.]+\.badge$/.test(nodeId) ||
+    /^board\.column\.[^.]+\.task\.\d+$/.test(nodeId) ||
+    /\.icon(?:\.|$)/.test(nodeId)
+  ) {
+    return 'INSTANCE';
+  }
+  if (
+    nodeId === 'sidebar.brand' ||
+    nodeId === 'sidebar.account' ||
+    nodeId === 'sidebar.footer' ||
+    nodeId === 'topbar.breadcrumb' ||
+    nodeId === 'topbar.avatars' ||
+    nodeId === 'topbar.utilities' ||
+    nodeId === 'summary.heading' ||
+    nodeId === 'summary.subheading' ||
+    nodeId === 'toolbar.controls' ||
+    /\.(?:label|copy|action|menu|count)$/.test(nodeId)
+  ) {
+    return 'TEXT';
+  }
+  return 'FRAME';
 }
 
 async function syncTasklifyVariables(): Promise<{
@@ -412,11 +667,22 @@ async function syncTasklifyComponents(
   variables: Map<string, Variable>,
 ): Promise<Map<string, ComponentNode | ComponentSetNode>> {
   const existing = await findTasklifyComponents();
+  const icon = syncIcon(existing.get('component.icon'), variables);
   const button = syncButton(existing.get('component.button'), variables);
   const badge = syncBadge(existing.get('component.badge'), variables);
-  const statCard = syncStatCard(existing.get('component.stat-card'), variables);
-  const taskCard = syncTaskCard(existing.get('component.task-card'), badge, variables);
+  const statCard = syncStatCard(
+    existing.get('component.stat-card'),
+    icon,
+    variables,
+  );
+  const taskCard = syncTaskCard(
+    existing.get('component.task-card'),
+    badge,
+    icon,
+    variables,
+  );
   return new Map<string, ComponentNode | ComponentSetNode>([
+    ['component.icon', icon],
     ['component.button', button],
     ['component.badge', badge],
     ['component.stat-card', statCard],
@@ -447,6 +713,130 @@ async function findTasklifyComponents(): Promise<
     result.set(componentId, candidate);
   }
   return result;
+}
+
+function syncIcon(
+  existing: ComponentNode | ComponentSetNode | undefined,
+  variables: Map<string, Variable>,
+): ComponentSetNode {
+  const definition = requireComponentDefinition('component.icon');
+  const names = requireVariantValues(definition, 'Name') as IconName[];
+  let componentSet: ComponentSetNode;
+  if (!existing) {
+    const variants = names.map((name) => {
+      const component = figma.createComponent();
+      component.name = `Name=${name}`;
+      configureIconVariant(component, name, variables);
+      return component;
+    });
+    componentSet = figma.combineAsVariants(variants, figma.currentPage);
+    componentSet.x = 440;
+    componentSet.y = 320;
+  } else {
+    if (existing.type !== 'COMPONENT_SET') {
+      throw new Error('Tasklify Icon identity points to a non-Component Set');
+    }
+    componentSet = existing;
+    const variants = requireExactVariants(
+      componentSet,
+      names.map((name) => `Name=${name}`),
+    );
+    for (const name of names) {
+      configureIconVariant(variants.get(`Name=${name}`)!, name, variables);
+    }
+  }
+  componentSet.name = definition.figma.name;
+  componentSet.description = buildComponentDescription(definition);
+  tagComponent(componentSet, definition.id);
+  arrangeVariants(componentSet, 5);
+  assertComponentSetGeometry(componentSet, names.length);
+  return componentSet;
+}
+
+function configureIconVariant(
+  component: ComponentNode,
+  name: IconName,
+  variables: Map<string, Variable>,
+): void {
+  component.name = `Name=${name}`;
+  component.layoutMode = 'NONE';
+  component.resizeWithoutConstraints(24, 24);
+  component.fills = [];
+  const matches = component.children.filter(
+    (child): child is FrameNode => child.type === 'FRAME' && child.name === 'icon-vector',
+  );
+  if (matches.length > 1) {
+    throw new Error(`Duplicate Tasklify Icon vector root: ${name}`);
+  }
+  let vectorRoot = matches[0];
+  if (!vectorRoot) {
+    vectorRoot = figma.createNodeFromSvg(
+      iconSvg(name, requireResolvedColor('semantic.text.primary')),
+    );
+    vectorRoot.name = 'icon-vector';
+    component.appendChild(vectorRoot);
+  }
+  vectorRoot.x = 2;
+  vectorRoot.y = 2;
+  vectorRoot.resizeWithoutConstraints(20, 20);
+  vectorRoot.findAll().forEach((node) => {
+    if (isStrokeNode(node)) {
+      bindStroke(node, variables, 'semantic.text.primary');
+    }
+  });
+}
+
+function isStrokeNode(node: SceneNode): node is StrokeNode {
+  return (
+    node.type === 'VECTOR' ||
+    node.type === 'LINE' ||
+    node.type === 'RECTANGLE' ||
+    node.type === 'ELLIPSE'
+  );
+}
+
+function iconSvg(name: IconName, color: string): string {
+  const paths: Record<IconName, string> = {
+    Search:
+      '<circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/>',
+    Overview:
+      '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    Tasks:
+      '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8 9 1.5 1.5L12 7.5M8 15h8"/>',
+    Calendar:
+      '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
+    Chat:
+      '<path d="M4 5h16v11H9l-5 4V5Z"/><path d="M8 9h8M8 12h5"/>',
+    Reporting:
+      '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    Workflow:
+      '<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h5a4 4 0 0 1 4 4v5M15 18h-5a4 4 0 0 1-4-4V9"/>',
+    Settings:
+      '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A7 7 0 0 0 15 6l-.3-2.6h-4L10.4 6A7 7 0 0 0 9 7.1l-2.4-1-2 3.4L6.6 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1A7 7 0 0 0 10.4 18l.3 2.6h4L15 18a7 7 0 0 0 1.5-1.1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/>',
+    Help:
+      '<circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.1 2.3c-.9.3-.9 1-.9 1.7M12 17h.01"/>',
+    Filter:
+      '<path d="M3 5h18l-7 8v6l-4 2v-8L3 5Z"/>',
+    Sort:
+      '<path d="M8 4v16M5 7l3-3 3 3M16 20V4M13 17l3 3 3-3"/>',
+    Automation:
+      '<path d="m13 2-8 12h6l-1 8 9-13h-6V2Z"/>',
+    More:
+      '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    Plus:
+      '<path d="M12 5v14M5 12h14"/>',
+    Link:
+      '<path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/>',
+    Flag:
+      '<path d="M5 21V4M5 5h11l-2 4 2 4H5"/>',
+    Comment:
+      '<path d="M4 5h16v11H9l-5 4V5Z"/>',
+    Check:
+      '<path d="m5 12 4 4L19 6"/>',
+    ChevronDown:
+      '<path d="m6 9 6 6 6-6"/>',
+  };
+  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="${color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${paths[name]}</svg>`;
 }
 
 function syncButton(
@@ -481,7 +871,8 @@ function syncButton(
   componentSet.name = definition.figma.name;
   componentSet.description = buildComponentDescription(definition);
   tagComponent(componentSet, definition.id);
-  arrangeVariants(componentSet, 2, 180, 64);
+  arrangeVariants(componentSet, 2);
+  assertComponentSetGeometry(componentSet, 2);
   return componentSet;
 }
 
@@ -555,7 +946,8 @@ function syncBadge(
   componentSet.name = definition.figma.name;
   componentSet.description = buildComponentDescription(definition);
   tagComponent(componentSet, definition.id);
-  arrangeVariants(componentSet, 4, 150, 52);
+  arrangeVariants(componentSet, 4);
+  assertComponentSetGeometry(componentSet, 7);
   return componentSet;
 }
 
@@ -582,6 +974,7 @@ function configureBadgeVariant(
 
 function syncStatCard(
   existing: ComponentNode | ComponentSetNode | undefined,
+  icon: ComponentSetNode,
   variables: Map<string, Variable>,
 ): ComponentNode {
   const definition = requireComponentDefinition('component.stat-card');
@@ -599,9 +992,9 @@ function syncStatCard(
   component.name = definition.figma.name;
   component.description = buildComponentDescription(definition);
   tagComponent(component, definition.id);
-  configureAutoLayout(component, 'VERTICAL', 12, 6);
+  configureAutoLayout(component, 'VERTICAL', 12, 8);
   bindNumeric(component, 'itemSpacing', variables, 'semantic.spacing.inline-tight');
-  component.resize(170, 92);
+  component.resize(170, 112);
   component.primaryAxisSizingMode = 'FIXED';
   component.counterAxisSizingMode = 'FIXED';
   bindNumeric(component, 'paddingLeft', variables, 'semantic.spacing.component');
@@ -612,18 +1005,53 @@ function syncStatCard(
   bindFill(component, variables, 'semantic.surface.card');
   bindStroke(component, variables, 'semantic.border.subtle');
   component.strokeWeight = 1;
+
+  const top = ensureFrame(component, 'stat-top');
+  configureAutoLayout(top, 'HORIZONTAL', 0, 8);
+  top.layoutSizingHorizontal = 'FILL';
+  top.primaryAxisAlignItems = 'SPACE_BETWEEN';
+  top.counterAxisAlignItems = 'CENTER';
+  top.fills = [];
+  const iconSurface = ensureFrame(top, 'stat-icon-surface');
+  configureFixedFrame(iconSurface, 'HORIZONTAL', 28, 28, 4, 0);
+  iconSurface.primaryAxisAlignItems = 'CENTER';
+  iconSurface.counterAxisAlignItems = 'CENTER';
+  bindNumeric(iconSurface, 'cornerRadius', variables, 'semantic.radius.control');
+  bindFill(iconSurface, variables, 'semantic.surface.sidebar');
+  const statIcon = ensureComponentInstance(iconSurface, 'stat-icon', icon, {
+    Name: 'Reporting',
+  });
+  statIcon.resize(16, 16);
+
+  const actionRow = ensureFrame(top, 'stat-action-row');
+  configureAutoLayout(actionRow, 'HORIZONTAL', 0, 4);
+  actionRow.counterAxisAlignItems = 'CENTER';
+  actionRow.fills = [];
+  const action = reparentText(component, actionRow, 'stat-action');
+  configureText(action, 'View Details', 9, false, variables, 'semantic.text.secondary');
+  const actionIcon = ensureComponentInstance(
+    actionRow,
+    'stat-action-icon',
+    icon,
+    { Name: 'ChevronDown' },
+  );
+  actionIcon.rotation = -90;
+  actionIcon.resize(12, 12);
+  reorderChildren(actionRow, [action, actionIcon]);
+  reorderChildren(top, [iconSurface, actionRow]);
+
   const value = ensureText(component, 'stat-value');
   configureText(value, '216', 16, true, variables, 'semantic.text.primary');
   const label = ensureText(component, 'stat-label');
   configureText(label, 'Active Employees', 10, false, variables, 'semantic.text.secondary');
-  const action = ensureText(component, 'stat-action');
-  configureText(action, 'View Details →', 9, false, variables, 'semantic.text.secondary');
+  reorderChildren(component, [top, value, label]);
   return component;
 }
 
 function syncTaskCard(
   existing: ComponentNode | ComponentSetNode | undefined,
   badge: ComponentSetNode,
+  icon: ComponentSetNode,
   variables: Map<string, Variable>,
 ): ComponentNode {
   const definition = requireComponentDefinition('component.task-card');
@@ -641,9 +1069,9 @@ function syncTaskCard(
   component.name = definition.figma.name;
   component.description = buildComponentDescription(definition);
   tagComponent(component, definition.id);
-  configureAutoLayout(component, 'VERTICAL', 12, 7);
+  configureAutoLayout(component, 'VERTICAL', 12, 8);
   bindNumeric(component, 'itemSpacing', variables, 'semantic.spacing.inline-tight');
-  component.resize(180, 138);
+  component.resize(180, 184);
   component.primaryAxisSizingMode = 'FIXED';
   component.counterAxisSizingMode = 'FIXED';
   bindNumeric(component, 'paddingLeft', variables, 'semantic.spacing.component');
@@ -658,20 +1086,94 @@ function syncTaskCard(
   const meta = ensureFrame(component, 'task-meta');
   configureAutoLayout(meta, 'HORIZONTAL', 0, 8);
   meta.layoutSizingHorizontal = 'FILL';
-  const id = ensureText(meta, 'task-id');
+  meta.counterAxisAlignItems = 'CENTER';
+  const identity = ensureFrame(meta, 'task-identity');
+  configureAutoLayout(identity, 'HORIZONTAL', 0, 4);
+  identity.counterAxisAlignItems = 'CENTER';
+  identity.fills = [];
+  const linkIcon = ensureComponentInstance(identity, 'task-link-icon', icon, {
+    Name: 'Link',
+  });
+  linkIcon.resize(12, 12);
+  const existingId = meta.children.find(
+    (child): child is TextNode => child.type === 'TEXT' && child.name === 'task-id',
+  );
+  if (existingId) identity.appendChild(existingId);
+  const id = ensureText(identity, 'task-id');
   configureText(id, 'WEB - 21', 9, false, variables, 'semantic.text.secondary');
+  reorderChildren(identity, [linkIcon, id]);
   const priority = ensureComponentInstance(meta, 'task-priority', badge, { Type: 'urgent' });
   priority.layoutAlign = 'INHERIT';
+  reorderChildren(meta, [identity, priority]);
 
   const title = ensureText(component, 'task-title');
   configureText(title, 'Partone Consultancy Website', 11, true, variables, 'semantic.text.primary');
   title.layoutSizingHorizontal = 'FILL';
   const project = ensureText(component, 'task-project');
   configureText(project, 'New Homepage', 9, false, variables, 'semantic.text.secondary');
-  const due = ensureText(component, 'task-due');
+
+  const dueChip = ensureFrame(component, 'task-due-chip');
+  configureAutoLayout(dueChip, 'HORIZONTAL', 8, 5);
+  dueChip.layoutSizingHorizontal = 'FILL';
+  dueChip.counterAxisAlignItems = 'CENTER';
+  bindNumeric(dueChip, 'cornerRadius', variables, 'semantic.radius.control');
+  bindFill(dueChip, variables, 'semantic.surface.sidebar');
+  const calendarIcon = ensureComponentInstance(
+    dueChip,
+    'task-due-icon',
+    icon,
+    { Name: 'Calendar' },
+  );
+  calendarIcon.resize(13, 13);
+  const existingDue = component.children.find(
+    (child): child is TextNode => child.type === 'TEXT' && child.name === 'task-due',
+  );
+  if (existingDue) dueChip.appendChild(existingDue);
+  const due = ensureText(dueChip, 'task-due');
   configureText(due, 'Due to: March 21, 25', 9, false, variables, 'semantic.text.secondary');
-  const footer = ensureText(component, 'task-footer');
-  configureText(footer, '● ● ●    ◌ 13    Mar 16, 2025', 8, false, variables, 'semantic.text.secondary');
+  reorderChildren(dueChip, [calendarIcon, due]);
+
+  const footer = ensureFrame(component, 'task-footer-row');
+  configureAutoLayout(footer, 'HORIZONTAL', 0, 6);
+  footer.layoutSizingHorizontal = 'FILL';
+  footer.primaryAxisAlignItems = 'SPACE_BETWEEN';
+  footer.counterAxisAlignItems = 'CENTER';
+  footer.fills = [];
+  const avatars = ensureFrame(footer, 'task-avatars');
+  configureAutoLayout(avatars, 'HORIZONTAL', 0, -4);
+  avatars.fills = [];
+  for (let index = 1; index <= 3; index += 1) {
+    const avatar = ensureEllipse(avatars, `task-avatar-${index}`);
+    avatar.resize(14, 14);
+    bindFill(
+      avatar,
+      variables,
+      index === 1 ? 'semantic.text.primary' : 'semantic.text.secondary',
+    );
+    avatar.strokes = [];
+  }
+  const activity = ensureFrame(footer, 'task-activity');
+  configureAutoLayout(activity, 'HORIZONTAL', 0, 4);
+  activity.counterAxisAlignItems = 'CENTER';
+  activity.fills = [];
+  const commentIcon = ensureComponentInstance(
+    activity,
+    'task-comment-icon',
+    icon,
+    { Name: 'Comment' },
+  );
+  commentIcon.resize(12, 12);
+  const commentCount = ensureText(activity, 'task-comment-count');
+  configureText(commentCount, '13', 8, false, variables, 'semantic.text.secondary');
+  const existingFooter = component.children.find(
+    (child): child is TextNode => child.type === 'TEXT' && child.name === 'task-footer',
+  );
+  if (existingFooter) activity.appendChild(existingFooter);
+  const activityDate = ensureText(activity, 'task-footer');
+  configureText(activityDate, 'Mar 16, 2025', 8, false, variables, 'semantic.text.secondary');
+  reorderChildren(activity, [commentIcon, commentCount, activityDate]);
+  reorderChildren(footer, [avatars, activity]);
+  reorderChildren(component, [meta, title, project, dueChip, footer]);
   return component;
 }
 
@@ -706,7 +1208,15 @@ async function syncTasklifyRender(
   screen.setSharedPluginData(PLUGIN_DATA_NAMESPACE, RENDER_ID_KEY, renderId);
 
   const sidebar = ensureManagedFrame(screen, renderId, 'sidebar');
-  configureSidebar(sidebar, renderId, mode, sidebarWidth, height, variables);
+  configureSidebar(
+    sidebar,
+    renderId,
+    mode,
+    sidebarWidth,
+    height,
+    components,
+    variables,
+  );
   const workspace = ensureManagedFrame(screen, renderId, 'workspace');
   configureWorkspace(
     workspace,
@@ -743,6 +1253,7 @@ function configureSidebar(
   mode: 'desktop' | 'tablet',
   width: number,
   height: number,
+  components: Map<string, ComponentNode | ComponentSetNode>,
   variables: Map<string, Variable>,
 ): void {
   configureFixedFrame(sidebar, 'VERTICAL', width, height, 12, 10);
@@ -756,7 +1267,7 @@ function configureSidebar(
   const brand = ensureManagedText(sidebar, renderId, 'sidebar.brand');
   configureText(
     brand,
-    mode === 'desktop' ? '✦  Tasklify  PRO' : '✦',
+    mode === 'desktop' ? 'Tasklify  PRO' : 'T',
     mode === 'desktop' ? 12 : 18,
     true,
     variables,
@@ -765,7 +1276,7 @@ function configureSidebar(
   const account = ensureManagedText(sidebar, renderId, 'sidebar.account');
   configureText(
     account,
-    mode === 'desktop' ? 'landerestudio@gmail.com' : '•••',
+    mode === 'desktop' ? 'landerestudio@gmail.com' : '',
     8,
     false,
     variables,
@@ -776,10 +1287,18 @@ function configureSidebar(
   search.layoutSizingHorizontal = 'FILL';
   bindNumeric(search, 'cornerRadius', variables, 'semantic.radius.control');
   bindFill(search, variables, 'semantic.surface.card');
+  const searchIcon = ensureManagedInstance(
+    search,
+    renderId,
+    'sidebar.search.icon',
+    requireComponent(components, 'component.icon'),
+    { Name: 'Search' },
+  );
+  searchIcon.resize(14, 14);
   const searchText = ensureManagedText(search, renderId, 'sidebar.search.label');
   configureText(
     searchText,
-    mode === 'desktop' ? '⌕  Search' : '⌕',
+    mode === 'desktop' ? 'Search' : '',
     9,
     false,
     variables,
@@ -802,20 +1321,32 @@ function configureSidebar(
       variables,
       index === 0 ? 'semantic.surface.card' : 'semantic.surface.sidebar',
     );
+    const icon = ensureManagedInstance(
+      item,
+      renderId,
+      `sidebar.nav.${label.toLowerCase()}.icon`,
+      requireComponent(components, 'component.icon'),
+      { Name: label as IconName },
+    );
+    icon.resize(mode === 'desktop' ? 14 : 16, mode === 'desktop' ? 14 : 16);
     const text = ensureManagedText(item, renderId, `sidebar.nav.${label.toLowerCase()}.label`);
     configureText(
       text,
-      mode === 'desktop' ? `${navGlyph(index)}  ${label}` : navGlyph(index),
+      mode === 'desktop' ? label : '',
       mode === 'desktop' ? 9 : 13,
       index === 0,
       variables,
       'semantic.text.primary',
     );
+    orderManagedChildren(item, [icon, text]);
     navNodes.push(item);
     removeStaleManagedChildren(
       item,
       renderId,
-      new Set([`sidebar.nav.${label.toLowerCase()}.label`]),
+      new Set([
+        `sidebar.nav.${label.toLowerCase()}.icon`,
+        `sidebar.nav.${label.toLowerCase()}.label`,
+      ]),
     );
   });
   orderManagedChildren(nav, navNodes);
@@ -829,17 +1360,83 @@ function configureSidebar(
   spacer.resize(Math.max(1, width - 24), 1);
   spacer.layoutGrow = 1;
   spacer.fills = [];
+  const footerActions = ensureManagedFrame(sidebar, renderId, 'sidebar.footer-actions');
+  configureAutoLayout(footerActions, 'VERTICAL', 0, 6);
+  footerActions.layoutSizingHorizontal = 'FILL';
+  footerActions.fills = [];
+  const footerActionNodes: SceneNode[] = [];
+  for (const action of [
+    { id: 'help', label: 'Help Center', icon: 'Help' as IconName },
+    { id: 'settings', label: 'Settings', icon: 'Settings' as IconName },
+  ]) {
+    const row = ensureManagedFrame(
+      footerActions,
+      renderId,
+      `sidebar.footer-actions.${action.id}`,
+    );
+    configureAutoLayout(row, 'HORIZONTAL', 0, 6);
+    row.counterAxisAlignItems = 'CENTER';
+    row.fills = [];
+    const icon = ensureManagedInstance(
+      row,
+      renderId,
+      `sidebar.footer-actions.${action.id}.icon`,
+      requireComponent(components, 'component.icon'),
+      { Name: action.icon },
+    );
+    icon.resize(14, 14);
+    const label = ensureManagedText(
+      row,
+      renderId,
+      `sidebar.footer-actions.${action.id}.label`,
+    );
+    configureText(
+      label,
+      mode === 'desktop' ? action.label : '',
+      9,
+      false,
+      variables,
+      'semantic.text.primary',
+    );
+    orderManagedChildren(row, [icon, label]);
+    removeStaleManagedChildren(
+      row,
+      renderId,
+      new Set([
+        `sidebar.footer-actions.${action.id}.icon`,
+        `sidebar.footer-actions.${action.id}.label`,
+      ]),
+    );
+    footerActionNodes.push(row);
+  }
+  orderManagedChildren(footerActions, footerActionNodes);
+  removeStaleManagedChildren(
+    footerActions,
+    renderId,
+    new Set([
+      'sidebar.footer-actions.help',
+      'sidebar.footer-actions.settings',
+    ]),
+  );
   const footer = ensureManagedText(sidebar, renderId, 'sidebar.footer');
   configureText(
     footer,
-    mode === 'desktop' ? '?  Help Center\n⚙  Settings\n\nDavid Johnson' : '?\n⚙\n\n●',
+    mode === 'desktop' ? 'David Johnson' : 'D',
     mode === 'desktop' ? 9 : 12,
     false,
     variables,
     'semantic.text.primary',
   );
 
-  orderManagedChildren(sidebar, [brand, account, search, nav, spacer, footer]);
+  orderManagedChildren(sidebar, [
+    brand,
+    account,
+    search,
+    nav,
+    spacer,
+    footerActions,
+    footer,
+  ]);
   removeStaleManagedChildren(
     sidebar,
     renderId,
@@ -849,6 +1446,7 @@ function configureSidebar(
       'sidebar.search',
       'sidebar.nav',
       'sidebar.spacer',
+      'sidebar.footer-actions',
       'sidebar.footer',
     ]),
   );
@@ -902,9 +1500,38 @@ function configureTopbar(
   configureAutoLayout(actions, 'HORIZONTAL', 0, 8);
   actions.counterAxisAlignItems = 'CENTER';
   const avatars = ensureManagedText(actions, renderId, 'topbar.avatars');
-  configureText(avatars, '● ● ● +4', 10, false, variables, 'semantic.text.secondary');
+  configureText(avatars, 'Team +4', 10, false, variables, 'semantic.text.secondary');
   const utilities = ensureManagedText(actions, renderId, 'topbar.utilities');
-  configureText(utilities, '⚙   ◇', 11, false, variables, 'semantic.text.primary');
+  configureText(utilities, 'Tools', 9, false, variables, 'semantic.text.secondary');
+  const utilityIcons = ensureManagedFrame(actions, renderId, 'topbar.utility-icons');
+  configureAutoLayout(utilityIcons, 'HORIZONTAL', 0, 6);
+  utilityIcons.counterAxisAlignItems = 'CENTER';
+  utilityIcons.fills = [];
+  const settingsIcon = ensureManagedInstance(
+    utilityIcons,
+    renderId,
+    'topbar.utility-icons.settings.icon',
+    requireComponent(components, 'component.icon'),
+    { Name: 'Settings' },
+  );
+  const moreIcon = ensureManagedInstance(
+    utilityIcons,
+    renderId,
+    'topbar.utility-icons.more.icon',
+    requireComponent(components, 'component.icon'),
+    { Name: 'More' },
+  );
+  settingsIcon.resize(15, 15);
+  moreIcon.resize(15, 15);
+  orderManagedChildren(utilityIcons, [settingsIcon, moreIcon]);
+  removeStaleManagedChildren(
+    utilityIcons,
+    renderId,
+    new Set([
+      'topbar.utility-icons.settings.icon',
+      'topbar.utility-icons.more.icon',
+    ]),
+  );
   const button = ensureManagedInstance(
     actions,
     renderId,
@@ -912,11 +1539,16 @@ function configureTopbar(
     requireComponent(components, 'component.button'),
     { Type: 'primary' },
   );
-  orderManagedChildren(actions, [avatars, utilities, button]);
+  orderManagedChildren(actions, [avatars, utilities, utilityIcons, button]);
   removeStaleManagedChildren(
     actions,
     renderId,
-    new Set(['topbar.avatars', 'topbar.utilities', 'topbar.create-task']),
+    new Set([
+      'topbar.avatars',
+      'topbar.utilities',
+      'topbar.utility-icons',
+      'topbar.create-task',
+    ]),
   );
   orderManagedChildren(topbar, [breadcrumb, actions]);
   removeStaleManagedChildren(
@@ -945,14 +1577,14 @@ function configureContent(
   const summary = ensureManagedFrame(content, renderId, 'content.summary');
   configureSummary(summary, renderId, mode, width - 24, components, variables);
   const toolbar = ensureManagedFrame(content, renderId, 'content.toolbar');
-  configureToolbar(toolbar, renderId, width - 24, variables);
+  configureToolbar(toolbar, renderId, width - 24, components, variables);
   const boardViewport = ensureManagedFrame(content, renderId, 'content.board-viewport');
   configureBoardViewport(
     boardViewport,
     renderId,
     mode,
     width - 24,
-    Math.max(330, height - (mode === 'desktop' ? 284 : 392)),
+    Math.max(300, height - (mode === 'desktop' ? 304 : 432)),
     components,
     variables,
   );
@@ -974,7 +1606,7 @@ function configureSummary(
 ): void {
   configureAutoLayout(summary, 'VERTICAL', 0, 8);
   bindNumeric(summary, 'itemSpacing', variables, 'semantic.spacing.inline-tight');
-  summary.resize(width, mode === 'desktop' ? 196 : 304);
+  summary.resize(width, mode === 'desktop' ? 216 : 344);
   summary.primaryAxisSizingMode = 'FIXED';
   summary.counterAxisSizingMode = 'FIXED';
   summary.fills = [];
@@ -1003,15 +1635,24 @@ function configureSummary(
   banner.counterAxisAlignItems = 'CENTER';
   bindNumeric(banner, 'cornerRadius', variables, 'semantic.radius.control');
   bindFill(banner, variables, 'semantic.surface.sidebar');
+  const bannerIcon = ensureManagedInstance(
+    banner,
+    renderId,
+    'summary.banner.icon',
+    requireComponent(components, 'component.icon'),
+    { Name: 'Automation' },
+  );
+  bannerIcon.resize(14, 14);
   const bannerCopy = ensureManagedText(banner, renderId, 'summary.banner.copy');
   configureText(
     bannerCopy,
-    '✦  Tasklify AI is now available. Access your activity and timeline right away.',
+    'Tasklify AI is now available. Access your activity and timeline right away.',
     9,
     false,
     variables,
     'semantic.text.primary',
   );
+  bannerCopy.layoutGrow = 1;
   const bannerAction = ensureManagedText(banner, renderId, 'summary.banner.action');
   configureText(
     bannerAction,
@@ -1021,11 +1662,15 @@ function configureSummary(
     variables,
     'semantic.text.primary',
   );
-  orderManagedChildren(banner, [bannerCopy, bannerAction]);
+  orderManagedChildren(banner, [bannerIcon, bannerCopy, bannerAction]);
   removeStaleManagedChildren(
     banner,
     renderId,
-    new Set(['summary.banner.copy', 'summary.banner.action']),
+    new Set([
+      'summary.banner.icon',
+      'summary.banner.copy',
+      'summary.banner.action',
+    ]),
   );
 
   const stats = ensureManagedFrame(summary, renderId, 'summary.stats');
@@ -1033,14 +1678,14 @@ function configureSummary(
   bindNumeric(stats, 'itemSpacing', variables, 'semantic.spacing.component');
   stats.layoutSizingHorizontal = 'FILL';
   const statData = [
-    ['216', 'Active Employees'],
-    ['312', 'Active Projects'],
-    ['184', 'Number of Task'],
-    ['84.12%', 'Target Percentage Completed'],
+    ['216', 'Active Employees', 'Overview'],
+    ['312', 'Active Projects', 'Workflow'],
+    ['184', 'Number of Task', 'Tasks'],
+    ['84.12%', 'Target Percentage Completed', 'Reporting'],
   ];
   const statNodes: SceneNode[] = [];
   if (mode === 'desktop') {
-    statData.forEach(([value, label], index) => {
+    statData.forEach(([value, label, iconName], index) => {
       const instance = ensureManagedInstance(
         stats,
         renderId,
@@ -1050,6 +1695,7 @@ function configureSummary(
       instance.layoutSizingHorizontal = 'FILL';
       overrideInstanceText(instance, 'stat-value', value);
       overrideInstanceText(instance, 'stat-label', label);
+      overrideNestedIcon(instance, 'stat-icon', iconName as IconName);
       statNodes.push(instance);
     });
   } else {
@@ -1061,7 +1707,7 @@ function configureSummary(
       const rowNodes: SceneNode[] = [];
       for (let columnIndex = 0; columnIndex < 2; columnIndex += 1) {
         const dataIndex = rowIndex * 2 + columnIndex;
-        const [value, label] = statData[dataIndex];
+        const [value, label, iconName] = statData[dataIndex];
         const instance = ensureManagedInstance(
           row,
           renderId,
@@ -1071,6 +1717,7 @@ function configureSummary(
         instance.layoutSizingHorizontal = 'FILL';
         overrideInstanceText(instance, 'stat-value', value);
         overrideInstanceText(instance, 'stat-label', label);
+        overrideNestedIcon(instance, 'stat-icon', iconName as IconName);
         rowNodes.push(instance);
       }
       orderManagedChildren(row, rowNodes);
@@ -1107,6 +1754,7 @@ function configureToolbar(
   toolbar: FrameNode,
   renderId: string,
   width: number,
+  components: Map<string, ComponentNode | ComponentSetNode>,
   variables: Map<string, Variable>,
 ): void {
   configureFixedFrame(toolbar, 'HORIZONTAL', width, 40, 0, 8);
@@ -1118,29 +1766,108 @@ function configureToolbar(
   configureAutoLayout(views, 'HORIZONTAL', 4, 6);
   bindNumeric(views, 'cornerRadius', variables, 'semantic.radius.control');
   bindFill(views, variables, 'semantic.surface.sidebar');
+  const viewIcons = ensureManagedFrame(views, renderId, 'toolbar.views.icons');
+  configureAutoLayout(viewIcons, 'HORIZONTAL', 0, 6);
+  viewIcons.counterAxisAlignItems = 'CENTER';
+  viewIcons.fills = [];
+  const viewIconNodes: SceneNode[] = [];
+  for (const item of [
+    { id: 'kanban', icon: 'Overview' as IconName },
+    { id: 'timeline', icon: 'Workflow' as IconName },
+    { id: 'spreadsheet', icon: 'Reporting' as IconName },
+    { id: 'calendar', icon: 'Calendar' as IconName },
+  ]) {
+    const icon = ensureManagedInstance(
+      viewIcons,
+      renderId,
+      `toolbar.views.icons.${item.id}.icon`,
+      requireComponent(components, 'component.icon'),
+      { Name: item.icon },
+    );
+    icon.resize(13, 13);
+    viewIconNodes.push(icon);
+  }
+  orderManagedChildren(viewIcons, viewIconNodes);
+  removeStaleManagedChildren(
+    viewIcons,
+    renderId,
+    new Set([
+      'toolbar.views.icons.kanban.icon',
+      'toolbar.views.icons.timeline.icon',
+      'toolbar.views.icons.spreadsheet.icon',
+      'toolbar.views.icons.calendar.icon',
+    ]),
+  );
   const viewsText = ensureManagedText(views, renderId, 'toolbar.views.label');
   configureText(
     viewsText,
-    '▣ Kanban    ≡ Timeline    ▦ Spreadsheet    □ Calendar',
+    'Kanban   Timeline   Spreadsheet   Calendar',
     9,
     false,
     variables,
     'semantic.text.primary',
   );
+  orderManagedChildren(views, [viewIcons, viewsText]);
+  removeStaleManagedChildren(
+    views,
+    renderId,
+    new Set(['toolbar.views.icons', 'toolbar.views.label']),
+  );
+  const controlIcons = ensureManagedFrame(toolbar, renderId, 'toolbar.control-icons');
+  configureAutoLayout(controlIcons, 'HORIZONTAL', 6, 6);
+  controlIcons.counterAxisAlignItems = 'CENTER';
+  bindNumeric(controlIcons, 'cornerRadius', variables, 'semantic.radius.control');
+  bindFill(controlIcons, variables, 'semantic.surface.card');
+  bindStroke(controlIcons, variables, 'semantic.border.subtle');
+  controlIcons.strokeWeight = 1;
+  const controlIconNodes: SceneNode[] = [];
+  for (const item of [
+    { id: 'filter', icon: 'Filter' as IconName },
+    { id: 'sort', icon: 'Sort' as IconName },
+    { id: 'automation', icon: 'Automation' as IconName },
+    { id: 'search', icon: 'Search' as IconName },
+    { id: 'more', icon: 'More' as IconName },
+    { id: 'plus', icon: 'Plus' as IconName },
+    { id: 'chevron', icon: 'ChevronDown' as IconName },
+  ]) {
+    const icon = ensureManagedInstance(
+      controlIcons,
+      renderId,
+      `toolbar.control-icons.${item.id}.icon`,
+      requireComponent(components, 'component.icon'),
+      { Name: item.icon },
+    );
+    icon.resize(13, 13);
+    controlIconNodes.push(icon);
+  }
+  orderManagedChildren(controlIcons, controlIconNodes);
+  removeStaleManagedChildren(
+    controlIcons,
+    renderId,
+    new Set([
+      'toolbar.control-icons.filter.icon',
+      'toolbar.control-icons.sort.icon',
+      'toolbar.control-icons.automation.icon',
+      'toolbar.control-icons.search.icon',
+      'toolbar.control-icons.more.icon',
+      'toolbar.control-icons.plus.icon',
+      'toolbar.control-icons.chevron.icon',
+    ]),
+  );
   const controls = ensureManagedText(toolbar, renderId, 'toolbar.controls');
   configureText(
     controls,
-    '▽   ↕   ⚡   ⌕   •••     New ▾',
+    'New',
     10,
     true,
     variables,
     'semantic.text.primary',
   );
-  orderManagedChildren(toolbar, [views, controls]);
+  orderManagedChildren(toolbar, [views, controlIcons, controls]);
   removeStaleManagedChildren(
     toolbar,
     renderId,
-    new Set(['toolbar.views', 'toolbar.controls']),
+    new Set(['toolbar.views', 'toolbar.control-icons', 'toolbar.controls']),
   );
 }
 
@@ -1198,14 +1925,23 @@ function configureBoardViewport(
       renderId,
       `board.column.${column.id}.menu`,
     );
-    configureText(menu, '24     ⋮', 9, false, variables, 'semantic.text.secondary');
-    orderManagedChildren(header, [badge, menu]);
+    configureText(menu, '24', 9, false, variables, 'semantic.text.secondary');
+    const menuIcon = ensureManagedInstance(
+      header,
+      renderId,
+      `board.column.${column.id}.menu.icon`,
+      requireComponent(components, 'component.icon'),
+      { Name: 'More' },
+    );
+    menuIcon.resize(13, 13);
+    orderManagedChildren(header, [badge, menu, menuIcon]);
     removeStaleManagedChildren(
       header,
       renderId,
       new Set([
         `board.column.${column.id}.badge`,
         `board.column.${column.id}.menu`,
+        `board.column.${column.id}.menu.icon`,
       ]),
     );
 
@@ -1233,17 +1969,28 @@ function configureBoardViewport(
     bindFill(add, variables, 'semantic.surface.card');
     bindStroke(add, variables, 'semantic.border.subtle');
     add.strokeWeight = 1;
+    const addIcon = ensureManagedInstance(
+      add,
+      renderId,
+      `board.column.${column.id}.add.icon`,
+      requireComponent(components, 'component.icon'),
+      { Name: 'Plus' },
+    );
+    addIcon.resize(13, 13);
     const addText = ensureManagedText(
       add,
       renderId,
       `board.column.${column.id}.add.label`,
     );
-    configureText(addText, '+  New Page', 9, false, variables, 'semantic.text.primary');
-    orderManagedChildren(add, [addText]);
+    configureText(addText, 'New Page', 9, false, variables, 'semantic.text.primary');
+    orderManagedChildren(add, [addIcon, addText]);
     removeStaleManagedChildren(
       add,
       renderId,
-      new Set([`board.column.${column.id}.add.label`]),
+      new Set([
+        `board.column.${column.id}.add.icon`,
+        `board.column.${column.id}.add.label`,
+      ]),
     );
     orderManagedChildren(frame, [header, firstTask, secondTask, add]);
     removeStaleManagedChildren(
@@ -1322,8 +2069,22 @@ async function validateTasklifyStructure(
     foundComponents.size !== TARGET_COMPONENT_IDS.length ||
     components.size !== TARGET_COMPONENT_IDS.length
   ) {
-    throw new Error('Tasklify idempotency failed: expected four scoped Components');
+    throw new Error(
+      `Tasklify idempotency failed: expected ${TARGET_COMPONENT_IDS.length} scoped Components`,
+    );
   }
+  assertComponentSetGeometry(
+    requireComponent(components, 'component.icon') as ComponentSetNode,
+    ICON_NAMES.length,
+  );
+  assertComponentSetGeometry(
+    requireComponent(components, 'component.button') as ComponentSetNode,
+    2,
+  );
+  assertComponentSetGeometry(
+    requireComponent(components, 'component.badge') as ComponentSetNode,
+    7,
+  );
   if (
     desktopRenders.length !== 1 ||
     tabletRenders.length !== 1 ||
@@ -1374,7 +2135,7 @@ function ensureManagedFrame(
   nodeId: string,
 ): FrameNode {
   const matches = findManagedDirectChildren(parent, renderId, nodeId);
-  if (matches.length > 1) throw new Error(`Duplicate Tasklify managed node: ${nodeId}`);
+  if (matches.length > 1) throw duplicateManagedIdentityError(nodeId);
   let node = matches[0];
   if (node && node.type !== 'FRAME') {
     throw new Error(`Tasklify managed node type mismatch: ${nodeId}`);
@@ -1394,7 +2155,7 @@ function ensureManagedText(
   nodeId: string,
 ): TextNode {
   const matches = findManagedDirectChildren(parent, renderId, nodeId);
-  if (matches.length > 1) throw new Error(`Duplicate Tasklify managed node: ${nodeId}`);
+  if (matches.length > 1) throw duplicateManagedIdentityError(nodeId);
   let node = matches[0];
   if (node && node.type !== 'TEXT') {
     throw new Error(`Tasklify managed node type mismatch: ${nodeId}`);
@@ -1416,7 +2177,7 @@ function ensureManagedInstance(
   properties: Record<string, string> = {},
 ): InstanceNode {
   const matches = findManagedDirectChildren(parent, renderId, nodeId);
-  if (matches.length > 1) throw new Error(`Duplicate Tasklify managed node: ${nodeId}`);
+  if (matches.length > 1) throw duplicateManagedIdentityError(nodeId);
   let node = matches[0];
   if (node && node.type !== 'INSTANCE') {
     throw new Error(`Tasklify managed node type mismatch: ${nodeId}`);
@@ -1435,6 +2196,16 @@ function ensureManagedInstance(
   tagManagedNode(node, renderId, nodeId);
   tagInstanceComponent(node, component);
   return node;
+}
+
+function duplicateManagedIdentityError(nodeId: string): Error {
+  return new Error(
+    [
+      `Duplicate Tasklify managed identity: ${nodeId}`,
+      'A duplicated Compiler-managed node may have copied plugin data.',
+      'Create a fresh node for unmanaged content or remove/detach the duplicate.',
+    ].join('\n'),
+  );
 }
 
 function findManagedDirectChildren(
@@ -1558,6 +2329,40 @@ function ensureText(parent: ContainerNode, name: string): TextNode {
   return node;
 }
 
+function ensureEllipse(parent: ContainerNode, name: string): EllipseNode {
+  const matches = parent.children.filter(
+    (child): child is EllipseNode => child.type === 'ELLIPSE' && child.name === name,
+  );
+  if (matches.length > 1) throw new Error(`Duplicate managed Component ellipse: ${name}`);
+  const node = matches[0] ?? figma.createEllipse();
+  if (!matches[0]) parent.appendChild(node);
+  node.name = name;
+  return node;
+}
+
+function reparentText(
+  source: ContainerNode,
+  destination: ContainerNode,
+  name: string,
+): TextNode {
+  const existingDestination = destination.children.find(
+    (child): child is TextNode => child.type === 'TEXT' && child.name === name,
+  );
+  if (existingDestination) return existingDestination;
+  const existingSource = source.children.find(
+    (child): child is TextNode => child.type === 'TEXT' && child.name === name,
+  );
+  if (existingSource) {
+    destination.appendChild(existingSource);
+    return existingSource;
+  }
+  return ensureText(destination, name);
+}
+
+function reorderChildren(parent: ContainerNode, children: SceneNode[]): void {
+  children.forEach((child, index) => parent.insertChild(index, child));
+}
+
 function ensureComponentInstance(
   parent: ContainerNode,
   name: string,
@@ -1639,6 +2444,18 @@ function overrideInstanceText(instance: InstanceNode, name: string, value: strin
   node.characters = value;
 }
 
+function overrideNestedIcon(
+  instance: InstanceNode,
+  name: string,
+  iconName: IconName,
+): void {
+  const node = instance.findOne(
+    (candidate) => candidate.type === 'INSTANCE' && candidate.name === name,
+  ) as InstanceNode | null;
+  if (!node) throw new Error(`Tasklify nested Icon Instance is missing: ${name}`);
+  node.setProperties({ Name: iconName });
+}
+
 function applyTaskOverrides(
   instance: InstanceNode,
   data: {
@@ -1646,7 +2463,8 @@ function applyTaskOverrides(
     title: string;
     project: string;
     due: string;
-    footer: string;
+    comments: string;
+    activity: string;
     priority: string;
   },
 ): void {
@@ -1654,7 +2472,8 @@ function applyTaskOverrides(
   overrideInstanceText(instance, 'task-title', data.title);
   overrideInstanceText(instance, 'task-project', data.project);
   overrideInstanceText(instance, 'task-due', data.due);
-  overrideInstanceText(instance, 'task-footer', data.footer);
+  overrideInstanceText(instance, 'task-comment-count', data.comments);
+  overrideInstanceText(instance, 'task-footer', data.activity);
   const priority = instance.findOne(
     (candidate) =>
       candidate.type === 'INSTANCE' && candidate.name === 'task-priority',
@@ -1671,7 +2490,15 @@ function bindFill(
   const variable = requireVariable(variables, tokenId);
   const tokenHex = requireResolvedColor(tokenId);
   const fills = node.fills === figma.mixed ? [] : [...node.fills];
-  const existingIndex = fills.findIndex((paint) => paint.type === 'SOLID');
+  const boundIndex = fills.findIndex(
+    (paint) =>
+      paint.type === 'SOLID' &&
+      paint.boundVariables?.color?.id === variable.id,
+  );
+  const existingIndex =
+    boundIndex >= 0
+      ? boundIndex
+      : fills.findIndex((paint) => paint.type === 'SOLID');
   const existing = existingIndex >= 0 ? (fills[existingIndex] as SolidPaint) : undefined;
   const paint = existing
     ? figma.util.solidPaint(tokenHex, existing)
@@ -1680,17 +2507,32 @@ function bindFill(
   if (existingIndex >= 0) fills[existingIndex] = bound;
   else fills.push(bound);
   node.fills = fills;
+  assertCanonicalPaintBinding(
+    node,
+    fills,
+    variable,
+    tokenId,
+    'Fill',
+  );
 }
 
 function bindStroke(
-  node: FrameNode | ComponentNode,
+  node: StrokeNode,
   variables: Map<string, Variable>,
   tokenId: string,
 ): void {
   const variable = requireVariable(variables, tokenId);
   const tokenHex = requireResolvedColor(tokenId);
   const strokes = [...node.strokes];
-  const existingIndex = strokes.findIndex((paint) => paint.type === 'SOLID');
+  const boundIndex = strokes.findIndex(
+    (paint) =>
+      paint.type === 'SOLID' &&
+      paint.boundVariables?.color?.id === variable.id,
+  );
+  const existingIndex =
+    boundIndex >= 0
+      ? boundIndex
+      : strokes.findIndex((paint) => paint.type === 'SOLID');
   const existing = existingIndex >= 0 ? (strokes[existingIndex] as SolidPaint) : undefined;
   const paint = existing
     ? figma.util.solidPaint(tokenHex, existing)
@@ -1699,6 +2541,47 @@ function bindStroke(
   if (existingIndex >= 0) strokes[existingIndex] = bound;
   else strokes.push(bound);
   node.strokes = strokes;
+  assertCanonicalPaintBinding(node, node.strokes, variable, tokenId, 'Stroke');
+}
+
+function assertCanonicalPaintBinding(
+  node: SceneNode,
+  paints: readonly Paint[],
+  variable: Variable,
+  tokenId: string,
+  role: 'Fill' | 'Stroke',
+): void {
+  const solidPaints = paints.filter(
+    (paint): paint is SolidPaint => paint.type === 'SOLID',
+  );
+  if (solidPaints.length === 0) {
+    throw new Error(
+      `Tasklify Paint guard failed: ${node.name} has no SOLID ${role}`,
+    );
+  }
+  const boundPaints = solidPaints.filter(
+    (paint) => paint.boundVariables?.color?.id === variable.id,
+  );
+  if (boundPaints.length !== 1) {
+    throw new Error(
+      `Tasklify Paint guard failed: ${node.name} ${role} must bind ${tokenId}`,
+    );
+  }
+  const expected = hexToRgb(requireResolvedColor(tokenId));
+  if (!colorsMatch(boundPaints[0].color, expected)) {
+    throw new Error(
+      `Tasklify Paint guard failed: ${node.name} ${role} base paint does not match ${tokenId}`,
+    );
+  }
+  const resolved = variable.resolveForConsumer(node);
+  if (
+    resolved.resolvedType !== 'COLOR' ||
+    !colorsMatch(resolved.value as RGB | RGBA, expected)
+  ) {
+    throw new Error(
+      `Tasklify Paint guard failed: ${node.name} ${role} resolved value does not match ${tokenId}`,
+    );
+  }
 }
 
 function bindNumeric(
@@ -1847,16 +2730,92 @@ function requireExactVariants(
 function arrangeVariants(
   set: ComponentSetNode,
   columns: number,
-  columnWidth: number,
-  rowHeight: number,
 ): void {
   const variants = set.children.filter(
     (child): child is ComponentNode => child.type === 'COMPONENT',
   );
+  const padding = 24;
+  const gap = 24;
+  const rowCount = Math.ceil(variants.length / columns);
+  const columnWidths = Array.from({ length: columns }, () => 0);
+  const rowHeights = Array.from({ length: rowCount }, () => 0);
   variants.forEach((variant, index) => {
-    variant.x = 24 + (index % columns) * columnWidth;
-    variant.y = 24 + Math.floor(index / columns) * rowHeight;
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    columnWidths[column] = Math.max(columnWidths[column], variant.width);
+    rowHeights[row] = Math.max(rowHeights[row], variant.height);
   });
+  const columnOffsets = columnWidths.map((_, index) =>
+    padding +
+    columnWidths.slice(0, index).reduce((sum, width) => sum + width, 0) +
+    gap * index,
+  );
+  const rowOffsets = rowHeights.map((_, index) =>
+    padding +
+    rowHeights.slice(0, index).reduce((sum, height) => sum + height, 0) +
+    gap * index,
+  );
+  variants.forEach((variant, index) => {
+    variant.x = columnOffsets[index % columns];
+    variant.y = rowOffsets[Math.floor(index / columns)];
+  });
+  const width =
+    padding * 2 +
+    columnWidths.reduce((sum, value) => sum + value, 0) +
+    gap * Math.max(0, columns - 1);
+  const height =
+    padding * 2 +
+    rowHeights.reduce((sum, value) => sum + value, 0) +
+    gap * Math.max(0, rowCount - 1);
+  set.layoutMode = 'NONE';
+  set.resizeWithoutConstraints(Math.max(1, width), Math.max(1, height));
+}
+
+function assertComponentSetGeometry(
+  set: ComponentSetNode,
+  expectedVariantCount: number,
+): void {
+  const variants = set.children.filter(
+    (child): child is ComponentNode => child.type === 'COMPONENT',
+  );
+  if (variants.length !== expectedVariantCount) {
+    throw new Error(
+      `${set.name} must contain exactly ${expectedVariantCount} variants`,
+    );
+  }
+  for (const variant of variants) {
+    if (variant.width <= 0 || variant.height <= 0) {
+      throw new Error(`${set.name} Variant width/height must be greater than zero`);
+    }
+    if (
+      variant.x < 0 ||
+      variant.y < 0 ||
+      variant.x + variant.width > set.width + 0.01 ||
+      variant.y + variant.height > set.height + 0.01
+    ) {
+      throw new Error(`${set.name} Variant must be fully inside Component Set bounds`);
+    }
+  }
+  for (let firstIndex = 0; firstIndex < variants.length; firstIndex += 1) {
+    for (
+      let secondIndex = firstIndex + 1;
+      secondIndex < variants.length;
+      secondIndex += 1
+    ) {
+      const first = variants[firstIndex];
+      const second = variants[secondIndex];
+      const overlaps =
+        first.x < second.x + second.width &&
+        first.x + first.width > second.x &&
+        first.y < second.y + second.height &&
+        first.y + first.height > second.y;
+      if (overlaps) {
+        throw new Error(
+          `${set.name} variants overlap: ${first.name} / ${second.name}`,
+        );
+      }
+    }
+  }
 }
 
 function buildComponentDescription(definition: ComponentDefinition): string {
@@ -1914,10 +2873,6 @@ function badgeLabel(type: string): string {
   return labels[type] ?? type;
 }
 
-function navGlyph(index: number): string {
-  return ['⌁', '□', '▣', '◌', '≡', '⌘'][index] ?? '•';
-}
-
 function taskExample(
   columnIndex: number,
   taskIndex: number,
@@ -1926,29 +2881,31 @@ function taskExample(
   title: string;
   project: string;
   due: string;
-  footer: string;
+  comments: string;
+  activity: string;
   priority: string;
 } {
   const examples = [
     [
-      ['WEB - 21', 'Partone Consultancy Website', 'New Homepage', 'Due to: March 21, 25', '● ● ●    ◌ 13    Mar 16, 2025', 'urgent'],
-      ['WEB - 68', 'Design Wireframes - Homepage', 'New Homepage', 'Due to: Jan 12, 25', '●          ◌ 08    Jan 02, 2025', 'medium'],
+      ['WEB - 21', 'Partone Consultancy Website', 'New Homepage', 'Due to: March 21, 25', '13', 'Mar 16, 2025', 'urgent'],
+      ['WEB - 68', 'Design Wireframes - Homepage', 'New Homepage', 'Due to: Jan 12, 25', '08', 'Jan 02, 2025', 'medium'],
     ],
     [
-      ['WEB - 28', 'Modify Content for Homepage', 'New Homepage', 'Due to: May 23, 25', '● ●       ◌ 16    May 18, 2025', 'urgent'],
-      ['WEB - 44', 'Review Navigation Content', 'Website Update', 'Due to: May 28, 25', '●          ◌ 06    May 20, 2025', 'medium'],
+      ['WEB - 28', 'Modify Content for Homepage', 'New Homepage', 'Due to: May 23, 25', '16', 'May 18, 2025', 'urgent'],
+      ['WEB - 44', 'Review Navigation Content', 'Website Update', 'Due to: May 28, 25', '06', 'May 20, 2025', 'medium'],
     ],
     [
-      ['WEB - 12', 'MTC Design Approval', 'New Homepage', 'Due to: March 10, 25', '● ● ●    ◌ 10    Mar 04, 2025', 'low'],
-      ['WEB - 97', 'Nexa Components Revision', 'UI - Design System', 'Due to: March 29, 25', '● ●       ◌ 28    Mar 12, 2025', 'medium'],
+      ['WEB - 12', 'MTC Design Approval', 'New Homepage', 'Due to: March 10, 25', '10', 'Mar 04, 2025', 'low'],
+      ['WEB - 97', 'Nexa Components Revision', 'UI - Design System', 'Due to: March 29, 25', '28', 'Mar 12, 2025', 'medium'],
     ],
     [
-      ['WEB - 88', 'Vo1 Components Design System', 'Components & Elements', 'Due to: March 20, 25', '●          ◌ 14    Mar 06, 2025', 'urgent'],
-      ['WEB - 93', 'Document Component States', 'UI - Design System', 'Due to: April 02, 25', '● ●       ◌ 11    Mar 22, 2025', 'medium'],
+      ['WEB - 88', 'Vo1 Components Design System', 'Components & Elements', 'Due to: March 20, 25', '14', 'Mar 06, 2025', 'urgent'],
+      ['WEB - 93', 'Document Component States', 'UI - Design System', 'Due to: April 02, 25', '11', 'Mar 22, 2025', 'medium'],
     ],
   ] as const;
-  const [id, title, project, due, footer, priority] = examples[columnIndex][taskIndex];
-  return { id, title, project, due, footer, priority };
+  const [id, title, project, due, comments, activity, priority] =
+    examples[columnIndex][taskIndex];
+  return { id, title, project, due, comments, activity, priority };
 }
 
 function hexToRgb(hex: string): RGB {
@@ -1961,4 +2918,13 @@ function hexToRgb(hex: string): RGB {
     g: Number.parseInt(normalized.slice(2, 4), 16) / 255,
     b: Number.parseInt(normalized.slice(4, 6), 16) / 255,
   };
+}
+
+function colorsMatch(actual: RGB | RGBA, expected: RGB): boolean {
+  const tolerance = 1 / 255 / 2;
+  return (
+    Math.abs(actual.r - expected.r) <= tolerance &&
+    Math.abs(actual.g - expected.g) <= tolerance &&
+    Math.abs(actual.b - expected.b) <= tolerance
+  );
 }

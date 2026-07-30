@@ -645,6 +645,7 @@ for (const token of tasklifyFoundations.semantics) {
 }
 
 const expectedTasklifyComponents = new Set([
+  'component.icon',
   'component.button',
   'component.badge',
   'component.stat-card',
@@ -661,6 +662,48 @@ for (const component of tasklifyComponents.components) {
 for (const componentId of expectedTasklifyComponents) {
   assert(tasklifyComponentIds.has(componentId), `missing Slice Component: ${componentId}`);
 }
+const tasklifyIcon = tasklifyComponents.components.find(
+  (component) => component.id === 'component.icon',
+);
+const tasklifyIconNames =
+  tasklifyIcon?.properties?.find(
+    (property) => property.kind === 'variant' && property.name === 'Name',
+  )?.values ?? [];
+assert(
+  tasklifyIcon?.figma?.nodeType === 'COMPONENT_SET',
+  'Tasklify Icon must be a Component Set',
+);
+assert(
+  tasklifyIconNames.length > 0 &&
+    new Set(tasklifyIconNames).size === tasklifyIconNames.length,
+  'Tasklify Icon subset names must be present and unique',
+);
+assert(
+  tasklifyIcon.tokenBindings?.some(
+    (binding) =>
+      binding.target === 'icon-vector.stroke' &&
+      binding.tokenRef === 'semantic.text.primary',
+  ),
+  'Tasklify Icon contract must bind its vector stroke to a Semantic Token',
+);
+const tasklifyStatCard = tasklifyComponents.components.find(
+  (component) => component.id === 'component.stat-card',
+);
+const tasklifyTaskCard = tasklifyComponents.components.find(
+  (component) => component.id === 'component.task-card',
+);
+assert(
+  tasklifyStatCard?.anatomy?.children?.some((child) => child.role === 'top-row') &&
+    tasklifyStatCard.anatomy.children.some((child) => child.role === 'value') &&
+    tasklifyStatCard.anatomy.children.some((child) => child.role === 'label'),
+  'Tasklify Stat Card contract must declare top/value/label anatomy',
+);
+assert(
+  ['meta-row', 'title', 'project', 'due-metadata', 'footer'].every((role) =>
+    tasklifyTaskCard?.anatomy?.children?.some((child) => child.role === role),
+  ),
+  'Tasklify Task Card contract must declare the refined anatomy',
+);
 
 const tasklifyScreen = tasklifyScreens.screens.find(
   (candidate) => candidate.id === 'screen.tasklify.dashboard-overview',
@@ -692,10 +735,114 @@ for (const sourceMarker of [
   'instance.getMainComponentAsync()',
   'syncTasklifyRender(',
   'removeStaleManagedChildren(',
+  'figma.createNodeFromSvg(',
+  'assertComponentSetGeometry(',
+  'assertCanonicalPaintBinding(',
 ]) {
   assert(
     tasklifySource.includes(sourceMarker),
     `Tasklify Slice source is missing: ${sourceMarker}`,
+  );
+}
+const tasklifySyncStart = tasklifySource.indexOf(
+  'export async function syncTasklifySlice01',
+);
+const tasklifyVariableSyncStart = tasklifySource.indexOf(
+  'async function syncTasklifyVariables',
+);
+const tasklifySyncSource = tasklifySource.slice(
+  tasklifySyncStart,
+  tasklifyVariableSyncStart,
+);
+assert(
+  tasklifySyncSource.indexOf('await preflightTasklifySlice()') >= 0 &&
+    tasklifySyncSource.indexOf('await preflightTasklifySlice()') <
+      tasklifySyncSource.indexOf('syncTasklifyVariables()'),
+  'Tasklify read-only preflight must run before the first mutation path',
+);
+for (const preflightMarker of [
+  'Duplicate Tasklify Collection ID',
+  'Duplicate Tasklify Variable ID',
+  'Duplicate Tasklify component ID',
+  'Duplicate Tasklify render ID',
+  'Tasklify render type mismatch:',
+  'Duplicate Tasklify managed identity:',
+  'Tasklify managed node type mismatch:',
+  'Tasklify tagged Instance component identity mismatch:',
+  'missing required Frame root',
+]) {
+  assert(
+    tasklifySource.includes(preflightMarker),
+    `Tasklify preflight is missing: ${preflightMarker}`,
+  );
+}
+assert(
+  tasklifySource.includes('A duplicated Compiler-managed node may have copied plugin data.') &&
+    tasklifySource.includes('Create a fresh node for unmanaged content'),
+  'Tasklify duplicate managed identity error must explain copied plugin data',
+);
+for (const geometryMarker of [
+  'Variant width/height must be greater than zero',
+  'Variant must be fully inside Component Set bounds',
+  'variants overlap:',
+  'set.resizeWithoutConstraints(',
+]) {
+  assert(
+    tasklifySource.includes(geometryMarker),
+    `Tasklify Component Set guard is missing: ${geometryMarker}`,
+  );
+}
+for (const paintMarker of [
+  'figma.util.solidPaint(tokenHex, existing)',
+  'paint.boundVariables?.color?.id === variable.id',
+  'base paint does not match',
+  'variable.resolveForConsumer(node)',
+  'resolved value does not match',
+]) {
+  assert(
+    tasklifySource.includes(paintMarker),
+    `Tasklify canonical Paint guard is missing: ${paintMarker}`,
+  );
+}
+assert(
+  !tasklifySource.includes("solidPaint('#000000')") &&
+    !tasklifySource.includes("solidPaint('#FFFFFF')"),
+  'Tasklify Paint sync must not use black/white fallback paint',
+);
+for (const unicodeFallback of [
+  '⌕',
+  '□',
+  '▣',
+  '◌',
+  '≡',
+  '⌘',
+  '▽',
+  '↕',
+  '⚡',
+  '•••',
+  '⋮',
+  '✦',
+  '●',
+  '⚙',
+]) {
+  assert(
+    !tasklifySource.includes(unicodeFallback),
+    `Tasklify renderer contains formal Unicode icon fallback: ${unicodeFallback}`,
+  );
+}
+for (const anatomyMarker of [
+  "'task-due-chip'",
+  "'task-due-icon'",
+  "'task-comment-icon'",
+  "'task-comment-count'",
+  "'task-footer-row'",
+  "'stat-icon-surface'",
+  "'stat-icon'",
+  "'stat-action-row'",
+]) {
+  assert(
+    tasklifySource.includes(anatomyMarker),
+    `Tasklify anatomy refinement is missing: ${anatomyMarker}`,
   );
 }
 assert(
@@ -801,7 +948,7 @@ assert(
 );
 
 console.log(
-  `Pilot 03B + Tasklify V2 Slice 01 verification passed: Package/alias validation, designSystem-scoped identity, deterministic desktop/tablet renders, native Components/Instances, and Pilot paths retained. Runtime visual acceptance remains manual in Figma.`,
+  `Pilot 03B + Tasklify V2 Slice 01B verification passed: Package/alias validation, fail-before-mutation preflight, canonical Paint guards, compact Component Sets, local Icon Instances, deterministic renders, and Pilot paths retained. Runtime visual acceptance remains manual in Figma.`,
 );
 
 function assert(condition, message) {

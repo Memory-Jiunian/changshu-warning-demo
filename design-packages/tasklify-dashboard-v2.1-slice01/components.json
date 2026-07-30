@@ -3,6 +3,98 @@
   "designSystemId": "design-system.tasklify.reference",
   "components": [
     {
+      "id": "component.icon",
+      "name": "Icon",
+      "description": "Deterministic local line-icon subset used by the Tasklify dashboard slice.",
+      "purpose": "Provide native reusable icon instances without online libraries or Unicode glyph fallback.",
+      "documentation": {
+        "usage": [
+          "Use only the Name variants declared by this Slice contract."
+        ],
+        "dont": [
+          "Do not expand this component into a general-purpose icon library."
+        ]
+      },
+      "figma": {
+        "nodeType": "COMPONENT_SET",
+        "name": "Icon",
+        "variantPropertyOrder": [
+          "Name"
+        ]
+      },
+      "anatomy": {
+        "role": "root",
+        "kind": "container",
+        "required": true,
+        "children": [
+          {
+            "role": "icon-vector",
+            "kind": "vector",
+            "required": true,
+            "children": []
+          }
+        ]
+      },
+      "properties": [
+        {
+          "id": "property.icon.name",
+          "name": "Name",
+          "kind": "variant",
+          "required": true,
+          "default": "Search",
+          "values": [
+            "Search",
+            "Overview",
+            "Tasks",
+            "Calendar",
+            "Chat",
+            "Reporting",
+            "Workflow",
+            "Settings",
+            "Help",
+            "Filter",
+            "Sort",
+            "Automation",
+            "More",
+            "Plus",
+            "Link",
+            "Flag",
+            "Comment",
+            "Check",
+            "ChevronDown"
+          ],
+          "target": "root",
+          "description": "Stable icon name for the Slice-local deterministic SVG subset."
+        }
+      ],
+      "slots": [],
+      "states": [],
+      "layout": {
+        "mode": "none",
+        "sizing": {
+          "width": "fixed",
+          "height": "fixed"
+        },
+        "alignment": "center"
+      },
+      "tokenBindings": [
+        {
+          "target": "icon-vector.stroke",
+          "tokenRef": "semantic.text.primary"
+        }
+      ],
+      "contentRules": {
+        "size": 24,
+        "style": "local-linear"
+      },
+      "accessibility": {},
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "unreviewed"
+    },
+    {
       "id": "component.button",
       "name": "Button",
       "description": "Text action with primary/secondary emphasis.",
@@ -423,7 +515,46 @@
         "role": "root",
         "kind": "container",
         "required": true,
-        "children": []
+        "children": [
+          {
+            "role": "top-row",
+            "kind": "container",
+            "required": true,
+            "children": [
+              {
+                "role": "leading-icon-surface",
+                "kind": "container",
+                "required": true,
+                "children": [
+                  {
+                    "role": "leading-icon",
+                    "kind": "instance",
+                    "required": true,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "role": "details-action",
+                "kind": "text",
+                "required": true,
+                "children": []
+              }
+            ]
+          },
+          {
+            "role": "value",
+            "kind": "text",
+            "required": true,
+            "children": []
+          },
+          {
+            "role": "label",
+            "kind": "text",
+            "required": true,
+            "children": []
+          }
+        ]
       },
       "properties": [],
       "slots": [],
@@ -526,7 +657,83 @@
         "role": "root",
         "kind": "container",
         "required": true,
-        "children": []
+        "children": [
+          {
+            "role": "meta-row",
+            "kind": "container",
+            "required": true,
+            "children": [
+              {
+                "role": "task-identity",
+                "kind": "container",
+                "required": true,
+                "children": []
+              },
+              {
+                "role": "priority",
+                "kind": "instance",
+                "required": true,
+                "children": []
+              }
+            ]
+          },
+          {
+            "role": "title",
+            "kind": "text",
+            "required": true,
+            "children": []
+          },
+          {
+            "role": "project",
+            "kind": "text",
+            "required": true,
+            "children": []
+          },
+          {
+            "role": "due-metadata",
+            "kind": "container",
+            "required": true,
+            "children": [
+              {
+                "role": "calendar-icon",
+                "kind": "instance",
+                "required": true,
+                "children": []
+              },
+              {
+                "role": "due-date",
+                "kind": "text",
+                "required": true,
+                "children": []
+              }
+            ]
+          },
+          {
+            "role": "footer",
+            "kind": "container",
+            "required": true,
+            "children": [
+              {
+                "role": "avatar-group-placeholder",
+                "kind": "container",
+                "required": true,
+                "children": []
+              },
+              {
+                "role": "comment-metadata",
+                "kind": "container",
+                "required": true,
+                "children": []
+              },
+              {
+                "role": "activity-date",
+                "kind": "text",
+                "required": true,
+                "children": []
+              }
+            ]
+          }
+        ]
       },
       "properties": [],
       "slots": [],

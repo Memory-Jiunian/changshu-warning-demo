@@ -14,7 +14,7 @@ or a general diff engine.
 
 V2 Slice 01 adds one isolated, statically bundled consumer for
 `design-packages/tasklify-dashboard-v2.1-slice01`. It creates a Tasklify-scoped
-Variable collection, four native Components/Component Sets, and deterministic
+Variable collection, five native Components/Component Sets, and deterministic
 Desktop/Tablet renders without changing the verified Pilot paths.
 
 ## Build
@@ -61,8 +61,9 @@ Supported V2.1 subset:
 - Primitive `COLOR`/`FLOAT` Variables for color, spacing, and radius.
 - Semantic `COLOR`/`FLOAT` aliases using native Figma Variable aliases.
 - `figmaRepresentation.kind = variable` only.
-- Native `Button` and `Badge` Component Sets plus `Stat Card` and `Task Card`
-  Components.
+- Native `Icon`, `Button`, and `Badge` Component Sets plus `Stat Card` and
+  `Task Card` Components. `Icon` is a deterministic, offline, Slice-local SVG
+  subset; it is not a general icon library.
 - Contract-derived Component descriptions, Auto Layout, Semantic Variable
   bindings, Button/Badge Variant Properties, and nested Badge reuse.
 - One controlled `screen.tasklify.dashboard-overview` renderer with Desktop
@@ -83,6 +84,18 @@ Only nodes tagged with the Tasklify design-system identity, matching `renderId`,
 and a Slice-managed node ID can be removed. Untagged user-created children are
 retained. Tablet uses a 72px icon rail, a 2×2 KPI layout, and a clipped,
 readable-width Kanban stage representing horizontal-scroll semantics.
+
+Before any Variable, Component, Desktop, or Tablet write, the Plugin runs a
+read-only preflight. It rejects duplicate scoped Collections, Variables,
+Components, renders, or managed node identities; managed type mismatches; and
+tagged Instance/main-component identity mismatches. This is fail-before-mutation
+for predictable identity conflicts, not a transaction or rollback system.
+
+A fresh node made with a Figma creation tool has no Tasklify plugin data and is
+unmanaged, so Sync retains it. Duplicating an existing Compiler-managed node also
+copies its shared plugin data; that copy is therefore a managed identity collision.
+Remove/detach the duplicate or create a fresh node instead. The Plugin does not
+silently guess which duplicate is authoritative.
 
 Not supported in Slice 01:
 
@@ -105,8 +118,9 @@ After rebuilding and restarting the Plugin:
 1. Run **Sync Tasklify V2 Slice 01** three times in the same Figma file.
 2. Confirm one Tasklify Foundations collection, stable Variable IDs, and native
    Semantic aliases to Primitive Variables.
-3. Confirm Button/Badge Component Sets and Stat Card/Task Card Components are
-   native, scoped to Tasklify, documented, Auto Layout based, and Variable bound.
+3. Confirm Icon/Button/Badge Component Sets and Stat Card/Task Card Components
+   are native, scoped to Tasklify, documented, Auto Layout based, and Variable
+   bound.
 4. Confirm existing Pilot Variables, Components, and Screen remain unchanged.
 5. Confirm one Desktop render at `975 × 694` and one Tablet render at `834 × 1112`;
    record each Frame node ID before the second/third Sync and verify it is stable.
@@ -118,6 +132,17 @@ After rebuilding and restarting the Plugin:
 8. Confirm repeated Sync creates no duplicate Collection, Variable, Component,
    Desktop render, or Tablet render and does not drift aliases, bindings, Variants,
    layout, or Instance main-component associations.
+9. With the Figma Text Tool, create a fresh `TEST MANUAL NODE`; confirm it has no
+   `designSystemId`, `renderId`, or `sliceNodeId`, then Sync and confirm it remains.
+10. Duplicate the managed `summary.heading`, record a visible value or node ID
+    elsewhere, then Sync. Confirm preflight reports `Duplicate Tasklify managed
+    identity: summary.heading` and no Variable, Component, Desktop, or Tablet
+    object was modified.
+11. Confirm Button has exactly two visible, non-overlapping, positive-size
+    Variants inside compact Set bounds; Badge has seven with the same guarantees.
+12. Confirm Task Card uses Link/Calendar/Comment Icon Instances, a separate due
+    surface, avatar placeholders, comment count, and activity date. Confirm Stat
+    Card uses an icon surface and View Details action.
 
 The plugin creates missing Pilot objects and updates existing ones in place: one
 `Pilot Design System` local variable collection, five local variables, a
