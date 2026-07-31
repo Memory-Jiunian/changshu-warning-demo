@@ -106,7 +106,7 @@ interface PersistedRepositoryState {
   requestIds: string[];
 }
 
-const REPOSITORY_STORAGE_KEY = 'changshu-demo:repository:v3';
+export const REPOSITORY_STORAGE_KEY = 'changshu-demo:repository:v3';
 type RestoredRepositoryState = Omit<
   Partial<PersistedRepositoryState>,
   'version'
@@ -163,6 +163,25 @@ export class DemoRepository {
     if (!user) return err('ROLE_NOT_AVAILABLE', '当前演示角色不可用');
     this.currentUserId = user.id;
     return ok(clone(user));
+  }
+
+  resetDemoState(): Result<DemoSnapshot> {
+    this.users = clone(mockUsers);
+    this.students = clone(mockStudents);
+    this.tasks = clone(mockTasks);
+    this.observations = clone(mockObservationRecords);
+    this.abnormalReports = clone(mockAbnormalReports);
+    this.retestSchedules = clone(mockRetestSchedules);
+    this.supervisionRecords = clone(mockSupervisionRecords);
+    this.feedbackRequests = clone(mockFeedbackRequests);
+    this.interventionAppointments = clone(mockInterventionAppointments);
+    this.interventionReminderRecords = clone(mockInterventionReminderRecords);
+    this.drafts = [];
+    this.requestIds.clear();
+    this.nextWriteFailure = null;
+    this.idSequence = 0;
+    this.storage?.removeItem(REPOSITORY_STORAGE_KEY);
+    return this.getViewSnapshot();
   }
 
   getVisibleTasks(user = this.requireCurrentUser()) {

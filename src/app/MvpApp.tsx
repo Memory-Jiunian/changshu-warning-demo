@@ -33,6 +33,7 @@ import {
 } from '../state/navigationGuard';
 import { getActiveNavigation, getCurrentMvpRouteRole, getMvpRoute, type MvpRoute } from './routes';
 import { DEMO_ROLE_STORAGE_KEY, readDemoSessionRole } from './currentRouteAuthority';
+import { getMobileDemoRoute } from './mobileDemo';
 import './mvp.css';
 
 export type MvpRole = Extract<UserRole, 'head_teacher' | 'grade_director' | 'principal'>;
@@ -81,6 +82,7 @@ export function MvpApp({
     gradeDirectorSupervisionItems,
     addCurrentSupervisionRecord,
     principalOverview,
+    resetDemoState,
     error,
   } = useDemo();
   const [route, setRoute] = useState<MvpRoute>(() => getMvpRoute());
@@ -217,13 +219,8 @@ export function MvpApp({
   };
 
   const selectRole = (role: MvpRole) => {
-    const result = switchDemoRole(role);
-    if (!result.ok) return;
-    window.sessionStorage.setItem(DEMO_ROLE_STORAGE_KEY, role);
-    setSelectedRole(role);
-    replaceHash('#/mvp/home');
-    acceptedHashRef.current = '#/mvp/home';
-    setRoute({ name: 'home' });
+    const destination = getMobileDemoRoute(role);
+    if (destination) requestNavigation(destination);
   };
 
   const performRoleReset = useCallback(() => {
@@ -262,7 +259,7 @@ export function MvpApp({
   }
 
   if (!activeRole || route.name === 'roleSelect') {
-    return <RoleSelectPage onSelect={selectRole} />;
+    return <RoleSelectPage onSelect={selectRole} onReset={resetDemoState} />;
   }
 
   if (currentRole !== activeRole) {

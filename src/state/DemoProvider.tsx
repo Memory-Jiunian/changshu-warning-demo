@@ -33,6 +33,7 @@ import type {
 } from '../domain/tasks';
 import type { DemoUser, UserRole } from '../domain/users';
 import { createDemoRepository, type DemoSnapshot } from '../data/demoRepository';
+import { clearDemoDraftsAndNavigation } from '../data/demoReset';
 import { toLegacyWarningTasks } from '../data/legacyAdapter';
 import type { WarningTask } from '../mockData';
 import { getTaskCounts, getTeacherPendingTaskCount } from '../selectors/taskSelectors';
@@ -87,6 +88,7 @@ interface DemoContextValue {
   addSupervisionRecord: (taskId: string, input: SupervisionInput) => Promise<Result<SupervisionRecord>>;
   addCurrentSupervisionRecord: (sourceActionId: string, input: CurrentSupervisionInput) => Promise<Result<SupervisionRecord>>;
   simulateNextWriteFailure: () => void;
+  resetDemoState: () => Result<DemoSnapshot>;
   reload: () => void;
 }
 
@@ -148,6 +150,20 @@ export function DemoProvider({
     },
     [refresh, repository],
   );
+
+  const resetDemoState = useCallback(() => {
+    const result = repository.resetDemoState();
+    if (!result.ok) {
+      setError(result.message);
+      return result;
+    }
+    if (typeof window !== 'undefined') {
+      clearDemoDraftsAndNavigation(window.localStorage, window.sessionStorage);
+    }
+    setSnapshot(result.data);
+    setError(null);
+    return result;
+  }, [repository]);
 
   const counts = useMemo(
     () => getTaskCounts(snapshot.tasks, new Date(snapshot.now), snapshot.retestSchedules),
@@ -211,6 +227,7 @@ export function DemoProvider({
       addCurrentSupervisionRecord: (sourceActionId, input) =>
         runWrite(() => repository.addCurrentSupervisionRecord(sourceActionId, input)),
       simulateNextWriteFailure: () => repository.simulateNextWriteFailure(),
+      resetDemoState,
       reload: refresh,
     }),
     [
@@ -223,6 +240,7 @@ export function DemoProvider({
       pendingCount,
       refresh,
       repository,
+      resetDemoState,
       runWrite,
       snapshot.currentUser,
       snapshot.abnormalReports,

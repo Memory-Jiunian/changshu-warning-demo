@@ -46,7 +46,7 @@ export function getMvpRoute(hash = window.location.hash): MvpRoute {
   const { path, query } = parseHashQuery(rawHash);
   const parts = path.split('/').filter(Boolean);
 
-  if (parts.length === 0) return { name: 'home' };
+  if (parts.length === 0) return { name: 'roleSelect' };
   if (parts[0] === 'select-role') return { name: 'roleSelect' };
   if (parts[0] === 'mvp' && parts[1] === 'home') return { name: 'home' };
   if (
