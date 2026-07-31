@@ -18,7 +18,7 @@
     var(--color-surface-list-opaque) 20%
   );
   --paint-stroke-list-default: linear-gradient(
-    180deg,
+    -90deg,
     var(--color-stroke-list-transparent) 0%,
     var(--color-stroke-list-opaque) 50%
   );
@@ -41,8 +41,11 @@ body,
 
 .layout-main-content-plate {
   position: relative;
+  flex: 1 0 auto;
   min-width: 0;
-  border-radius: var(--radius-main-content-plate);
+  border: 1px solid transparent;
+  border-radius: var(--radius-main-content-plate)
+    var(--radius-main-content-plate) 0 0;
   background: var(--paint-surface-list);
   box-shadow: var(--effect-glass-plate-inner-shadow);
   -webkit-backdrop-filter: blur(var(--effect-glass-plate-backdrop-blur));
@@ -51,19 +54,24 @@ body,
 }
 
 .layout-main-content-plate::before {
+  content: "";
   position: absolute;
-  z-index: -1;
-  inset: 0;
+  z-index: 1;
+  inset: -1px;
   padding: 1px;
   border-radius: inherit;
   background: var(--paint-stroke-list-default);
-  content: "";
   pointer-events: none;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
+}
+
+.ff-app:has(> .layout-main-content-plate) {
+  display: flex;
+  flex-direction: column;
 }
 
 .layout-main-content-plate--padded {
