@@ -1,4 +1,4 @@
-import type { CollaborationTask } from '../../../domain/tasks';
+import type { Slice2Action } from '../../../selectors/factualFeedbackSelectors';
 import {
   Card,
   CardContent,
@@ -8,44 +8,59 @@ import {
 } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { getTaskDisplayState } from '../../../selectors/taskSelectors';
-import { formatFeedbackRemaining } from '../feedbackPresentation';
+import {
+  formatActionDateTime,
+  getActionCardContent,
+} from '../feedbackPresentation';
 
 export function TaskCard({
-  task,
-  now,
+  action,
   onOpen,
 }: {
-  task: CollaborationTask;
-  now: Date;
+  action: Slice2Action;
   onOpen: () => void;
 }) {
-  const display = getTaskDisplayState(task, now);
+  const content = getActionCardContent(action);
   return (
     <Card
       as="article"
       variant="figma-v01"
-      className={`ff-task-card${display.isOverdue ? ' ff-task-card--overdue' : ''}`}
+      className={`ff-task-card${
+        action.kind === 'feedback_request' && action.status === 'overdue'
+          ? ' ff-task-card--overdue'
+          : ''
+      }`}
     >
       <CardHeader className="ff-task-card__top">
-        <CardTitle>{task.student.name}</CardTitle>
-        <Badge designSystem="figma-v01" variant="default">待反馈</Badge>
+        <div className="ff-task-card__identity">
+          <div className="ff-task-card__identity-row">
+            <CardTitle>{action.student.name}</CardTitle>
+            <span className="ff-task-card__type">{content.taskType}</span>
+          </div>
+        </div>
+        <Badge designSystem="figma-v01" variant={content.statusVariant}>
+          {content.statusLabel}
+        </Badge>
       </CardHeader>
       <CardContent>
         <p className="ff-task-card__purpose">
-          <span>反馈需求：</span>{task.purpose}
+          <span>{content.requirementLabel}：</span>{action.requirement}
         </p>
       </CardContent>
       <CardFooter className="ff-task-card__footer">
-        <p className={`ff-task-card__deadline${display.isOverdue ? ' ff-text-danger' : ''}`}>
-          {formatFeedbackRemaining(task, now)}
+        <p className={`ff-task-card__deadline${
+          action.kind === 'feedback_request' && action.status === 'overdue'
+            ? ' ff-text-danger'
+            : ''
+        }`}>
+          {content.timeLabel}：{formatActionDateTime(action.actionAt)}
         </p>
         <Button
           variant="inverse"
           size="xs"
           onClick={onOpen}
         >
-          查看详情
+          {content.cta}
         </Button>
       </CardFooter>
     </Card>

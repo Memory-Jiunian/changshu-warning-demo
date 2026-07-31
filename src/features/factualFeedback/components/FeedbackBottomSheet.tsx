@@ -1,24 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   emptyObservationFormValues,
-  loadObservationDraft,
-  removeObservationDraft,
-  saveObservationDraft,
+  loadFeedbackRequestDraft,
+  removeFeedbackRequestDraft,
+  saveFeedbackRequestDraft,
 } from '../../../data/observationDraftStore';
 import type {
+  FeedbackRecordInput,
   ObservationFormValues,
-  ObservationInput,
   ObservationRecord,
 } from '../../../domain/feedback';
 import type { Result } from '../../../domain/result';
-import type { CollaborationTask } from '../../../domain/tasks';
-import { getTaskDisplayState } from '../../../selectors/taskSelectors';
+import type { Slice2FeedbackAction } from '../../../selectors/factualFeedbackSelectors';
 import { useAutoSavedDraft } from '../../../state/useAutoSavedDraft';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
-import { formatFeedbackRemaining } from '../feedbackPresentation';
+import { formatActionDateTime } from '../feedbackPresentation';
 import {
   isFeedbackDirty,
   toLocalDateTimeValue,
@@ -31,35 +30,35 @@ import { FormField } from './FormField';
 import { HistoryAccordion } from './HistoryAccordion';
 
 export function FeedbackBottomSheet({
-  task,
+  action,
   records,
   currentUserId,
   now,
   onClose,
   onDraftSaved,
   onSubmitted,
-  submitObservation,
-  submitObservationRevision,
+  submitFeedbackRequestRecord,
 }: {
-  task: CollaborationTask;
+  action: Slice2FeedbackAction;
   records: ObservationRecord[];
   currentUserId: string;
   now: string;
   onClose: () => void;
   onDraftSaved: () => void;
   onSubmitted: (record: ObservationRecord) => void;
-  submitObservation: (
-    taskId: string,
-    input: ObservationInput,
-  ) => Promise<Result<ObservationRecord>>;
-  submitObservationRevision: (
-    taskId: string,
-    input: ObservationInput,
+  submitFeedbackRequestRecord: (
+    sourceRequestId: string,
+    input: FeedbackRecordInput,
   ) => Promise<Result<ObservationRecord>>;
 }) {
   const storedDraft = useMemo(
-    () => loadObservationDraft(window.localStorage, currentUserId, task.id),
-    [currentUserId, task.id],
+    () =>
+      loadFeedbackRequestDraft(
+        window.localStorage,
+        currentUserId,
+        action.target.sourceRequestId,
+      ),
+    [action.target.sourceRequestId, currentUserId],
   );
   const [values, setValues] = useState<ObservationFormValues>(
     () => storedDraft?.values ?? { ...emptyObservationFormValues },
@@ -70,22 +69,25 @@ export function FeedbackBottomSheet({
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef<string | null>(null);
   const dirty = isFeedbackDirty(values);
-  const display = getTaskDisplayState(task, new Date(now));
 
   const saveDraft = useCallback(
     (updatedAt: string) =>
-      saveObservationDraft(
+      saveFeedbackRequestDraft(
         window.localStorage,
         currentUserId,
-        task.id,
+        action.target.sourceRequestId,
         values,
         updatedAt,
       ),
-    [currentUserId, task.id, values],
+    [action.target.sourceRequestId, currentUserId, values],
   );
   const clearDraft = useCallback(() => {
-    removeObservationDraft(window.localStorage, currentUserId, task.id);
-  }, [currentUserId, task.id]);
+    removeFeedbackRequestDraft(
+      window.localStorage,
+      currentUserId,
+      action.target.sourceRequestId,
+    );
+  }, [action.target.sourceRequestId, currentUserId]);
   const autoDraft = useAutoSavedDraft({
     dirty,
     initialSavedAt: storedDraft?.updatedAt,
@@ -127,19 +129,17 @@ export function FeedbackBottomSheet({
     setFailureOpen(false);
     const requestId =
       requestIdRef.current ??
-      `factual-feedback-${currentUserId}-${task.id}-${Date.now()}`;
+      `factual-feedback-${currentUserId}-${action.target.sourceRequestId}-${Date.now()}`;
     requestIdRef.current = requestId;
-    const input: ObservationInput = {
-      requestId,
+    const input: FeedbackRecordInput = {
+      submissionRequestId: requestId,
       observedAt: new Date(values.observedAt).toISOString(),
-      scene: '协作任务指定观察场景',
       facts: values.facts.trim(),
-      immediateSafetyConcern: false,
     };
-    const result =
-      task.status === 'returned'
-        ? await submitObservationRevision(task.id, input)
-        : await submitObservation(task.id, input);
+    const result = await submitFeedbackRequestRecord(
+      action.target.sourceRequestId,
+      input,
+    );
     setSubmitting(false);
     if (!result.ok) {
       setConfirmOpen(false);
@@ -161,9 +161,9 @@ export function FeedbackBottomSheet({
   };
 
   useEffect(() => {
-    if (!task.id) return;
+    if (!action.id) return;
     setErrors({});
-  }, [task.id]);
+  }, [action.id]);
 
   return (
     <>
@@ -196,26 +196,28 @@ export function FeedbackBottomSheet({
       >
         <Card variant="figma-v01" className="ff-sheet-card ff-task-context-card">
           <div className="ff-task-summary__title">
-            <h3>{task.student.name}</h3>
-            <p>{task.student.className}</p>
+            <h3>{action.student.name}</h3>
+            <p>{action.student.className}</p>
           </div>
           <div className="ff-task-context-card__meta">
             <p className="ff-task-context-card__status">
-              当前状态：{task.status === 'returned' ? '待补充' : '待反馈'}
+              当前状态：{action.status === 'overdue' ? '已超时' : '待反馈'}
             </p>
             <p
               className={
-                display.isOverdue
+                action.status === 'overdue'
                   ? 'ff-task-context-card__remaining ff-text-danger'
                   : 'ff-task-context-card__remaining'
               }
             >
-              {formatFeedbackRemaining(task, new Date(now))}
+              {action.status === 'overdue'
+                ? '反馈已超时，仍可提交事实反馈'
+                : '请在截止时间前提交事实反馈'}
             </p>
-            {task.dueAt ? (
+            {action.deadline ? (
               <p className="ff-task-context-card__deadline">
                 反馈截止时间：
-                {new Date(task.dueAt).toLocaleString('zh-CN', { hour12: false })}
+                {formatActionDateTime(action.deadline)}
               </p>
             ) : null}
           </div>
@@ -223,12 +225,17 @@ export function FeedbackBottomSheet({
 
         <Card variant="figma-v01" className="ff-sheet-card ff-requirement-card">
           <h3>反馈要求</h3>
-          <p>{task.purpose}</p>
+          <p>{action.requirement}</p>
         </Card>
 
         <HistoryAccordion records={records} />
 
-        <section className="ff-feedback-form" aria-label="事实观察反馈表单">
+        <Card
+          variant="figma-v01"
+          className="ff-sheet-card ff-feedback-form-card"
+        >
+          <h3>填写本轮观察</h3>
+          <section className="ff-feedback-form" aria-label="事实观察反馈表单">
           <FormField
             id="feedback-observed-at"
             label="请选择观察时间"
@@ -265,7 +272,8 @@ export function FeedbackBottomSheet({
               onChange={(event) => update('facts', event.target.value)}
             />
           </FormField>
-        </section>
+          </section>
+        </Card>
       </BottomSheet>
 
       <Dialog

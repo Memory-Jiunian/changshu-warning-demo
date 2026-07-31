@@ -484,6 +484,9 @@ export class DemoRepository {
     const schedule = this.retestSchedules.find((item) => item.taskId === taskId);
     if (!schedule) return err('RETEST_SCHEDULE_NOT_FOUND', '未找到关联复测安排');
     if (schedule.reminderConfirmedAt) return err('RETEST_ALREADY_CONFIRMED', '该复测提醒已确认');
+    if (new Date(schedule.scheduledAt).getTime() <= this.getNow().getTime()) {
+      return err('RETEST_REMINDER_EXPIRED', '复测安排时间已过，不能事后确认提醒');
+    }
     if (input.method === 'other' && !input.otherMethod?.trim()) {
       return err('RETEST_METHOD_REQUIRED', '请填写其他提醒方式');
     }

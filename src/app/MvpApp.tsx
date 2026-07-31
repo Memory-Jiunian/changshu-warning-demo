@@ -46,6 +46,12 @@ function roleToLegacyRole(role: MvpRole): LegacyRoleId {
   return role === 'grade_director' ? 'gradeDirector' : 'homeroomTeacher';
 }
 
+function isApprovedCurrentTeacherRoute(route: MvpRoute) {
+  return (
+    route.name === 'retest' || route.name === 'report'
+  );
+}
+
 function replaceHash(hash: string) {
   window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
 }
@@ -80,10 +86,15 @@ export function MvpApp({
     confirmRetestReminder,
     simulateNextWriteFailure,
     retestSchedules,
+    teacherActionItems,
     error,
   } = useDemo();
-  const [selectedRole, setSelectedRole] = useState<MvpRole | null>(() => readStoredRole());
   const [route, setRoute] = useState<MvpRoute>(() => getMvpRoute());
+  const [selectedRole, setSelectedRole] = useState<MvpRole | null>(() =>
+    isApprovedCurrentTeacherRoute(getMvpRoute())
+      ? 'head_teacher'
+      : readStoredRole(),
+  );
   const [navigationGuard, setNavigationGuardState] =
     useState<NavigationGuardRegistration | null>(null);
   const [pendingNavigation, setPendingNavigation] =
@@ -358,8 +369,17 @@ export function MvpApp({
     );
   }
 
-  const retestTaskAccess =
+  const retestAction =
     route.name === 'retest' && route.taskId
+      ? teacherActionItems.find(
+          (item) =>
+            item.kind === 'retest_reminder' &&
+            item.target.name === 'retest' &&
+            item.target.taskId === route.taskId,
+        )
+      : null;
+  const retestTaskAccess =
+    retestAction && route.taskId
       ? getTaskById(route.taskId)
       : null;
   const retestTask = retestTaskAccess?.ok ? retestTaskAccess.data : null;
@@ -381,8 +401,8 @@ export function MvpApp({
             ? retestTaskAccess.message
             : '未找到当前角色可见的复测提醒。'
         }
-        actionLabel="返回任务列表"
-        onAction={() => navigate(taskListHash())}
+        actionLabel="返回我的待办"
+        onAction={() => navigate('#/feedback/tasks')}
       />
     );
   }
@@ -416,7 +436,12 @@ export function MvpApp({
       onNavigate={navigate}
       showMainContentPlate={!['teacherFeedback', 'report'].includes(route.name)}
       showBottomNavigation={
-        route.name !== 'teacherTaskDetail' && route.name !== 'teacherFeedback'
+        ![
+          'teacherTaskDetail',
+          'teacherFeedback',
+          'retest',
+          'report',
+        ].includes(route.name)
       }
     >
       {route.name === 'home' && selectedRole === 'head_teacher' ? (
@@ -495,12 +520,7 @@ export function MvpApp({
           students={students}
           now={now}
           loading={loading}
-          onBack={() => navigate('#/mvp/home')}
-          onSubmitted={(reportId) =>
-            navigateReplace(
-              `#/mvp/teacher/reports/${reportId}?submitted=1`,
-            )
-          }
+          onBack={() => navigate('#/feedback/tasks')}
           onNavigationGuardChange={updateNavigationGuard}
           submitAbnormalReport={submitAbnormalReport}
         />
@@ -545,7 +565,8 @@ export function MvpApp({
           currentUser={currentUser}
           now={now}
           loading={loading}
-          onBack={() => navigate(taskListHash())}
+          onBack={() => navigate('#/feedback/tasks')}
+          onConfirmed={() => navigateReplace('#/feedback/tasks')}
           markTaskRead={markTaskRead}
           confirmRetestReminder={confirmRetestReminder}
         />

@@ -304,9 +304,11 @@
 
 .ff-sheet {
   display: grid;
+  min-width: 0;
+  max-width: 100vw;
   width: min(
-    calc(100vw - var(--space-4)),
-    var(--ff-main-content-width)
+    100vw,
+    var(--ff-main-content-width, 440px)
   );
   height: min(92dvh, 860px);
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -364,12 +366,94 @@
   box-shadow: var(--shadow-floating);
 }
 
+.ff-sheet__footer > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .ff-sheet-section,
 .ff-history {
   padding: var(--space-4);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-card);
   background: var(--color-surface-card);
+}
+
+.ff-feedback-form-card > h3 {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-primary);
+  font: var(--font-title);
+}
+
+.ff-feedback-form-card .ff-feedback-form {
+  min-width: 0;
+}
+
+.ff-feedback-form-card .ui-input,
+.ff-feedback-form-card .ui-textarea,
+.ff-report-sheet-form .ui-input,
+.ff-report-sheet-form .ui-textarea {
+  background: var(--color-surface-muted);
+}
+
+.ff-report-sheet-form,
+.ff-reminder-form-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ff-reminder-form-card > h3 {
+  margin: 0;
+}
+
+.ff-reminder-student {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.ff-reminder-student h3,
+.ff-reminder-student span {
+  margin: 0;
+}
+
+.ff-reminder-student span {
+  color: var(--color-text-muted);
+  font: var(--font-caption);
+}
+
+.ff-reminder-details {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+}
+
+.ff-reminder-details div,
+.ff-confirm-summary div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-3);
+}
+
+.ff-reminder-details dt,
+.ff-reminder-details dd,
+.ff-confirm-summary dt,
+.ff-confirm-summary dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ff-reminder-details dt,
+.ff-confirm-summary dt {
+  color: var(--color-text-muted);
+}
+
+.ff-confirm-summary {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
 }
 
 .ff-sheet-section h3,
@@ -670,7 +754,7 @@
   padding: var(--space-3) var(--space-4);
   transform: translateX(-50%);
   border-radius: var(--radius-pill);
-  background: var(--color-button-primary);
+  background: #666666;
   box-shadow: var(--shadow-floating);
   color: var(--color-text-inverse);
   text-align: center;
@@ -809,6 +893,9 @@
 }
 
 .ff-pending-page__plate {
+  width: calc(100% + (var(--space-4) * 2));
+  max-width: calc(100% + (var(--space-4) * 2));
+  min-width: 0;
   margin-inline: calc(var(--space-4) * -1);
   border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
 }
@@ -826,6 +913,34 @@
   gap: var(--space-3);
 }
 
+.ff-task-card__identity {
+  min-width: 0;
+}
+
+.ff-task-card__identity-row {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.ff-task-card__type {
+  display: inline-block;
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--font-caption);
+}
+
+.ff-task-card__identity .ui-card__title {
+  min-width: 0;
+  margin: 0;
+}
+
+.ff-task-card__type {
+  font-weight: 650;
+}
+
 .ff-pending-page .ff-task-card__top .ui-card__title,
 .ff-pending-page .ff-task-card .ui-card__content,
 .ff-pending-page .ff-task-card__footer {
@@ -836,6 +951,7 @@
   margin: 0;
   color: var(--color-text-secondary);
   font: var(--font-body);
+  overflow-wrap: anywhere;
 }
 
 .ff-pending-page .ff-task-card__purpose span {
@@ -854,6 +970,39 @@
   min-width: 0;
   margin: 0;
   color: var(--color-text-muted);
+  font: var(--font-caption);
+}
+
+.ff-pending-page .ff-task-card__footer .ui-button {
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.ff-report-entry {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-card);
+}
+
+.ff-report-entry div {
+  min-width: 0;
+}
+
+.ff-report-entry strong,
+.ff-report-entry p {
+  display: block;
+  margin: 0;
+}
+
+.ff-report-entry p {
+  margin-top: var(--space-2-xs);
+  color: var(--color-text-secondary);
   font: var(--font-caption);
 }
 
@@ -897,5 +1046,14 @@
 
   .ff-pending-page .ff-task-card__footer .ui-button {
     width: auto;
+  }
+
+  .ff-report-entry {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ff-report-entry .ui-button {
+    width: 100%;
   }
 }

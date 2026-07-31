@@ -41,6 +41,7 @@ export function RetestReminderPage({
   now,
   loading,
   onBack,
+  onConfirmed,
   markTaskRead,
   confirmRetestReminder,
 }: {
@@ -50,6 +51,7 @@ export function RetestReminderPage({
   now: string;
   loading: boolean;
   onBack: () => void;
+  onConfirmed: () => void;
   markTaskRead: (taskId: string) => Promise<Result<CollaborationTask>>;
   confirmRetestReminder: (
     taskId: string,
@@ -109,6 +111,7 @@ export function RetestReminderPage({
       return;
     }
     setDialogOpen(false);
+    onConfirmed();
   };
 
   const confirmedMethod = schedule.reminderMethod

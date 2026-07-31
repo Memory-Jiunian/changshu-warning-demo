@@ -136,7 +136,13 @@ export function getTeacherActionItems({
       return [];
     }
     const schedule = retestSchedules.find((item) => item.taskId === task.id);
-    if (!schedule || schedule.reminderConfirmedAt) return [];
+    if (
+      !schedule ||
+      schedule.reminderConfirmedAt ||
+      new Date(schedule.scheduledAt).getTime() <= now.getTime()
+    ) {
+      return [];
+    }
     const deadline = task.dueAt ?? schedule.scheduledAt;
     return [{
       id: `teacher-action:retest:${task.id}`,
@@ -146,7 +152,7 @@ export function getTeacherActionItems({
       createdAt: task.createdAt,
       actionAt: schedule.scheduledAt,
       deadline,
-      status: isPast(deadline, now) ? 'overdue' : 'pending',
+      status: 'pending',
       sourceId: schedule.id,
       requirement: schedule.instructions,
       target: { name: 'retest', taskId: task.id },
