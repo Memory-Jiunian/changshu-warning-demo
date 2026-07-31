@@ -10,6 +10,7 @@ export type MvpRouteName =
   | 'profile'
   | 'retest'
   | 'supervision'
+  | 'principalOverview'
   | 'legacyTask'
   | 'legacyReport'
   | 'legacyCounselor'
@@ -26,13 +27,22 @@ export interface MvpRoute {
   justSubmitted?: boolean;
 }
 
+export type CurrentMvpRole = 'head_teacher' | 'grade_director' | 'principal';
+
+export function getCurrentMvpRouteRole(route: MvpRoute): CurrentMvpRole | null {
+  if (route.name === 'supervision') return 'grade_director';
+  if (route.name === 'principalOverview') return 'principal';
+  if (route.name === 'retest' || route.name === 'report') return 'head_teacher';
+  return null;
+}
+
 function parseHashQuery(hash: string) {
   const [path, rawQuery = ''] = hash.split('?');
   return { path, query: new URLSearchParams(rawQuery) };
 }
 
-export function getMvpRoute(): MvpRoute {
-  const rawHash = window.location.hash.replace(/^#/, '') || '/';
+export function getMvpRoute(hash = window.location.hash): MvpRoute {
+  const rawHash = hash.replace(/^#/, '') || '/';
   const { path, query } = parseHashQuery(rawHash);
   const parts = path.split('/').filter(Boolean);
 
@@ -96,6 +106,9 @@ export function getMvpRoute(): MvpRoute {
   if (parts[0] === 'mvp' && parts[1] === 'grade-director' && parts[2] === 'tasks') {
     return { name: 'supervision' };
   }
+  if (parts[0] === 'mvp' && parts[1] === 'principal' && parts[2] === 'overview') {
+    return { name: 'principalOverview' };
+  }
   if (parts[0] === 'legacy' && parts[1] === 'counselor') return { name: 'legacyCounselor' };
   if (parts[0] === 'legacy' && parts[1] === 'principal') return { name: 'legacyPrincipal' };
   if (parts[0] === 'school-overview') return { name: 'legacyPrincipal' };
@@ -112,6 +125,7 @@ export function getActiveNavigation(route: MvpRoute) {
     ['report', 'reports', 'reportDetail', 'legacyReport'].includes(route.name)
   ) return 'report';
   if (route.name === 'supervision') return 'supervision';
+  if (route.name === 'principalOverview') return 'home';
   if (route.name === 'profile') return 'profile';
   return 'home';
 }

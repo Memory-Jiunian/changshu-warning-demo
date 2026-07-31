@@ -67,7 +67,9 @@ export function FactualFeedbackApp({ hash }: { hash: string }) {
     route.name === 'psychologistReview' ? 'psychologist' : 'head_teacher';
 
   useEffect(() => {
-    if (currentRole !== requiredRole) switchDemoRole(requiredRole);
+    if (requiredRole === 'psychologist' && currentRole !== requiredRole) {
+      switchDemoRole(requiredRole);
+    }
   }, [currentRole, requiredRole, switchDemoRole]);
 
   useEffect(() => {

@@ -1,0 +1,33 @@
+.principal-overview-page__plate { display: grid; align-content: start; gap: var(--space-6); }
+.principal-section { display: grid; gap: var(--space-4); min-width: 0; }
+.principal-section + .principal-section { padding-top: var(--space-2); }
+.principal-section__heading { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.principal-section__heading h2 { margin: 0; font: var(--font-page-title); }
+.principal-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.principal-stat-card { display: grid; min-width: 0; gap: var(--space-2); }
+.principal-stat-card span { color: var(--color-text-secondary); font: var(--font-caption); }
+.principal-stat-card strong { font: var(--font-display); }
+.principal-progress-card { display: grid; min-width: 0; grid-template-columns: 132px minmax(0, 1fr); gap: var(--space-4); align-items: center; }
+.principal-progress-card__rate { display: grid; place-items: center; }
+.principal-rate-ring { position: relative; display: grid; width: 112px; aspect-ratio: 1; place-content: center; border-radius: 50%; text-align: center; background: conic-gradient(var(--color-brand-primary) var(--principal-rate), var(--color-surface-muted) 0); }
+.principal-rate-ring::after { content: ""; position: absolute; inset: 12px; border-radius: inherit; background: var(--color-surface-card); }
+.principal-rate-ring strong, .principal-rate-ring span { position: relative; z-index: 1; }
+.principal-rate-ring strong { font: var(--font-page-title); }
+.principal-rate-ring span { color: var(--color-text-muted); font: var(--font-caption); }
+.principal-progress-card__counts { display: grid; gap: var(--space-2); margin: 0; }
+.principal-progress-card__counts div { display: flex; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border-subtle); }
+.principal-progress-card__counts dt, .principal-progress-card__counts dd { margin: 0; }
+.principal-progress-card__counts dt { color: var(--color-text-secondary); }
+.principal-progress-card__counts dd { font-weight: 700; }
+.principal-overdue-distribution { grid-column: 1 / -1; padding-top: var(--space-4); border-top: 1px solid var(--color-border-subtle); }
+.principal-overdue-distribution > strong, .principal-overdue-distribution p { margin: 0; }
+.principal-overdue-distribution ul { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.principal-overdue-distribution li { display: flex; justify-content: space-between; gap: var(--space-3); color: var(--color-text-secondary); }
+.principal-overdue-distribution li b { color: var(--color-text-primary); }
+.principal-overdue-distribution p { margin-top: var(--space-3); color: var(--color-text-muted); }
+.principal-attention-list { display: grid; gap: var(--space-3); }
+.principal-attention-card { display: grid; min-width: 0; gap: var(--space-2); }
+.principal-attention-card > div { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.principal-attention-card strong { min-width: 0; overflow-wrap: anywhere; }
+.principal-attention-card p { margin: 0; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+@media (max-width: 340px) { .principal-progress-card { grid-template-columns: 1fr; } .principal-overdue-distribution { grid-column: 1; } }

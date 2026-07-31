@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { MvpApp } from './app/MvpApp';
+import {
+  DEMO_ROLE_STORAGE_KEY,
+  getCurrentRouteRole,
+  getEffectiveDemoRole,
+  readDemoSessionRole,
+} from './app/currentRouteAuthority';
 import { FactualFeedbackApp } from './features/factualFeedback/FactualFeedbackApp';
 import { isFactualFeedbackHash } from './features/factualFeedback/routes';
 import { RiskLevelTag as UiRiskLevelTag } from './components/business/RiskLevelTag';
@@ -22,7 +28,7 @@ import {
   type RoleId,
   type WarningTask,
 } from './mockData';
-import { useDemo } from './state/DemoProvider';
+import { DemoProvider, useDemo } from './state/DemoProvider';
 
 type RouteName = 'home' | 'task' | 'record' | 'report' | 'progress' | 'schoolOverview';
 type Route = { name: RouteName; taskId?: string };
@@ -142,6 +148,24 @@ export function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  useEffect(() => {
+    const routeRole = getCurrentRouteRole(activeHash);
+    if (routeRole) window.sessionStorage.setItem(DEMO_ROLE_STORAGE_KEY, routeRole);
+  }, [activeHash]);
+
+  const effectiveRole = getEffectiveDemoRole(
+    activeHash,
+    readDemoSessionRole(window.sessionStorage),
+  );
+
+  return (
+    <DemoProvider key={effectiveRole} initialRole={effectiveRole}>
+      <CurrentApp activeHash={activeHash} />
+    </DemoProvider>
+  );
+}
+
+function CurrentApp({ activeHash }: { activeHash: string }) {
   if (isFactualFeedbackHash(activeHash)) {
     return <FactualFeedbackApp hash={activeHash} />;
   }

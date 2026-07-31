@@ -25,38 +25,22 @@ import { ObservationFeedbackPage } from '../pages/ObservationFeedbackPage';
 import { TeacherTaskDetailPage } from '../pages/TeacherTaskDetailPage';
 import { TeacherTaskListPage } from '../pages/TeacherTaskListPage';
 import { GradeDirectorTasksPage } from '../pages/GradeDirectorTasksPage';
+import { PrincipalOverviewPage } from '../pages/PrincipalOverviewPage';
 import { canTaskAcceptObservation } from '../selectors/taskSelectors';
 import {
   type NavigationGuardRegistration,
   formatDraftSavedTime,
 } from '../state/navigationGuard';
-import { getActiveNavigation, getMvpRoute, type MvpRoute } from './routes';
+import { getActiveNavigation, getCurrentMvpRouteRole, getMvpRoute, type MvpRoute } from './routes';
+import { DEMO_ROLE_STORAGE_KEY, readDemoSessionRole } from './currentRouteAuthority';
 import './mvp.css';
 
-export type MvpRole = Extract<UserRole, 'head_teacher' | 'grade_director'>;
+export type MvpRole = Extract<UserRole, 'head_teacher' | 'grade_director' | 'principal'>;
 export type LegacyRoleId = 'homeroomTeacher' | 'gradeDirector' | 'counselor' | 'principal';
 
-const ROLE_STORAGE_KEY = 'changshu-mvp-demo-role';
-
-function readStoredRole(): MvpRole | null {
-  const value = window.sessionStorage.getItem(ROLE_STORAGE_KEY);
-  return value === 'head_teacher' || value === 'grade_director' ? value : null;
-}
-
 function roleToLegacyRole(role: MvpRole): LegacyRoleId {
+  if (role === 'principal') return 'principal';
   return role === 'grade_director' ? 'gradeDirector' : 'homeroomTeacher';
-}
-
-function isApprovedCurrentTeacherRoute(route: MvpRoute) {
-  return (
-    route.name === 'retest' || route.name === 'report'
-  );
-}
-
-function getCurrentRouteRole(route: MvpRoute): MvpRole | null {
-  if (route.name === 'supervision') return 'grade_director';
-  if (isApprovedCurrentTeacherRoute(route)) return 'head_teacher';
-  return null;
 }
 
 function replaceHash(hash: string) {
@@ -96,11 +80,14 @@ export function MvpApp({
     teacherActionItems,
     gradeDirectorSupervisionItems,
     addCurrentSupervisionRecord,
+    principalOverview,
     error,
   } = useDemo();
   const [route, setRoute] = useState<MvpRoute>(() => getMvpRoute());
   const [selectedRole, setSelectedRole] = useState<MvpRole | null>(() =>
-    getCurrentRouteRole(getMvpRoute()) ?? readStoredRole(),
+    getCurrentMvpRouteRole(getMvpRoute()) ??
+    readDemoSessionRole(window.sessionStorage) ??
+    null,
   );
   const [navigationGuard, setNavigationGuardState] =
     useState<NavigationGuardRegistration | null>(null);
@@ -109,6 +96,8 @@ export function MvpApp({
   const navigationGuardRef = useRef<NavigationGuardRegistration | null>(null);
   const acceptedHashRef = useRef(window.location.hash || '#/');
   const allowNextHashChangeRef = useRef(false);
+  const routeRole = getCurrentMvpRouteRole(route);
+  const activeRole = routeRole ?? selectedRole;
 
   const updateNavigationGuard = useCallback(
     (registration: NavigationGuardRegistration | null) => {
@@ -189,8 +178,10 @@ export function MvpApp({
       if (currentRole !== 'psychologist') switchDemoRole('psychologist');
       return;
     }
-    if (selectedRole && currentRole !== selectedRole) switchDemoRole(selectedRole);
-  }, [currentRole, route.name, selectedRole, switchDemoRole]);
+    if (routeRole && window.sessionStorage.getItem(DEMO_ROLE_STORAGE_KEY) !== routeRole) {
+      window.sessionStorage.setItem(DEMO_ROLE_STORAGE_KEY, routeRole);
+    }
+  }, [currentRole, route.name, routeRole, switchDemoRole]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -228,7 +219,7 @@ export function MvpApp({
   const selectRole = (role: MvpRole) => {
     const result = switchDemoRole(role);
     if (!result.ok) return;
-    window.sessionStorage.setItem(ROLE_STORAGE_KEY, role);
+    window.sessionStorage.setItem(DEMO_ROLE_STORAGE_KEY, role);
     setSelectedRole(role);
     replaceHash('#/mvp/home');
     acceptedHashRef.current = '#/mvp/home';
@@ -236,7 +227,7 @@ export function MvpApp({
   };
 
   const performRoleReset = useCallback(() => {
-    window.sessionStorage.removeItem(ROLE_STORAGE_KEY);
+    window.sessionStorage.removeItem(DEMO_ROLE_STORAGE_KEY);
     setSelectedRole(null);
   }, []);
 
@@ -270,11 +261,11 @@ export function MvpApp({
     return <>{renderLegacy('counselor')}</>;
   }
 
-  if (!selectedRole || route.name === 'roleSelect') {
+  if (!activeRole || route.name === 'roleSelect') {
     return <RoleSelectPage onSelect={selectRole} />;
   }
 
-  if (currentRole !== selectedRole) {
+  if (currentRole !== activeRole) {
     return <LoadingState text="正在切换角色…" />;
   }
 
@@ -301,11 +292,11 @@ export function MvpApp({
         />
       );
     }
-    return <>{renderLegacy(roleToLegacyRole(selectedRole))}</>;
+    return <>{renderLegacy(roleToLegacyRole(activeRole))}</>;
   }
 
   if (route.name === 'legacyReport') {
-    if (selectedRole !== 'head_teacher') {
+    if (activeRole !== 'head_teacher') {
       return (
         <AccessState
           title="当前角色不可上报"
@@ -318,7 +309,7 @@ export function MvpApp({
     return <>{renderLegacy('homeroomTeacher')}</>;
   }
 
-  const accessError = getRouteAccessError(route, selectedRole);
+  const accessError = getRouteAccessError(route, activeRole);
   if (accessError) {
     return (
       <AccessState
@@ -438,10 +429,10 @@ export function MvpApp({
   const activeNavigation = getActiveNavigation(route);
   return (
     <AppShell
-      role={selectedRole}
+      role={activeRole}
       activeNavigation={activeNavigation}
       onNavigate={navigate}
-      showMainContentPlate={!['teacherFeedback', 'report', 'supervision'].includes(route.name)}
+      showMainContentPlate={!['teacherFeedback', 'report', 'supervision', 'principalOverview'].includes(route.name)}
       showBottomNavigation={
         ![
           'teacherTaskDetail',
@@ -449,13 +440,14 @@ export function MvpApp({
           'retest',
           'report',
           'supervision',
+          'principalOverview',
         ].includes(route.name)
       }
     >
-      {route.name === 'home' && selectedRole === 'head_teacher' ? (
+      {route.name === 'home' && activeRole === 'head_teacher' ? (
         <TeacherHomePage onNavigate={navigate} />
       ) : null}
-      {route.name === 'home' && selectedRole === 'grade_director' ? (
+      {route.name === 'home' && activeRole === 'grade_director' ? (
         <DirectorHomePage onNavigate={navigate} />
       ) : null}
       {route.name === 'tasks' ? (
@@ -563,6 +555,9 @@ export function MvpApp({
           onSubmit={addCurrentSupervisionRecord}
         />
       ) : null}
+      {route.name === 'principalOverview' ? (
+        <PrincipalOverviewPage overview={principalOverview} />
+      ) : null}
       {route.name === 'profile' ? (
         <ProfilePage onSwitchRole={resetRole} onNavigate={navigate} />
       ) : null}
@@ -647,6 +642,12 @@ function NavigationGuardDialog({
 }
 
 function getRouteAccessError(route: MvpRoute, role: MvpRole) {
+  if (role !== 'principal' && route.name === 'principalOverview') {
+    return '校级概览仅对校长角色开放。';
+  }
+  if (role === 'principal' && route.name !== 'principalOverview') {
+    return '校长移动端仅提供只读校级概览。';
+  }
   if (role === 'head_teacher' && route.name === 'supervision') {
     return '督办入口仅对年级主任开放。';
   }

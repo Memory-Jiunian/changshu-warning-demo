@@ -17,7 +17,8 @@
     "verify:factual-feedback": "node scripts/verify-factual-feedback.mjs",
     "verify:teacher-contracts": "node scripts/verify-teacher-contracts.mjs",
     "verify:slice2": "node scripts/verify-slice2.mjs",
-    "verify:grade-director": "node scripts/verify-grade-director.mjs"
+    "verify:grade-director": "node scripts/verify-grade-director.mjs",
+    "verify:principal": "node scripts/verify-principal.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -37,6 +37,7 @@ import { toLegacyWarningTasks } from '../data/legacyAdapter';
 import type { WarningTask } from '../mockData';
 import { getTaskCounts, getTeacherPendingTaskCount } from '../selectors/taskSelectors';
 import type { GradeDirectorSupervisionItem } from '../selectors/gradeDirectorSelectors';
+import type { PrincipalOverview } from '../selectors/principalOverviewSelectors';
 
 interface DemoContextValue {
   currentRole: UserRole;
@@ -54,6 +55,7 @@ interface DemoContextValue {
   teacherActionItems: TeacherActionItem[];
   teacherActionDataIssues: TeacherActionDataIssue[];
   gradeDirectorSupervisionItems: GradeDirectorSupervisionItem[];
+  principalOverview: PrincipalOverview;
   legacyTasks: WarningTask[];
   now: string;
   pendingCount: number;
@@ -95,9 +97,16 @@ function requireSnapshot(result: Result<DemoSnapshot>) {
   return result.data;
 }
 
-export function DemoProvider({ children }: { children: ReactNode }) {
+export function DemoProvider({
+  children,
+  initialRole,
+}: {
+  children: ReactNode;
+  initialRole?: UserRole;
+}) {
   const [repository] = useState(() =>
     createDemoRepository({
+      initialRole,
       storage: typeof window === 'undefined' ? undefined : window.sessionStorage,
     }),
   );
@@ -167,6 +176,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       teacherActionItems: snapshot.teacherActionItems,
       teacherActionDataIssues: snapshot.teacherActionDataIssues,
       gradeDirectorSupervisionItems: snapshot.gradeDirectorSupervisionItems,
+      principalOverview: snapshot.principalOverview,
       legacyTasks,
       now: snapshot.now,
       pendingCount,
@@ -228,6 +238,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       snapshot.teacherActionItems,
       snapshot.teacherActionDataIssues,
       snapshot.gradeDirectorSupervisionItems,
+      snapshot.principalOverview,
       snapshot.users,
       switchDemoRole,
     ],

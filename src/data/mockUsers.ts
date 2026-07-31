@@ -30,10 +30,16 @@ export const mockUsers: DemoUser[] = [
     name: '周老师',
     role: 'psychologist',
   },
+  {
+    id: 'user-principal-zhao',
+    name: '赵校长',
+    role: 'principal',
+  },
 ];
 
 export const defaultUserIdByRole = {
   head_teacher: 'user-head-li',
   grade_director: 'user-director-g2',
   psychologist: 'user-psych-zhou',
+  principal: 'user-principal-zhao',
 } as const;

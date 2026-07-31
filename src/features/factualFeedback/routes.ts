@@ -21,3 +21,7 @@ export function parseFactualFeedbackRoute(hash: string): FactualFeedbackRoute {
   }
   return { name: 'notFound' };
 }
+
+export function getFactualFeedbackRouteRole(route: FactualFeedbackRoute) {
+  return route.name === 'psychologistReview' ? 'psychologist' : 'head_teacher';
+}

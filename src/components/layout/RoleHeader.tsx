@@ -5,6 +5,7 @@ const roleLabels: Record<UserRole, string> = {
   head_teacher: '班主任',
   grade_director: '年级主任',
   psychologist: '心理老师',
+  principal: '校长',
 };
 
 export function RoleHeader({

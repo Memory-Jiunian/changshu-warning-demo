@@ -44,6 +44,7 @@ import {
 } from '../selectors/teacherActionSelectors';
 import { getGradeDirectorSupervisionItems } from '../selectors/gradeDirectorSelectors';
 import type { GradeDirectorSupervisionItem } from '../selectors/gradeDirectorSelectors';
+import { getPrincipalOverview, type PrincipalOverview } from '../selectors/principalOverviewSelectors';
 import {
   mockAbnormalReports,
   mockObservationRecords,
@@ -74,6 +75,7 @@ export interface DemoSnapshot {
   teacherActionItems: TeacherActionItem[];
   teacherActionDataIssues: TeacherActionDataIssue[];
   gradeDirectorSupervisionItems: GradeDirectorSupervisionItem[];
+  principalOverview: PrincipalOverview;
   drafts: Draft[];
   now: string;
 }
@@ -247,6 +249,16 @@ export class DemoRepository {
     }));
   }
 
+  getPrincipalOverview() {
+    return clone(getPrincipalOverview({
+      tasks: this.tasks,
+      feedbackRequests: this.feedbackRequests,
+      retestSchedules: this.retestSchedules,
+      interventionAppointments: this.interventionAppointments,
+      now: this.getNow(),
+    }));
+  }
+
   getAbnormalReportById(
     reportId: string,
     user = this.requireCurrentUser(),
@@ -292,8 +304,9 @@ export class DemoRepository {
     if (this.failReads) return err('DEMO_LOAD_FAILED', '数据加载失败，请稍后重试');
 
     const currentUser = this.requireCurrentUser();
-    const tasks = this.getVisibleTasks(currentUser);
-    const students = this.getVisibleStudents(currentUser);
+    const principalView = currentUser.role === 'principal';
+    const tasks = principalView ? [] : this.getVisibleTasks(currentUser);
+    const students = principalView ? [] : this.getVisibleStudents(currentUser);
     const visibleTaskIds = new Set(tasks.map((task) => task.id));
     const observations =
       currentUser.role === 'grade_director'
@@ -303,10 +316,10 @@ export class DemoRepository {
               visibleTaskIds.has(record.taskId) &&
               (currentUser.role === 'psychologist' || record.authorId === currentUser.id),
           );
-    const abnormalReports = this.getVisibleAbnormalReports(currentUser);
-    const feedbackRequests = this.getVisibleFeedbackRequests(currentUser);
+    const abnormalReports = principalView ? [] : this.getVisibleAbnormalReports(currentUser);
+    const feedbackRequests = principalView ? [] : this.getVisibleFeedbackRequests(currentUser);
     const interventionAppointments =
-      this.getVisibleInterventionAppointments(currentUser);
+      principalView ? [] : this.getVisibleInterventionAppointments(currentUser);
     const interventionReminderRecords =
       this.getVisibleInterventionReminderRecords(currentUser);
     const supervisionRecords =
@@ -334,6 +347,7 @@ export class DemoRepository {
         teacherActionItems: this.getTeacherActionItems(currentUser),
         teacherActionDataIssues: this.getTeacherActionDataIssues(currentUser),
         gradeDirectorSupervisionItems: this.getGradeDirectorSupervisionItems(currentUser),
+        principalOverview: this.getPrincipalOverview(),
         drafts: this.drafts.filter((draft) => draft.userId === currentUser.id),
         now: this.nowIso,
       }),
