@@ -32,6 +32,7 @@ export const mockObservationRecords: ObservationRecord[] = [
   {
     id: 'observation-004-1',
     taskId: 'task-004-submitted',
+    requestId: 'feedback-request-004-completed',
     authorId: 'user-head-li',
     authorRole: 'head_teacher',
     observedAt: '2026-07-16T08:30:00+08:00',

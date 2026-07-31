@@ -3,6 +3,7 @@ import type { StudentRef } from './tasks';
 export interface ObservationRecord {
   id: string;
   taskId: string;
+  requestId?: string;
   authorId: string;
   authorRole: 'head_teacher';
   observedAt: string;
@@ -33,6 +34,12 @@ export interface ObservationInput {
   immediateSafetyConcern: boolean;
   requestExpeditedReview?: boolean;
   additionalNotes?: string;
+}
+
+export interface FeedbackRecordInput {
+  submissionRequestId: string;
+  observedAt: string;
+  facts: string;
 }
 
 export type ObservationScene =

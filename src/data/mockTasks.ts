@@ -239,6 +239,22 @@ export const mockTasks: CollaborationTask[] = [
     urgency: 'normal',
     warningStatusSnapshot: 'pending_retest',
   },
+  {
+    id: 'task-015-feedback-overdue',
+    warningId: 'warning-015',
+    student: getMockStudentRef('student-chen'),
+    type: 'default_observation',
+    status: 'pending',
+    assigneeId: 'user-head-li',
+    title: '事实观察反馈',
+    purpose: '提交当前反馈请求要求的事实观察。',
+    observationFocus: [],
+    precautions: [],
+    createdAt: '2026-07-15T09:00:00+08:00',
+    dueAt: '2026-07-16T17:00:00+08:00',
+    urgency: 'important',
+    warningStatusSnapshot: 'formal_warning',
+  },
 ];
 
 export const mockScenarioCatalog = [

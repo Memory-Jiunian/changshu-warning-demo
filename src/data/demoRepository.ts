@@ -2,6 +2,7 @@ import type {
   AbnormalReport,
   AbnormalReportInput,
   Draft,
+  FeedbackRecordInput,
   ObservationInput,
   ObservationRecord,
   SupervisionInput,
@@ -9,6 +10,14 @@ import type {
 } from '../domain/feedback';
 import { err, ok, type Result } from '../domain/result';
 import type { StudentProfile } from '../domain/students';
+import type {
+  FeedbackRequest,
+  InterventionAppointment,
+  InterventionReminderConfirmationInput,
+  InterventionReminderRecord,
+  TeacherActionDataIssue,
+  TeacherActionItem,
+} from '../domain/teacherActions';
 import type {
   CollaborationTask,
   RetestReminderConfirmationInput,
@@ -29,11 +38,20 @@ import {
 } from '../selectors/reportSelectors';
 import { sortTasksForAction } from '../selectors/taskSelectors';
 import {
+  getTeacherActionDataIssues,
+  getTeacherActionItems,
+} from '../selectors/teacherActionSelectors';
+import {
   mockAbnormalReports,
   mockObservationRecords,
   mockRetestSchedules,
   mockSupervisionRecords,
 } from './mockFeedback';
+import {
+  mockFeedbackRequests,
+  mockInterventionAppointments,
+  mockInterventionReminderRecords,
+} from './mockTeacherContracts';
 import { mockStudents } from './mockStudents';
 import { DEMO_NOW_ISO, mockTasks } from './mockTasks';
 import { defaultUserIdByRole, mockUsers } from './mockUsers';
@@ -47,6 +65,11 @@ export interface DemoSnapshot {
   abnormalReports: AbnormalReport[];
   retestSchedules: RetestSchedule[];
   supervisionRecords: SupervisionRecord[];
+  feedbackRequests: FeedbackRequest[];
+  interventionAppointments: InterventionAppointment[];
+  interventionReminderRecords: InterventionReminderRecord[];
+  teacherActionItems: TeacherActionItem[];
+  teacherActionDataIssues: TeacherActionDataIssue[];
   drafts: Draft[];
   now: string;
 }
@@ -65,16 +88,25 @@ interface WriteFailure {
 }
 
 interface PersistedRepositoryState {
-  version: 3;
+  version: 4;
   tasks: CollaborationTask[];
   observations: ObservationRecord[];
   abnormalReports: AbnormalReport[];
   retestSchedules: RetestSchedule[];
   supervisionRecords: SupervisionRecord[];
+  feedbackRequests: FeedbackRequest[];
+  interventionAppointments: InterventionAppointment[];
+  interventionReminderRecords: InterventionReminderRecord[];
   requestIds: string[];
 }
 
 const REPOSITORY_STORAGE_KEY = 'changshu-demo:repository:v3';
+type RestoredRepositoryState = Omit<
+  Partial<PersistedRepositoryState>,
+  'version'
+> & {
+  version?: 3 | 4;
+};
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -88,6 +120,9 @@ export class DemoRepository {
   private abnormalReports = clone(mockAbnormalReports);
   private retestSchedules = clone(mockRetestSchedules);
   private supervisionRecords = clone(mockSupervisionRecords);
+  private feedbackRequests = clone(mockFeedbackRequests);
+  private interventionAppointments = clone(mockInterventionAppointments);
+  private interventionReminderRecords = clone(mockInterventionReminderRecords);
   private drafts: Draft[] = [];
   private currentUserId: string;
   private readonly requestIds = new Set<string>();
@@ -138,6 +173,64 @@ export class DemoRepository {
     return clone(getVisibleReportsForUser(user, this.abnormalReports));
   }
 
+  getVisibleFeedbackRequests(user = this.requireCurrentUser()) {
+    const now = this.getNow();
+    const visibleTaskIds = new Set(
+      this.tasks
+        .filter((task) => canUserViewTask(user, task, now))
+        .map((task) => task.id),
+    );
+    return clone(
+      this.feedbackRequests.filter((request) =>
+        visibleTaskIds.has(request.taskId),
+      ),
+    );
+  }
+
+  getVisibleInterventionAppointments(user = this.requireCurrentUser()) {
+    if (user.role === 'psychologist') return clone(this.interventionAppointments);
+    if (user.role !== 'head_teacher') return [];
+    return clone(
+      this.interventionAppointments.filter((appointment) =>
+        canUserViewStudent(user, appointment.student),
+      ),
+    );
+  }
+
+  getVisibleInterventionReminderRecords(user = this.requireCurrentUser()) {
+    const visibleAppointmentIds = new Set(
+      this.getVisibleInterventionAppointments(user).map(
+        (appointment) => appointment.id,
+      ),
+    );
+    return clone(
+      this.interventionReminderRecords.filter((record) =>
+        visibleAppointmentIds.has(record.sourceAppointmentId),
+      ),
+    );
+  }
+
+  getTeacherActionItems(user = this.requireCurrentUser()) {
+    return clone(
+      getTeacherActionItems({
+        user,
+        tasks: this.tasks,
+        feedbackRequests: this.feedbackRequests,
+        observations: this.observations,
+        retestSchedules: this.retestSchedules,
+        interventionAppointments: this.interventionAppointments,
+        interventionReminderRecords: this.interventionReminderRecords,
+        now: this.getNow(),
+      }),
+    );
+  }
+
+  getTeacherActionDataIssues(user = this.requireCurrentUser()) {
+    return clone(
+      getTeacherActionDataIssues(this.getVisibleFeedbackRequests(user)),
+    );
+  }
+
   getAbnormalReportById(
     reportId: string,
     user = this.requireCurrentUser(),
@@ -159,6 +252,26 @@ export class DemoRepository {
     return ok(clone(task));
   }
 
+  getInterventionAppointmentById(
+    appointmentId: string,
+    user = this.requireCurrentUser(),
+  ): Result<InterventionAppointment> {
+    const appointment = this.interventionAppointments.find(
+      (item) => item.id === appointmentId,
+    );
+    if (!appointment) {
+      return err('INTERVENTION_APPOINTMENT_NOT_FOUND', '干预预约不存在或已被移除');
+    }
+    if (
+      user.role !== 'psychologist' &&
+      (user.role !== 'head_teacher' ||
+        !canUserViewStudent(user, appointment.student))
+    ) {
+      return err('INTERVENTION_APPOINTMENT_FORBIDDEN', '你没有权限查看该干预预约');
+    }
+    return ok(clone(appointment));
+  }
+
   getViewSnapshot(): Result<DemoSnapshot> {
     if (this.failReads) return err('DEMO_LOAD_FAILED', '数据加载失败，请稍后重试');
 
@@ -175,6 +288,11 @@ export class DemoRepository {
               (currentUser.role === 'psychologist' || record.authorId === currentUser.id),
           );
     const abnormalReports = this.getVisibleAbnormalReports(currentUser);
+    const feedbackRequests = this.getVisibleFeedbackRequests(currentUser);
+    const interventionAppointments =
+      this.getVisibleInterventionAppointments(currentUser);
+    const interventionReminderRecords =
+      this.getVisibleInterventionReminderRecords(currentUser);
     const supervisionRecords =
       currentUser.role === 'head_teacher'
         ? []
@@ -194,6 +312,11 @@ export class DemoRepository {
         abnormalReports,
         retestSchedules: this.retestSchedules.filter((schedule) => visibleTaskIds.has(schedule.taskId)),
         supervisionRecords,
+        feedbackRequests,
+        interventionAppointments,
+        interventionReminderRecords,
+        teacherActionItems: this.getTeacherActionItems(currentUser),
+        teacherActionDataIssues: this.getTeacherActionDataIssues(currentUser),
         drafts: this.drafts.filter((draft) => draft.userId === currentUser.id),
         now: this.nowIso,
       }),
@@ -237,6 +360,73 @@ export class DemoRepository {
 
   async submitObservationRevision(taskId: string, input: ObservationInput): Promise<Result<ObservationRecord>> {
     return this.submitObservationInternal(taskId, input, true);
+  }
+
+  async submitFeedbackRequestRecord(
+    sourceRequestId: string,
+    input: FeedbackRecordInput,
+  ): Promise<Result<ObservationRecord>> {
+    await this.wait();
+    const user = this.requireCurrentUser();
+    const request = this.feedbackRequests.find(
+      (item) => item.id === sourceRequestId,
+    );
+    if (!request) {
+      return err('FEEDBACK_REQUEST_NOT_FOUND', '反馈请求不存在或已被移除');
+    }
+    const task = this.tasks.find((item) => item.id === request.taskId);
+    if (!task || user.role !== 'head_teacher' || task.assigneeId !== user.id) {
+      return err('FEEDBACK_REQUEST_FORBIDDEN', '当前反馈请求不能由该用户提交');
+    }
+    const latestRequest = [...this.feedbackRequests]
+      .filter((item) => item.warningId === request.warningId)
+      .sort((left, right) =>
+        right.requestedAt.localeCompare(left.requestedAt) ||
+        right.id.localeCompare(left.id),
+      )[0];
+    if (latestRequest?.id !== request.id) {
+      return err('FEEDBACK_REQUEST_SUPERSEDED', '该反馈请求已被新一轮请求替代');
+    }
+    if (
+      request.status === 'completed' ||
+      this.observations.some((record) => record.requestId === request.id)
+    ) {
+      return err('FEEDBACK_REQUEST_COMPLETED', '该反馈请求已经完成，请勿重复提交');
+    }
+    if (!input.submissionRequestId.trim()) {
+      return err('REQUEST_ID_REQUIRED', '缺少提交请求编号');
+    }
+    if (!input.observedAt.trim()) {
+      return err('OBSERVED_AT_REQUIRED', '请填写观察时间');
+    }
+    if (new Date(input.observedAt).getTime() > this.getNow().getTime()) {
+      return err('OBSERVED_AT_IN_FUTURE', '观察时间不能晚于当前时间');
+    }
+    const facts = input.facts.trim();
+    if (facts.length < 20 || facts.length > 500) {
+      return err('FACTS_LENGTH_INVALID', '事实观察需为 20–500 字');
+    }
+    const submission = this.beginRequest(input.submissionRequestId);
+    if ('code' in submission) {
+      return err(submission.code, submission.message);
+    }
+
+    const record: ObservationRecord = {
+      id: this.nextId('feedback'),
+      taskId: task.id,
+      requestId: request.id,
+      authorId: user.id,
+      authorRole: 'head_teacher',
+      observedAt: input.observedAt,
+      scene: '反馈请求指定事项',
+      facts,
+      immediateSafetyConcern: false,
+      submittedAt: this.nowIso,
+    };
+    this.observations.push(record);
+    request.status = 'completed';
+    this.persist();
+    return ok(clone(record));
   }
 
   async submitAbnormalReport(input: AbnormalReportInput): Promise<Result<AbnormalReport>> {
@@ -307,6 +497,65 @@ export class DemoRepository {
     task.status = 'submitted';
     this.persist();
     return ok(clone(schedule));
+  }
+
+  async confirmInterventionReminder(
+    appointmentId: string,
+    input: InterventionReminderConfirmationInput,
+  ): Promise<Result<InterventionReminderRecord>> {
+    await this.wait();
+    const user = this.requireCurrentUser();
+    const access = this.getInterventionAppointmentById(appointmentId, user);
+    if (!access.ok) return err(access.code, access.message);
+    const appointment = this.interventionAppointments.find(
+      (item) => item.id === appointmentId,
+    )!;
+    if (appointment.status !== 'planned') {
+      return err(
+        'INTERVENTION_REMINDER_NOT_ACTIONABLE',
+        '当前干预预约已失效，不能确认提醒',
+      );
+    }
+    if (new Date(appointment.plannedAt).getTime() <= this.getNow().getTime()) {
+      return err(
+        'INTERVENTION_REMINDER_EXPIRED',
+        '干预预约时间已过，不能事后确认提醒',
+      );
+    }
+    if (
+      this.interventionReminderRecords.some(
+        (record) => record.sourceAppointmentId === appointmentId,
+      )
+    ) {
+      return err(
+        'INTERVENTION_REMINDER_ALREADY_CONFIRMED',
+        '该干预预约已经确认提醒',
+      );
+    }
+    if (!input.submissionRequestId.trim()) {
+      return err('REQUEST_ID_REQUIRED', '缺少提交请求编号');
+    }
+    if (input.method === 'other' && !input.otherMethod?.trim()) {
+      return err('INTERVENTION_REMINDER_METHOD_REQUIRED', '请填写其他提醒方式');
+    }
+    const submission = this.beginRequest(input.submissionRequestId);
+    if ('code' in submission) {
+      return err(submission.code, submission.message);
+    }
+
+    const record: InterventionReminderRecord = {
+      id: this.nextId('intervention-reminder'),
+      sourceAppointmentId: appointment.id,
+      actionId: `teacher-action:intervention:${appointment.id}`,
+      confirmedAt: this.nowIso,
+      confirmedById: user.id,
+      method: input.method,
+      otherMethod: input.otherMethod?.trim() || undefined,
+      submissionRequestId: input.submissionRequestId,
+    };
+    this.interventionReminderRecords.push(record);
+    this.persist();
+    return ok(clone(record));
   }
 
   async addSupervisionRecord(
@@ -448,9 +697,9 @@ export class DemoRepository {
     if (!raw) return;
 
     try {
-      const state = JSON.parse(raw) as Partial<PersistedRepositoryState>;
+      const state = JSON.parse(raw) as RestoredRepositoryState;
       if (
-        state.version !== 3 ||
+        (state.version !== 3 && state.version !== 4) ||
         !Array.isArray(state.tasks) ||
         !Array.isArray(state.observations) ||
         !Array.isArray(state.abnormalReports) ||
@@ -461,11 +710,27 @@ export class DemoRepository {
         this.storage.removeItem(REPOSITORY_STORAGE_KEY);
         return;
       }
+      if (
+        state.version === 4 &&
+        (!Array.isArray(state.feedbackRequests) ||
+          !Array.isArray(state.interventionAppointments) ||
+          !Array.isArray(state.interventionReminderRecords))
+      ) {
+        this.storage.removeItem(REPOSITORY_STORAGE_KEY);
+        return;
+      }
       this.tasks = clone(state.tasks);
       this.observations = clone(state.observations);
       this.abnormalReports = clone(state.abnormalReports);
       this.retestSchedules = clone(state.retestSchedules);
       this.supervisionRecords = clone(state.supervisionRecords);
+      if (state.version === 4) {
+        this.feedbackRequests = clone(state.feedbackRequests!);
+        this.interventionAppointments = clone(state.interventionAppointments!);
+        this.interventionReminderRecords = clone(
+          state.interventionReminderRecords!,
+        );
+      }
       state.requestIds.forEach((requestId) => this.requestIds.add(requestId));
     } catch {
       this.storage.removeItem(REPOSITORY_STORAGE_KEY);
@@ -475,12 +740,15 @@ export class DemoRepository {
   private persist() {
     if (!this.storage) return;
     const state: PersistedRepositoryState = {
-      version: 3,
+      version: 4,
       tasks: this.tasks,
       observations: this.observations,
       abnormalReports: this.abnormalReports,
       retestSchedules: this.retestSchedules,
       supervisionRecords: this.supervisionRecords,
+      feedbackRequests: this.feedbackRequests,
+      interventionAppointments: this.interventionAppointments,
+      interventionReminderRecords: this.interventionReminderRecords,
       requestIds: [...this.requestIds],
     };
     this.storage.setItem(REPOSITORY_STORAGE_KEY, JSON.stringify(state));

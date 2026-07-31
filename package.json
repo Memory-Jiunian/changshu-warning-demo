@@ -14,7 +14,8 @@
     "verify:phase4.6b": "node scripts/verify-phase46b.mjs",
     "verify:phase4.7a": "node scripts/verify-phase47a.mjs",
     "verify:phase4.7b": "node scripts/verify-phase47b.mjs",
-    "verify:factual-feedback": "node scripts/verify-factual-feedback.mjs"
+    "verify:factual-feedback": "node scripts/verify-factual-feedback.mjs",
+    "verify:teacher-contracts": "node scripts/verify-teacher-contracts.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

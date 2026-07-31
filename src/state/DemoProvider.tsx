@@ -9,6 +9,7 @@ import {
 import type {
   AbnormalReport,
   AbnormalReportInput,
+  FeedbackRecordInput,
   ObservationInput,
   ObservationRecord,
   SupervisionInput,
@@ -16,6 +17,14 @@ import type {
 } from '../domain/feedback';
 import type { Result } from '../domain/result';
 import type { StudentProfile } from '../domain/students';
+import type {
+  FeedbackRequest,
+  InterventionAppointment,
+  InterventionReminderConfirmationInput,
+  InterventionReminderRecord,
+  TeacherActionDataIssue,
+  TeacherActionItem,
+} from '../domain/teacherActions';
 import type {
   CollaborationTask,
   RetestReminderConfirmationInput,
@@ -37,6 +46,11 @@ interface DemoContextValue {
   abnormalReports: AbnormalReport[];
   retestSchedules: RetestSchedule[];
   supervisionRecords: SupervisionRecord[];
+  feedbackRequests: FeedbackRequest[];
+  interventionAppointments: InterventionAppointment[];
+  interventionReminderRecords: InterventionReminderRecord[];
+  teacherActionItems: TeacherActionItem[];
+  teacherActionDataIssues: TeacherActionDataIssue[];
   legacyTasks: WarningTask[];
   now: string;
   pendingCount: number;
@@ -52,11 +66,19 @@ interface DemoContextValue {
   markFeedbackViewed: (taskId: string) => Promise<Result<ObservationRecord>>;
   submitObservation: (taskId: string, input: ObservationInput) => Promise<Result<ObservationRecord>>;
   submitObservationRevision: (taskId: string, input: ObservationInput) => Promise<Result<ObservationRecord>>;
+  submitFeedbackRequestRecord: (
+    sourceRequestId: string,
+    input: FeedbackRecordInput,
+  ) => Promise<Result<ObservationRecord>>;
   submitAbnormalReport: (input: AbnormalReportInput) => Promise<Result<AbnormalReport>>;
   confirmRetestReminder: (
     taskId: string,
     input: RetestReminderConfirmationInput,
   ) => Promise<Result<RetestSchedule>>;
+  confirmInterventionReminder: (
+    appointmentId: string,
+    input: InterventionReminderConfirmationInput,
+  ) => Promise<Result<InterventionReminderRecord>>;
   addSupervisionRecord: (taskId: string, input: SupervisionInput) => Promise<Result<SupervisionRecord>>;
   simulateNextWriteFailure: () => void;
   reload: () => void;
@@ -135,6 +157,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       abnormalReports: snapshot.abnormalReports,
       retestSchedules: snapshot.retestSchedules,
       supervisionRecords: snapshot.supervisionRecords,
+      feedbackRequests: snapshot.feedbackRequests,
+      interventionAppointments: snapshot.interventionAppointments,
+      interventionReminderRecords: snapshot.interventionReminderRecords,
+      teacherActionItems: snapshot.teacherActionItems,
+      teacherActionDataIssues: snapshot.teacherActionDataIssues,
       legacyTasks,
       now: snapshot.now,
       pendingCount,
@@ -153,9 +180,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       submitObservation: (taskId, input) => runWrite(() => repository.submitObservation(taskId, input)),
       submitObservationRevision: (taskId, input) =>
         runWrite(() => repository.submitObservationRevision(taskId, input)),
+      submitFeedbackRequestRecord: (sourceRequestId, input) =>
+        runWrite(() =>
+          repository.submitFeedbackRequestRecord(sourceRequestId, input),
+        ),
       submitAbnormalReport: (input) => runWrite(() => repository.submitAbnormalReport(input)),
       confirmRetestReminder: (taskId, input) =>
         runWrite(() => repository.confirmRetestReminder(taskId, input)),
+      confirmInterventionReminder: (appointmentId, input) =>
+        runWrite(() =>
+          repository.confirmInterventionReminder(appointmentId, input),
+        ),
       addSupervisionRecord: (taskId, input) =>
         runWrite(() => repository.addSupervisionRecord(taskId, input)),
       simulateNextWriteFailure: () => repository.simulateNextWriteFailure(),
@@ -174,12 +209,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       runWrite,
       snapshot.currentUser,
       snapshot.abnormalReports,
+      snapshot.feedbackRequests,
+      snapshot.interventionAppointments,
+      snapshot.interventionReminderRecords,
       snapshot.now,
       snapshot.observations,
       snapshot.retestSchedules,
       snapshot.students,
       snapshot.supervisionRecords,
       snapshot.tasks,
+      snapshot.teacherActionItems,
+      snapshot.teacherActionDataIssues,
       snapshot.users,
       switchDemoRole,
     ],
