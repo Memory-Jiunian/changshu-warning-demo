@@ -142,6 +142,9 @@ type IconName =
   | 'Comment'
   | 'Check'
   | 'ChevronDown';
+type IconSize = 'SM' | 'MD' | 'LG';
+type IconTone = 'Default' | 'Inverse';
+type BadgeSize = 'SM' | 'MD';
 
 const manifest = manifestJson;
 const foundations = foundationsJson as FoundationsSchema;
@@ -183,6 +186,14 @@ const ICON_NAMES: IconName[] = [
   'Check',
   'ChevronDown',
 ];
+const ICON_SIZES: IconSize[] = ['SM', 'MD', 'LG'];
+const ICON_TONES: IconTone[] = ['Default', 'Inverse'];
+const BADGE_SIZES: BadgeSize[] = ['SM', 'MD'];
+const ICON_PIXELS: Record<IconSize, number> = {
+  SM: 12,
+  MD: 16,
+  LG: 24,
+};
 
 const FONT_REGULAR: FontName = { family: 'Inter', style: 'Regular' };
 const FONT_SEMIBOLD: FontName = { family: 'Inter', style: 'Semi Bold' };
@@ -286,7 +297,10 @@ export function validateTasklifySlicePackage(): void {
     'completed',
     'review',
   ]);
+  assertVariantValues(badge, 'Size', BADGE_SIZES);
   assertVariantValues(icon, 'Name', ICON_NAMES);
+  assertVariantValues(icon, 'Size', ICON_SIZES);
+  assertVariantValues(icon, 'Tone', ICON_TONES);
 
   const screen = requireTasklifyScreen();
   if (screen.layout.width.value !== 975 || screen.layout.height.value !== 694) {
@@ -321,6 +335,7 @@ export function validateTasklifySlicePackage(): void {
     'semantic.text.secondary',
     'semantic.border.subtle',
     'semantic.action.primary',
+    'semantic.spacing.compact',
     'semantic.spacing.inline-tight',
     'semantic.spacing.component',
     'semantic.spacing.section',
@@ -721,15 +736,27 @@ function syncIcon(
 ): ComponentSetNode {
   const definition = requireComponentDefinition('component.icon');
   const names = requireVariantValues(definition, 'Name') as IconName[];
+  const sizes = requireVariantValues(definition, 'Size') as IconSize[];
+  const tones = requireVariantValues(definition, 'Tone') as IconTone[];
+  const variants = names.flatMap((name) =>
+    sizes.flatMap((size) =>
+      tones.map((tone) => ({
+        name,
+        size,
+        tone,
+        key: iconVariantName(name, size, tone),
+      })),
+    ),
+  );
   let componentSet: ComponentSetNode;
   if (!existing) {
-    const variants = names.map((name) => {
+    const components = variants.map(({ name, size, tone, key }) => {
       const component = figma.createComponent();
-      component.name = `Name=${name}`;
-      configureIconVariant(component, name, variables);
+      component.name = key;
+      configureIconVariant(component, name, size, tone, variables);
       return component;
     });
-    componentSet = figma.combineAsVariants(variants, figma.currentPage);
+    componentSet = figma.combineAsVariants(components, figma.currentPage);
     componentSet.x = 440;
     componentSet.y = 320;
   } else {
@@ -737,30 +764,41 @@ function syncIcon(
       throw new Error('Tasklify Icon identity points to a non-Component Set');
     }
     componentSet = existing;
-    const variants = requireExactVariants(
+    const reconciled = reconcileContractVariants(
       componentSet,
-      names.map((name) => `Name=${name}`),
+      variants.map(({ key }) => key),
+      (legacyName) => {
+        const legacy = /^Name=(.+)$/.exec(legacyName);
+        return legacy && names.includes(legacy[1] as IconName)
+          ? iconVariantName(legacy[1] as IconName, 'LG', 'Default')
+          : undefined;
+      },
     );
-    for (const name of names) {
-      configureIconVariant(variants.get(`Name=${name}`)!, name, variables);
+    for (const { name, size, tone, key } of variants) {
+      configureIconVariant(reconciled.get(key)!, name, size, tone, variables);
     }
   }
   componentSet.name = definition.figma.name;
   componentSet.description = buildComponentDescription(definition);
   tagComponent(componentSet, definition.id);
-  arrangeVariants(componentSet, 5);
-  assertComponentSetGeometry(componentSet, names.length);
+  arrangeVariants(componentSet, 12);
+  assertComponentSetGeometry(componentSet, variants.length);
   return componentSet;
 }
 
 function configureIconVariant(
   component: ComponentNode,
   name: IconName,
+  size: IconSize,
+  tone: IconTone,
   variables: Map<string, Variable>,
 ): void {
-  component.name = `Name=${name}`;
+  const pixels = ICON_PIXELS[size];
+  const toneToken =
+    tone === 'Inverse' ? 'semantic.surface.card' : 'semantic.text.primary';
+  component.name = iconVariantName(name, size, tone);
   component.layoutMode = 'NONE';
-  component.resizeWithoutConstraints(24, 24);
+  component.resizeWithoutConstraints(pixels, pixels);
   component.fills = [];
   const matches = component.children.filter(
     (child): child is FrameNode => child.type === 'FRAME' && child.name === 'icon-vector',
@@ -771,19 +809,31 @@ function configureIconVariant(
   let vectorRoot = matches[0];
   if (!vectorRoot) {
     vectorRoot = figma.createNodeFromSvg(
-      iconSvg(name, requireResolvedColor('semantic.text.primary')),
+      iconSvg(name, pixels, requireResolvedColor(toneToken)),
     );
     vectorRoot.name = 'icon-vector';
     component.appendChild(vectorRoot);
   }
-  vectorRoot.x = 2;
-  vectorRoot.y = 2;
-  vectorRoot.resizeWithoutConstraints(20, 20);
+  vectorRoot.x = 0;
+  vectorRoot.y = 0;
+  vectorRoot.resizeWithoutConstraints(pixels, pixels);
   vectorRoot.findAll().forEach((node) => {
     if (isStrokeNode(node)) {
-      bindStroke(node, variables, 'semantic.text.primary');
+      bindStroke(node, variables, toneToken);
     }
   });
+}
+
+function iconVariantName(name: IconName, size: IconSize, tone: IconTone): string {
+  return `Name=${name}, Size=${size}, Tone=${tone}`;
+}
+
+function iconInstanceProperties(
+  name: IconName,
+  size: IconSize,
+  tone: IconTone = 'Default',
+): Record<string, string> {
+  return { Name: name, Size: size, Tone: tone };
 }
 
 function isStrokeNode(node: SceneNode): node is StrokeNode {
@@ -795,7 +845,7 @@ function isStrokeNode(node: SceneNode): node is StrokeNode {
   );
 }
 
-function iconSvg(name: IconName, color: string): string {
+function iconSvg(name: IconName, size: number, color: string): string {
   const paths: Record<IconName, string> = {
     Search:
       '<circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/>',
@@ -836,7 +886,7 @@ function iconSvg(name: IconName, color: string): string {
     ChevronDown:
       '<path d="m6 9 6 6 6-6"/>',
   };
-  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="${color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${paths[name]}</svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="${color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${paths[name]}</svg>`;
 }
 
 function syncButton(
@@ -920,17 +970,21 @@ function syncBadge(
 ): ComponentSetNode {
   const definition = requireComponentDefinition('component.badge');
   const types = requireVariantValues(definition, 'Type');
+  const sizes = requireVariantValues(definition, 'Size') as BadgeSize[];
+  const variants = types.flatMap((type) =>
+    sizes.map((size) => ({ type, size, key: badgeVariantName(type, size) })),
+  );
   let componentSet: ComponentSetNode;
   if (!existing) {
-    const variants = types.map((type, index) => {
+    const components = variants.map(({ type, size, key }, index) => {
       const component = figma.createComponent();
-      component.name = `Type=${type}`;
+      component.name = key;
       component.x = (index % 4) * 150;
       component.y = Math.floor(index / 4) * 52;
-      configureBadgeVariant(component, type, variables);
+      configureBadgeVariant(component, type, size, variables);
       return component;
     });
-    componentSet = figma.combineAsVariants(variants, figma.currentPage);
+    componentSet = figma.combineAsVariants(components, figma.currentPage);
     componentSet.x = 0;
     componentSet.y = 140;
   } else {
@@ -938,38 +992,62 @@ function syncBadge(
       throw new Error('Tasklify Badge identity points to a non-Component Set');
     }
     componentSet = existing;
-    const variants = requireExactVariants(componentSet, types.map((type) => `Type=${type}`));
-    for (const type of types) {
-      configureBadgeVariant(variants.get(`Type=${type}`)!, type, variables);
+    const reconciled = reconcileContractVariants(
+      componentSet,
+      variants.map(({ key }) => key),
+      (legacyName) => {
+        const legacy = /^Type=(.+)$/.exec(legacyName);
+        return legacy && types.includes(legacy[1])
+          ? badgeVariantName(legacy[1], 'MD')
+          : undefined;
+      },
+    );
+    for (const { type, size, key } of variants) {
+      configureBadgeVariant(reconciled.get(key)!, type, size, variables);
     }
   }
   componentSet.name = definition.figma.name;
   componentSet.description = buildComponentDescription(definition);
   tagComponent(componentSet, definition.id);
   arrangeVariants(componentSet, 4);
-  assertComponentSetGeometry(componentSet, 7);
+  assertComponentSetGeometry(componentSet, variants.length);
   return componentSet;
 }
 
 function configureBadgeVariant(
   component: ComponentNode,
   type: string,
+  size: BadgeSize,
   variables: Map<string, Variable>,
 ): void {
-  component.name = `Type=${type}`;
-  configureAutoLayout(component, 'HORIZONTAL', 8, 4);
+  component.name = badgeVariantName(type, size);
+  configureAutoLayout(component, 'HORIZONTAL', 0, 0);
   bindNumeric(component, 'itemSpacing', variables, 'semantic.spacing.inline-tight');
   component.primaryAxisAlignItems = 'CENTER';
   component.counterAxisAlignItems = 'CENTER';
-  bindNumeric(component, 'paddingLeft', variables, 'semantic.spacing.inline-tight');
-  bindNumeric(component, 'paddingRight', variables, 'semantic.spacing.inline-tight');
-  component.paddingTop = 5;
-  component.paddingBottom = 5;
+  bindNumeric(
+    component,
+    'paddingLeft',
+    variables,
+    size === 'SM' ? 'semantic.spacing.compact' : 'semantic.spacing.inline-tight',
+  );
+  bindNumeric(
+    component,
+    'paddingRight',
+    variables,
+    size === 'SM' ? 'semantic.spacing.compact' : 'semantic.spacing.inline-tight',
+  );
+  bindNumeric(component, 'paddingTop', variables, 'semantic.spacing.compact');
+  bindNumeric(component, 'paddingBottom', variables, 'semantic.spacing.compact');
   bindNumeric(component, 'cornerRadius', variables, 'semantic.radius.container');
   const palette = badgePalette(type);
   bindFill(component, variables, palette.background);
   const label = ensureText(component, 'badge-label');
-  configureText(label, badgeLabel(type), 10, false, variables, palette.foreground);
+  configureText(label, badgeLabel(type), size === 'SM' ? 9 : 10, false, variables, palette.foreground);
+}
+
+function badgeVariantName(type: string, size: BadgeSize): string {
+  return `Type=${type}, Size=${size}`;
 }
 
 function syncStatCard(
@@ -1017,11 +1095,13 @@ function syncStatCard(
   iconSurface.primaryAxisAlignItems = 'CENTER';
   iconSurface.counterAxisAlignItems = 'CENTER';
   bindNumeric(iconSurface, 'cornerRadius', variables, 'semantic.radius.control');
-  bindFill(iconSurface, variables, 'semantic.surface.sidebar');
-  const statIcon = ensureComponentInstance(iconSurface, 'stat-icon', icon, {
-    Name: 'Reporting',
-  });
-  statIcon.resize(16, 16);
+  bindFill(iconSurface, variables, 'semantic.action.primary');
+  ensureComponentInstance(
+    iconSurface,
+    'stat-icon',
+    icon,
+    iconInstanceProperties('Reporting', 'MD', 'Inverse'),
+  );
 
   const actionRow = ensureFrame(top, 'stat-action-row');
   configureAutoLayout(actionRow, 'HORIZONTAL', 0, 4);
@@ -1033,10 +1113,9 @@ function syncStatCard(
     actionRow,
     'stat-action-icon',
     icon,
-    { Name: 'ChevronDown' },
+    iconInstanceProperties('ChevronDown', 'SM'),
   );
   actionIcon.rotation = -90;
-  actionIcon.resize(12, 12);
   reorderChildren(actionRow, [action, actionIcon]);
   reorderChildren(top, [iconSurface, actionRow]);
 
@@ -1069,8 +1148,8 @@ function syncTaskCard(
   component.name = definition.figma.name;
   component.description = buildComponentDescription(definition);
   tagComponent(component, definition.id);
-  configureAutoLayout(component, 'VERTICAL', 12, 8);
-  bindNumeric(component, 'itemSpacing', variables, 'semantic.spacing.inline-tight');
+  configureAutoLayout(component, 'VERTICAL', 12, 12);
+  bindNumeric(component, 'itemSpacing', variables, 'semantic.spacing.component');
   component.resize(180, 184);
   component.primaryAxisSizingMode = 'FIXED';
   component.counterAxisSizingMode = 'FIXED';
@@ -1086,15 +1165,20 @@ function syncTaskCard(
   const meta = ensureFrame(component, 'task-meta');
   configureAutoLayout(meta, 'HORIZONTAL', 0, 8);
   meta.layoutSizingHorizontal = 'FILL';
+  meta.primaryAxisAlignItems = 'SPACE_BETWEEN';
   meta.counterAxisAlignItems = 'CENTER';
+  meta.fills = [];
   const identity = ensureFrame(meta, 'task-identity');
   configureAutoLayout(identity, 'HORIZONTAL', 0, 4);
+  bindNumeric(identity, 'itemSpacing', variables, 'semantic.spacing.compact');
   identity.counterAxisAlignItems = 'CENTER';
   identity.fills = [];
-  const linkIcon = ensureComponentInstance(identity, 'task-link-icon', icon, {
-    Name: 'Link',
-  });
-  linkIcon.resize(12, 12);
+  const linkIcon = ensureComponentInstance(
+    identity,
+    'task-link-icon',
+    icon,
+    iconInstanceProperties('Link', 'SM'),
+  );
   const existingId = meta.children.find(
     (child): child is TextNode => child.type === 'TEXT' && child.name === 'task-id',
   );
@@ -1102,18 +1186,32 @@ function syncTaskCard(
   const id = ensureText(identity, 'task-id');
   configureText(id, 'WEB - 21', 9, false, variables, 'semantic.text.secondary');
   reorderChildren(identity, [linkIcon, id]);
-  const priority = ensureComponentInstance(meta, 'task-priority', badge, { Type: 'urgent' });
+  const priority = ensureComponentInstance(meta, 'task-priority', badge, {
+    Type: 'urgent',
+    Size: 'SM',
+  });
   priority.layoutAlign = 'INHERIT';
   reorderChildren(meta, [identity, priority]);
 
-  const title = ensureText(component, 'task-title');
+  const content = ensureFrame(component, 'task-content');
+  configureAutoLayout(content, 'VERTICAL', 0, 4);
+  bindNumeric(content, 'itemSpacing', variables, 'semantic.spacing.compact');
+  content.layoutSizingHorizontal = 'FILL';
+  content.fills = [];
+  const title = reparentText(component, content, 'task-title');
   configureText(title, 'Partone Consultancy Website', 11, true, variables, 'semantic.text.primary');
   title.layoutSizingHorizontal = 'FILL';
-  const project = ensureText(component, 'task-project');
+  const project = reparentText(component, content, 'task-project');
   configureText(project, 'New Homepage', 9, false, variables, 'semantic.text.secondary');
+  reorderChildren(content, [title, project]);
 
   const dueChip = ensureFrame(component, 'task-due-chip');
-  configureAutoLayout(dueChip, 'HORIZONTAL', 8, 5);
+  configureAutoLayout(dueChip, 'HORIZONTAL', 0, 0);
+  bindNumeric(dueChip, 'itemSpacing', variables, 'semantic.spacing.compact');
+  bindNumeric(dueChip, 'paddingLeft', variables, 'semantic.spacing.inline-tight');
+  bindNumeric(dueChip, 'paddingRight', variables, 'semantic.spacing.inline-tight');
+  bindNumeric(dueChip, 'paddingTop', variables, 'semantic.spacing.compact');
+  bindNumeric(dueChip, 'paddingBottom', variables, 'semantic.spacing.compact');
   dueChip.layoutSizingHorizontal = 'FILL';
   dueChip.counterAxisAlignItems = 'CENTER';
   bindNumeric(dueChip, 'cornerRadius', variables, 'semantic.radius.control');
@@ -1122,9 +1220,8 @@ function syncTaskCard(
     dueChip,
     'task-due-icon',
     icon,
-    { Name: 'Calendar' },
+    iconInstanceProperties('Calendar', 'SM'),
   );
-  calendarIcon.resize(13, 13);
   const existingDue = component.children.find(
     (child): child is TextNode => child.type === 'TEXT' && child.name === 'task-due',
   );
@@ -1154,26 +1251,46 @@ function syncTaskCard(
   }
   const activity = ensureFrame(footer, 'task-activity');
   configureAutoLayout(activity, 'HORIZONTAL', 0, 4);
+  bindNumeric(activity, 'itemSpacing', variables, 'semantic.spacing.compact');
   activity.counterAxisAlignItems = 'CENTER';
   activity.fills = [];
+  const comment = ensureFrame(activity, 'task-comment');
+  configureAutoLayout(comment, 'HORIZONTAL', 0, 4);
+  bindNumeric(comment, 'itemSpacing', variables, 'semantic.spacing.compact');
+  comment.counterAxisAlignItems = 'CENTER';
+  comment.fills = [];
+  const existingCommentIcon = activity.children.find(
+    (child): child is InstanceNode =>
+      child.type === 'INSTANCE' && child.name === 'task-comment-icon',
+  );
+  if (existingCommentIcon) comment.appendChild(existingCommentIcon);
   const commentIcon = ensureComponentInstance(
-    activity,
+    comment,
     'task-comment-icon',
     icon,
-    { Name: 'Comment' },
+    iconInstanceProperties('Comment', 'SM'),
   );
-  commentIcon.resize(12, 12);
-  const commentCount = ensureText(activity, 'task-comment-count');
+  const existingCommentCount = activity.children.find(
+    (child): child is TextNode =>
+      child.type === 'TEXT' && child.name === 'task-comment-count',
+  );
+  if (existingCommentCount) comment.appendChild(existingCommentCount);
+  const commentCount = ensureText(comment, 'task-comment-count');
   configureText(commentCount, '13', 8, false, variables, 'semantic.text.secondary');
+  reorderChildren(comment, [commentIcon, commentCount]);
+  const divider = ensureFrame(activity, 'task-activity-divider');
+  divider.layoutMode = 'NONE';
+  divider.resize(1, 12);
+  bindFill(divider, variables, 'semantic.border.subtle');
   const existingFooter = component.children.find(
     (child): child is TextNode => child.type === 'TEXT' && child.name === 'task-footer',
   );
   if (existingFooter) activity.appendChild(existingFooter);
   const activityDate = ensureText(activity, 'task-footer');
   configureText(activityDate, 'Mar 16, 2025', 8, false, variables, 'semantic.text.secondary');
-  reorderChildren(activity, [commentIcon, commentCount, activityDate]);
+  reorderChildren(activity, [comment, divider, activityDate]);
   reorderChildren(footer, [avatars, activity]);
-  reorderChildren(component, [meta, title, project, dueChip, footer]);
+  reorderChildren(component, [meta, content, dueChip, footer]);
   return component;
 }
 
@@ -1292,9 +1409,8 @@ function configureSidebar(
     renderId,
     'sidebar.search.icon',
     requireComponent(components, 'component.icon'),
-    { Name: 'Search' },
+    iconInstanceProperties('Search', 'MD'),
   );
-  searchIcon.resize(14, 14);
   const searchText = ensureManagedText(search, renderId, 'sidebar.search.label');
   configureText(
     searchText,
@@ -1326,9 +1442,8 @@ function configureSidebar(
       renderId,
       `sidebar.nav.${label.toLowerCase()}.icon`,
       requireComponent(components, 'component.icon'),
-      { Name: label as IconName },
+      iconInstanceProperties(label as IconName, 'MD'),
     );
-    icon.resize(mode === 'desktop' ? 14 : 16, mode === 'desktop' ? 14 : 16);
     const text = ensureManagedText(item, renderId, `sidebar.nav.${label.toLowerCase()}.label`);
     configureText(
       text,
@@ -1382,9 +1497,8 @@ function configureSidebar(
       renderId,
       `sidebar.footer-actions.${action.id}.icon`,
       requireComponent(components, 'component.icon'),
-      { Name: action.icon },
+      iconInstanceProperties(action.icon, 'MD'),
     );
-    icon.resize(14, 14);
     const label = ensureManagedText(
       row,
       renderId,
@@ -1512,17 +1626,15 @@ function configureTopbar(
     renderId,
     'topbar.utility-icons.settings.icon',
     requireComponent(components, 'component.icon'),
-    { Name: 'Settings' },
+    iconInstanceProperties('Settings', 'SM'),
   );
   const moreIcon = ensureManagedInstance(
     utilityIcons,
     renderId,
     'topbar.utility-icons.more.icon',
     requireComponent(components, 'component.icon'),
-    { Name: 'More' },
+    iconInstanceProperties('More', 'SM'),
   );
-  settingsIcon.resize(15, 15);
-  moreIcon.resize(15, 15);
   orderManagedChildren(utilityIcons, [settingsIcon, moreIcon]);
   removeStaleManagedChildren(
     utilityIcons,
@@ -1640,9 +1752,8 @@ function configureSummary(
     renderId,
     'summary.banner.icon',
     requireComponent(components, 'component.icon'),
-    { Name: 'Automation' },
+    iconInstanceProperties('Automation', 'MD'),
   );
-  bannerIcon.resize(14, 14);
   const bannerCopy = ensureManagedText(banner, renderId, 'summary.banner.copy');
   configureText(
     bannerCopy,
@@ -1782,9 +1893,8 @@ function configureToolbar(
       renderId,
       `toolbar.views.icons.${item.id}.icon`,
       requireComponent(components, 'component.icon'),
-      { Name: item.icon },
+      iconInstanceProperties(item.icon, 'MD'),
     );
-    icon.resize(13, 13);
     viewIconNodes.push(icon);
   }
   orderManagedChildren(viewIcons, viewIconNodes);
@@ -1835,9 +1945,8 @@ function configureToolbar(
       renderId,
       `toolbar.control-icons.${item.id}.icon`,
       requireComponent(components, 'component.icon'),
-      { Name: item.icon },
+      iconInstanceProperties(item.icon, 'MD'),
     );
-    icon.resize(13, 13);
     controlIconNodes.push(icon);
   }
   orderManagedChildren(controlIcons, controlIconNodes);
@@ -1917,7 +2026,7 @@ function configureBoardViewport(
       renderId,
       `board.column.${column.id}.badge`,
       requireComponent(components, 'component.badge'),
-      { Type: column.type },
+      { Type: column.type, Size: 'MD' },
     );
     overrideInstanceText(badge, 'badge-label', column.label);
     const menu = ensureManagedText(
@@ -1931,9 +2040,8 @@ function configureBoardViewport(
       renderId,
       `board.column.${column.id}.menu.icon`,
       requireComponent(components, 'component.icon'),
-      { Name: 'More' },
+      iconInstanceProperties('More', 'SM'),
     );
-    menuIcon.resize(13, 13);
     orderManagedChildren(header, [badge, menu, menuIcon]);
     removeStaleManagedChildren(
       header,
@@ -1974,9 +2082,8 @@ function configureBoardViewport(
       renderId,
       `board.column.${column.id}.add.icon`,
       requireComponent(components, 'component.icon'),
-      { Name: 'Plus' },
+      iconInstanceProperties('Plus', 'SM'),
     );
-    addIcon.resize(13, 13);
     const addText = ensureManagedText(
       add,
       renderId,
@@ -2075,7 +2182,7 @@ async function validateTasklifyStructure(
   }
   assertComponentSetGeometry(
     requireComponent(components, 'component.icon') as ComponentSetNode,
-    ICON_NAMES.length,
+    ICON_NAMES.length * ICON_SIZES.length * ICON_TONES.length,
   );
   assertComponentSetGeometry(
     requireComponent(components, 'component.button') as ComponentSetNode,
@@ -2083,7 +2190,7 @@ async function validateTasklifyStructure(
   );
   assertComponentSetGeometry(
     requireComponent(components, 'component.badge') as ComponentSetNode,
-    7,
+    7 * BADGE_SIZES.length,
   );
   if (
     desktopRenders.length !== 1 ||
@@ -2448,12 +2555,14 @@ function overrideNestedIcon(
   instance: InstanceNode,
   name: string,
   iconName: IconName,
+  size: IconSize = 'MD',
+  tone: IconTone = 'Inverse',
 ): void {
   const node = instance.findOne(
     (candidate) => candidate.type === 'INSTANCE' && candidate.name === name,
   ) as InstanceNode | null;
   if (!node) throw new Error(`Tasklify nested Icon Instance is missing: ${name}`);
-  node.setProperties({ Name: iconName });
+  node.setProperties(iconInstanceProperties(iconName, size, tone));
 }
 
 function applyTaskOverrides(
@@ -2479,7 +2588,7 @@ function applyTaskOverrides(
       candidate.type === 'INSTANCE' && candidate.name === 'task-priority',
   ) as InstanceNode | null;
   if (!priority) throw new Error('Tasklify Task Card priority Instance is missing');
-  priority.setProperties({ Type: data.priority });
+  priority.setProperties({ Type: data.priority, Size: 'SM' });
 }
 
 function bindFill(
@@ -2489,23 +2598,9 @@ function bindFill(
 ): void {
   const variable = requireVariable(variables, tokenId);
   const tokenHex = requireResolvedColor(tokenId);
-  const fills = node.fills === figma.mixed ? [] : [...node.fills];
-  const boundIndex = fills.findIndex(
-    (paint) =>
-      paint.type === 'SOLID' &&
-      paint.boundVariables?.color?.id === variable.id,
-  );
-  const existingIndex =
-    boundIndex >= 0
-      ? boundIndex
-      : fills.findIndex((paint) => paint.type === 'SOLID');
-  const existing = existingIndex >= 0 ? (fills[existingIndex] as SolidPaint) : undefined;
-  const paint = existing
-    ? figma.util.solidPaint(tokenHex, existing)
-    : figma.util.solidPaint(tokenHex);
+  const paint = canonicalSolidPaint(tokenHex);
   const bound = figma.variables.setBoundVariableForPaint(paint, 'color', variable);
-  if (existingIndex >= 0) fills[existingIndex] = bound;
-  else fills.push(bound);
+  const fills = [bound];
   node.fills = fills;
   assertCanonicalPaintBinding(
     node,
@@ -2523,25 +2618,20 @@ function bindStroke(
 ): void {
   const variable = requireVariable(variables, tokenId);
   const tokenHex = requireResolvedColor(tokenId);
-  const strokes = [...node.strokes];
-  const boundIndex = strokes.findIndex(
-    (paint) =>
-      paint.type === 'SOLID' &&
-      paint.boundVariables?.color?.id === variable.id,
-  );
-  const existingIndex =
-    boundIndex >= 0
-      ? boundIndex
-      : strokes.findIndex((paint) => paint.type === 'SOLID');
-  const existing = existingIndex >= 0 ? (strokes[existingIndex] as SolidPaint) : undefined;
-  const paint = existing
-    ? figma.util.solidPaint(tokenHex, existing)
-    : figma.util.solidPaint(tokenHex);
+  const paint = canonicalSolidPaint(tokenHex);
   const bound = figma.variables.setBoundVariableForPaint(paint, 'color', variable);
-  if (existingIndex >= 0) strokes[existingIndex] = bound;
-  else strokes.push(bound);
+  const strokes = [bound];
   node.strokes = strokes;
   assertCanonicalPaintBinding(node, node.strokes, variable, tokenId, 'Stroke');
+}
+
+function canonicalSolidPaint(tokenHex: string): SolidPaint {
+  return {
+    ...figma.util.solidPaint(tokenHex),
+    visible: true,
+    opacity: 1,
+    blendMode: 'NORMAL',
+  };
 }
 
 function assertCanonicalPaintBinding(
@@ -2554,9 +2644,9 @@ function assertCanonicalPaintBinding(
   const solidPaints = paints.filter(
     (paint): paint is SolidPaint => paint.type === 'SOLID',
   );
-  if (solidPaints.length === 0) {
+  if (paints.length !== 1 || solidPaints.length !== 1) {
     throw new Error(
-      `Tasklify Paint guard failed: ${node.name} has no SOLID ${role}`,
+      `Tasklify Paint guard failed: ${node.name} ${role} must contain exactly one SOLID Paint`,
     );
   }
   const boundPaints = solidPaints.filter(
@@ -2568,9 +2658,19 @@ function assertCanonicalPaintBinding(
     );
   }
   const expected = hexToRgb(requireResolvedColor(tokenId));
-  if (!colorsMatch(boundPaints[0].color, expected)) {
+  const canonicalPaint = boundPaints[0];
+  if (!colorsMatch(canonicalPaint.color, expected)) {
     throw new Error(
       `Tasklify Paint guard failed: ${node.name} ${role} base paint does not match ${tokenId}`,
+    );
+  }
+  if (
+    canonicalPaint.visible === false ||
+    (canonicalPaint.opacity ?? 1) !== 1 ||
+    (canonicalPaint.blendMode ?? 'NORMAL') !== 'NORMAL'
+  ) {
+    throw new Error(
+      `Tasklify Paint guard failed: ${node.name} ${role} visibility metadata is not canonical`,
     );
   }
   const resolved = variable.resolveForConsumer(node);
@@ -2723,6 +2823,36 @@ function requireExactVariants(
       throw new Error(`${set.name} has unexpected or duplicate Variant: ${variant.name}`);
     }
     result.set(variant.name, variant);
+  }
+  return result;
+}
+
+function reconcileContractVariants(
+  set: ComponentSetNode,
+  targetNames: string[],
+  migrateLegacyName: (legacyName: string) => string | undefined,
+): Map<string, ComponentNode> {
+  const targets = new Set(targetNames);
+  const result = new Map<string, ComponentNode>();
+  const variants = set.children.filter(
+    (child): child is ComponentNode => child.type === 'COMPONENT',
+  );
+  for (const variant of variants) {
+    const targetName = targets.has(variant.name)
+      ? variant.name
+      : migrateLegacyName(variant.name);
+    if (!targetName || !targets.has(targetName) || result.has(targetName)) {
+      throw new Error(`${set.name} has unexpected or duplicate Variant: ${variant.name}`);
+    }
+    variant.name = targetName;
+    result.set(targetName, variant);
+  }
+  for (const targetName of targetNames) {
+    if (result.has(targetName)) continue;
+    const variant = figma.createComponent();
+    variant.name = targetName;
+    set.appendChild(variant);
+    result.set(targetName, variant);
   }
   return result;
 }

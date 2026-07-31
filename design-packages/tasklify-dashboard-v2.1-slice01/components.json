@@ -19,7 +19,9 @@
         "nodeType": "COMPONENT_SET",
         "name": "Icon",
         "variantPropertyOrder": [
-          "Name"
+          "Name",
+          "Size",
+          "Tone"
         ]
       },
       "anatomy": {
@@ -65,6 +67,33 @@
           ],
           "target": "root",
           "description": "Stable icon name for the Slice-local deterministic SVG subset."
+        },
+        {
+          "id": "property.icon.size",
+          "name": "Size",
+          "kind": "variant",
+          "required": true,
+          "default": "MD",
+          "values": [
+            "SM",
+            "MD",
+            "LG"
+          ],
+          "target": "root",
+          "description": "Contract-owned icon size: SM=12, MD=16, LG=24."
+        },
+        {
+          "id": "property.icon.tone",
+          "name": "Tone",
+          "kind": "variant",
+          "required": true,
+          "default": "Default",
+          "values": [
+            "Default",
+            "Inverse"
+          ],
+          "target": "root",
+          "description": "Default uses primary text; Inverse uses the card surface token."
         }
       ],
       "slots": [],
@@ -80,11 +109,25 @@
       "tokenBindings": [
         {
           "target": "icon-vector.stroke",
+          "when": {
+            "Tone": "Default"
+          },
           "tokenRef": "semantic.text.primary"
+        },
+        {
+          "target": "icon-vector.stroke",
+          "when": {
+            "Tone": "Inverse"
+          },
+          "tokenRef": "semantic.surface.card"
         }
       ],
       "contentRules": {
-        "size": 24,
+        "sizes": {
+          "SM": 12,
+          "MD": 16,
+          "LG": 24
+        },
         "style": "local-linear"
       },
       "accessibility": {},
@@ -317,7 +360,8 @@
         "nodeType": "COMPONENT_SET",
         "name": "Badge",
         "variantPropertyOrder": [
-          "Type"
+          "Type",
+          "Size"
         ]
       },
       "anatomy": {
@@ -344,6 +388,19 @@
           ],
           "target": "root",
           "description": "Candidate visual/semantic variation inferred from the reference."
+        },
+        {
+          "id": "property.badge.size",
+          "name": "Size",
+          "kind": "variant",
+          "required": true,
+          "default": "MD",
+          "values": [
+            "SM",
+            "MD"
+          ],
+          "target": "root",
+          "description": "SM is used for Task Card priority; MD is used for Kanban status."
         }
       ],
       "slots": [],
@@ -678,16 +735,23 @@
             ]
           },
           {
-            "role": "title",
-            "kind": "text",
+            "role": "content",
+            "kind": "container",
             "required": true,
-            "children": []
-          },
-          {
-            "role": "project",
-            "kind": "text",
-            "required": true,
-            "children": []
+            "children": [
+              {
+                "role": "title",
+                "kind": "text",
+                "required": true,
+                "children": []
+              },
+              {
+                "role": "project",
+                "kind": "text",
+                "required": true,
+                "children": []
+              }
+            ]
           },
           {
             "role": "due-metadata",
@@ -720,16 +784,29 @@
                 "children": []
               },
               {
-                "role": "comment-metadata",
+                "role": "activity",
                 "kind": "container",
                 "required": true,
-                "children": []
-              },
-              {
-                "role": "activity-date",
-                "kind": "text",
-                "required": true,
-                "children": []
+                "children": [
+                  {
+                    "role": "comment-metadata",
+                    "kind": "container",
+                    "required": true,
+                    "children": []
+                  },
+                  {
+                    "role": "divider",
+                    "kind": "container",
+                    "required": true,
+                    "children": []
+                  },
+                  {
+                    "role": "activity-date",
+                    "kind": "text",
+                    "required": true,
+                    "children": []
+                  }
+                ]
               }
             ]
           }

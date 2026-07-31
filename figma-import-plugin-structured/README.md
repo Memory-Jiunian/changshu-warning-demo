@@ -15,7 +15,7 @@
 3. 选择 `Plugins -> Development -> Import plugin from manifest...`
 4. 选择：
 
-`C:\Users\18668\Documents\畅树UI重绘\figma-import-plugin-structured\manifest.json`
+`figma-import-plugin-structured\manifest.json`
 
 5. 运行：
 

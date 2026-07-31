@@ -23,6 +23,7 @@ const tasklifySource = await readFile(
   new URL('src/tasklify-slice01.ts', pluginRoot),
   'utf8',
 );
+const compilerReadme = await readFile(new URL('README.md', pluginRoot), 'utf8');
 const ui = await readFile(new URL('src/ui.html', pluginRoot), 'utf8');
 const tasklifyManifest = JSON.parse(
   await readFile(new URL('manifest.json', tasklifyRoot), 'utf8'),
@@ -669,6 +670,14 @@ const tasklifyIconNames =
   tasklifyIcon?.properties?.find(
     (property) => property.kind === 'variant' && property.name === 'Name',
   )?.values ?? [];
+const tasklifyIconSizes =
+  tasklifyIcon?.properties?.find(
+    (property) => property.kind === 'variant' && property.name === 'Size',
+  )?.values ?? [];
+const tasklifyIconTones =
+  tasklifyIcon?.properties?.find(
+    (property) => property.kind === 'variant' && property.name === 'Tone',
+  )?.values ?? [];
 assert(
   tasklifyIcon?.figma?.nodeType === 'COMPONENT_SET',
   'Tasklify Icon must be a Component Set',
@@ -679,18 +688,44 @@ assert(
   'Tasklify Icon subset names must be present and unique',
 );
 assert(
+  JSON.stringify(tasklifyIconSizes) === JSON.stringify(['SM', 'MD', 'LG']),
+  'Tasklify Icon Size contract must be exactly SM/MD/LG',
+);
+assert(
+  JSON.stringify(tasklifyIconTones) === JSON.stringify(['Default', 'Inverse']),
+  'Tasklify Icon Tone contract must be exactly Default/Inverse',
+);
+assert(
   tasklifyIcon.tokenBindings?.some(
     (binding) =>
       binding.target === 'icon-vector.stroke' &&
+      binding.when?.Tone === 'Default' &&
       binding.tokenRef === 'semantic.text.primary',
-  ),
-  'Tasklify Icon contract must bind its vector stroke to a Semantic Token',
+  ) &&
+    tasklifyIcon.tokenBindings?.some(
+      (binding) =>
+        binding.target === 'icon-vector.stroke' &&
+        binding.when?.Tone === 'Inverse' &&
+        binding.tokenRef === 'semantic.surface.card',
+    ),
+  'Tasklify Icon contract must bind Default and Inverse strokes to Semantic Tokens',
 );
 const tasklifyStatCard = tasklifyComponents.components.find(
   (component) => component.id === 'component.stat-card',
 );
 const tasklifyTaskCard = tasklifyComponents.components.find(
   (component) => component.id === 'component.task-card',
+);
+const tasklifyBadge = tasklifyComponents.components.find(
+  (component) => component.id === 'component.badge',
+);
+const tasklifyBadgeSizes =
+  tasklifyBadge?.properties?.find(
+    (property) => property.kind === 'variant' && property.name === 'Size',
+  )?.values ?? [];
+assert(
+  JSON.stringify(tasklifyBadgeSizes) === JSON.stringify(['SM', 'MD']),
+  'Tasklify Badge Size contract must be exactly SM/MD',
 );
 assert(
   tasklifyStatCard?.anatomy?.children?.some((child) => child.role === 'top-row') &&
@@ -699,10 +734,28 @@ assert(
   'Tasklify Stat Card contract must declare top/value/label anatomy',
 );
 assert(
-  ['meta-row', 'title', 'project', 'due-metadata', 'footer'].every((role) =>
+  ['meta-row', 'content', 'due-metadata', 'footer'].every((role) =>
     tasklifyTaskCard?.anatomy?.children?.some((child) => child.role === role),
   ),
   'Tasklify Task Card contract must declare the refined anatomy',
+);
+const tasklifyTaskContent = tasklifyTaskCard?.anatomy?.children?.find(
+  (child) => child.role === 'content',
+);
+const tasklifyTaskFooter = tasklifyTaskCard?.anatomy?.children?.find(
+  (child) => child.role === 'footer',
+);
+const tasklifyTaskActivity = tasklifyTaskFooter?.children?.find(
+  (child) => child.role === 'activity',
+);
+assert(
+  ['title', 'project'].every((role) =>
+    tasklifyTaskContent?.children?.some((child) => child.role === role),
+  ) &&
+    ['comment-metadata', 'divider', 'activity-date'].every((role) =>
+      tasklifyTaskActivity?.children?.some((child) => child.role === role),
+    ),
+  'Tasklify Task Card contract must group Content and Activity with a Divider',
 );
 
 const tasklifyScreen = tasklifyScreens.screens.find(
@@ -793,7 +846,13 @@ for (const geometryMarker of [
   );
 }
 for (const paintMarker of [
-  'figma.util.solidPaint(tokenHex, existing)',
+  'canonicalSolidPaint(tokenHex)',
+  'visible: true',
+  'opacity: 1',
+  "blendMode: 'NORMAL'",
+  'paints.length !== 1',
+  'must contain exactly one SOLID Paint',
+  'visibility metadata is not canonical',
   'paint.boundVariables?.color?.id === variable.id',
   'base paint does not match',
   'variable.resolveForConsumer(node)',
@@ -804,6 +863,10 @@ for (const paintMarker of [
     `Tasklify canonical Paint guard is missing: ${paintMarker}`,
   );
 }
+assert(
+  !tasklifySource.includes('figma.util.solidPaint(tokenHex, existing)'),
+  'Tasklify canonical Paint sync must not inherit untrusted Paint metadata',
+);
 assert(
   !tasklifySource.includes("solidPaint('#000000')") &&
     !tasklifySource.includes("solidPaint('#FFFFFF')"),
@@ -831,10 +894,13 @@ for (const unicodeFallback of [
   );
 }
 for (const anatomyMarker of [
+  "'task-content'",
   "'task-due-chip'",
   "'task-due-icon'",
+  "'task-comment'",
   "'task-comment-icon'",
   "'task-comment-count'",
+  "'task-activity-divider'",
   "'task-footer-row'",
   "'stat-icon-surface'",
   "'stat-icon'",
@@ -845,6 +911,68 @@ for (const anatomyMarker of [
     `Tasklify anatomy refinement is missing: ${anatomyMarker}`,
   );
 }
+assert(
+  !/\b(?:[A-Za-z]+Icon|icon)\.resize\(/.test(tasklifySource) &&
+    !tasklifySource.includes('.resize(13, 13)'),
+  'Tasklify Icon Instances must be sized only through Name/Size/Tone Variant properties',
+);
+assert(
+  tasklifySource.includes("const ICON_SIZES: IconSize[] = ['SM', 'MD', 'LG']") &&
+    tasklifySource.includes(
+      "const ICON_TONES: IconTone[] = ['Default', 'Inverse']",
+    ) &&
+    tasklifySource.includes('iconInstanceProperties('),
+  'Tasklify Icon runtime must implement the SM/MD/LG and Default/Inverse contract',
+);
+const reconcileVariantsStart = tasklifySource.indexOf(
+  'function reconcileContractVariants(',
+);
+const arrangeVariantsStart = tasklifySource.indexOf('function arrangeVariants(');
+assert(
+  reconcileVariantsStart >= 0 && arrangeVariantsStart > reconcileVariantsStart,
+  'Tasklify component recovery source boundaries not found',
+);
+const reconcileVariantsSource = tasklifySource.slice(
+  reconcileVariantsStart,
+  arrangeVariantsStart,
+);
+assert(
+  tasklifySource.includes(
+    "iconVariantName(legacy[1] as IconName, 'LG', 'Default')",
+  ) &&
+    tasklifySource.includes("badgeVariantName(legacy[1], 'MD')") &&
+    reconcileVariantsSource.includes('set.appendChild(variant)') &&
+    !reconcileVariantsSource.includes('.remove()'),
+  'Tasklify component recovery must migrate legacy nodes in place and append only missing variants',
+);
+assert(
+  compilerReadme.includes('Type=urgent, Size=SM') &&
+    compilerReadme.includes('paddingTop') &&
+    compilerReadme.includes('40') &&
+    compilerReadme.includes('Variant node ID remains unchanged'),
+  'Tasklify README must retain the manual urgent/SM property recovery test',
+);
+assert(
+  tasklifySource.includes("const BADGE_SIZES: BadgeSize[] = ['SM', 'MD']") &&
+    !tasklifySource.includes('component.paddingTop = 5') &&
+    !tasklifySource.includes('component.paddingBottom = 5') &&
+    tasklifySource.includes(
+      "bindNumeric(component, 'paddingTop', variables, 'semantic.spacing.compact')",
+    ),
+  'Tasklify Badge runtime must use Size variants and Variable-bound vertical padding',
+);
+assert(
+  tasklifySource.includes(
+    "bindFill(iconSurface, variables, 'semantic.action.primary')",
+  ) &&
+    tasklifySource.includes(
+      "iconInstanceProperties('Reporting', 'MD', 'Inverse')",
+    ) &&
+    tasklifySource.includes(
+      "iconInstanceProperties('ChevronDown', 'SM')",
+    ),
+  'Tasklify Stat Card must use a dark icon surface with inverse MD icon and SM chevron',
+);
 assert(
   tasklifySource.includes('if (!screen)') &&
     tasklifySource.includes('Tasklify render node identity changed during UPDATE'),
@@ -948,7 +1076,7 @@ assert(
 );
 
 console.log(
-  `Pilot 03B + Tasklify V2 Slice 01B verification passed: Package/alias validation, fail-before-mutation preflight, canonical Paint guards, compact Component Sets, local Icon Instances, deterministic renders, and Pilot paths retained. Runtime visual acceptance remains manual in Figma.`,
+  `Pilot 03B + Tasklify V2 Slice 01B.1 verification passed: fail-before-mutation preflight retained, deterministic canonical Paint visibility, Icon Name/Size/Tone, Badge Type/Size, refined Task/Stat anatomy, recovery contracts, and Pilot paths retained. Runtime visual acceptance remains manual in Figma.`,
 );
 
 function assert(condition, message) {

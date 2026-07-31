@@ -63,9 +63,13 @@ Supported V2.1 subset:
 - `figmaRepresentation.kind = variable` only.
 - Native `Icon`, `Button`, and `Badge` Component Sets plus `Stat Card` and
   `Task Card` Components. `Icon` is a deterministic, offline, Slice-local SVG
-  subset; it is not a general icon library.
+  subset with `Name × Size (SM/MD/LG) × Tone (Default/Inverse)` Variants; it is
+  not a general icon library.
 - Contract-derived Component descriptions, Auto Layout, Semantic Variable
-  bindings, Button/Badge Variant Properties, and nested Badge reuse.
+  bindings, Button/Badge Variant Properties, nested Badge reuse, and
+  `Type × Size (SM/MD)` Badge Variants.
+- Slice-managed single-color fills and strokes are canonicalized to one visible,
+  fully opaque, normal-blend SolidPaint before binding the target Variable.
 - One controlled `screen.tasklify.dashboard-overview` renderer with Desktop
   `975 × 694` and Tablet `834 × 1112` outputs.
 
@@ -139,10 +143,17 @@ After rebuilding and restarting the Plugin:
     identity: summary.heading` and no Variable, Component, Desktop, or Tablet
     object was modified.
 11. Confirm Button has exactly two visible, non-overlapping, positive-size
-    Variants inside compact Set bounds; Badge has seven with the same guarantees.
+    Variants inside compact Set bounds; Icon has 114 (`19 × 3 × 2`) and Badge
+    has 14 (`7 × 2`) with the same guarantees.
 12. Confirm Task Card uses Link/Calendar/Comment Icon Instances, a separate due
-    surface, avatar placeholders, comment count, and activity date. Confirm Stat
-    Card uses an icon surface and View Details action.
+    surface, Content group, avatar placeholders, comment count/divider/activity
+    hierarchy, and no resized Icon Instance. Confirm Stat Card uses a black 28px
+    icon surface, inverse MD icon, and SM View Details chevron.
+13. Record the node ID of `Badge / Type=urgent, Size=SM`, set its `paddingTop`
+    manually to `40`, and run a normal Sync. Confirm `paddingTop` returns to the
+    Variable-bound Contract value while the Variant node ID remains unchanged.
+    This verifies Component recovery; it is separate from identity preflight and
+    must not delete/recreate the Component or Component Set.
 
 The plugin creates missing Pilot objects and updates existing ones in place: one
 `Pilot Design System` local variable collection, five local variables, a

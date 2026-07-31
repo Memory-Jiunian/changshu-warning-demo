@@ -641,6 +641,24 @@
       "alias": "primitive.color.purple.500"
     },
     {
+      "id": "semantic.spacing.compact",
+      "figmaName": "semantic/spacing/compact",
+      "name": "Compact",
+      "description": "Smallest approved semantic spacing for compact component padding and hierarchy.",
+      "category": "spacing",
+      "type": "FLOAT",
+      "figmaRepresentation": {
+        "kind": "variable",
+        "collectionRef": "collection.foundation.reference"
+      },
+      "sourceRefs": [
+        "source.upload.render"
+      ],
+      "confidence": "medium",
+      "reviewStatus": "reviewed",
+      "alias": "primitive.spacing.4"
+    },
+    {
       "id": "semantic.spacing.inline-tight",
       "figmaName": "semantic/spacing/inline-tight",
       "name": "Inline tight",

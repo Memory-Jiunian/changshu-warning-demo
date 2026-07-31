@@ -10,7 +10,7 @@ Plugins -> Development -> Import plugin from manifest...
 
 选择：
 
-C:\Users\18668\Documents\畅树UI重绘\figma-import-plugin-dom\manifest.json
+figma-import-plugin-dom\manifest.json
 
 然后运行：
 
