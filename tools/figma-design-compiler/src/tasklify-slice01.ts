@@ -118,6 +118,13 @@ type SyncResult = {
   variableCount: number;
 };
 
+type GalleryBounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+
 type ContainerNode = PageNode | FrameNode | ComponentNode | ComponentSetNode;
 type AutoLayoutNode = FrameNode | ComponentNode;
 type PaintNode = FrameNode | ComponentNode | TextNode | RectangleNode | EllipseNode;
@@ -189,6 +196,10 @@ const ICON_NAMES: IconName[] = [
 const ICON_SIZES: IconSize[] = ['SM', 'MD', 'LG'];
 const ICON_TONES: IconTone[] = ['Default', 'Inverse'];
 const BADGE_SIZES: BadgeSize[] = ['SM', 'MD'];
+const GALLERY_ORIGIN_X = 0;
+const GALLERY_ORIGIN_Y = 0;
+const GALLERY_GAP = 64;
+const SCREEN_GAP = 120;
 const ICON_PIXELS: Record<IconSize, number> = {
   SM: 12,
   MD: 16,
@@ -361,6 +372,7 @@ export async function syncTasklifySlice01(): Promise<SyncResult> {
   await preflightTasklifySlice();
   const { collection, variables } = await syncTasklifyVariables();
   const components = await syncTasklifyComponents(variables);
+  const galleryBounds = layoutTasklifyComponentGallery(components);
   const desktop = await syncTasklifyRender(
     'desktop',
     DESKTOP_RENDER_ID,
@@ -369,6 +381,8 @@ export async function syncTasklifySlice01(): Promise<SyncResult> {
     187,
     components,
     variables,
+    galleryBounds.maxX + SCREEN_GAP,
+    galleryBounds.minY,
   );
   const tablet = await syncTasklifyRender(
     'tablet',
@@ -378,6 +392,12 @@ export async function syncTasklifySlice01(): Promise<SyncResult> {
     requireTabletBreakpoint(requireTasklifyScreen()).behavior.sidebar.widthCandidate,
     components,
     variables,
+    desktop.x + desktop.width + SCREEN_GAP,
+    desktop.y,
+  );
+  assertTopLevelNodesDoNotOverlap(
+    [...components.values(), desktop, tablet],
+    'Tasklify Gallery and Screens',
   );
   await validateTasklifyStructure(collection, variables, components, desktop, tablet);
   return { selection: [desktop, tablet], variableCount: variables.size };
@@ -705,6 +725,58 @@ async function syncTasklifyComponents(
   ]);
 }
 
+function layoutTasklifyComponentGallery(
+  components: Map<string, ComponentNode | ComponentSetNode>,
+): GalleryBounds {
+  const orderedIds = [
+    'component.button',
+    'component.badge',
+    'component.stat-card',
+    'component.task-card',
+    'component.icon',
+  ] as const;
+  const nodes = orderedIds.map((componentId) => {
+    const node = components.get(componentId);
+    if (!node) throw new Error(`Tasklify Gallery is missing Component: ${componentId}`);
+    return node;
+  });
+  let nextY = GALLERY_ORIGIN_Y;
+  let maxX = GALLERY_ORIGIN_X;
+  for (const node of nodes) {
+    node.x = GALLERY_ORIGIN_X;
+    node.y = nextY;
+    maxX = Math.max(maxX, node.x + node.width);
+    nextY = node.y + node.height + GALLERY_GAP;
+  }
+  assertTopLevelNodesDoNotOverlap(nodes, 'Tasklify Component Gallery');
+  return {
+    minX: GALLERY_ORIGIN_X,
+    minY: GALLERY_ORIGIN_Y,
+    maxX,
+    maxY: nextY - GALLERY_GAP,
+  };
+}
+
+function assertTopLevelNodesDoNotOverlap(
+  nodes: SceneNode[],
+  scope: string,
+): void {
+  for (let firstIndex = 0; firstIndex < nodes.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < nodes.length; secondIndex += 1) {
+      const first = nodes[firstIndex];
+      const second = nodes[secondIndex];
+      const overlaps =
+        first.x < second.x + second.width &&
+        first.x + first.width > second.x &&
+        first.y < second.y + second.height &&
+        first.y + first.height > second.y;
+      if (overlaps) {
+        throw new Error(`${scope} nodes overlap: ${first.name} / ${second.name}`);
+      }
+    }
+  }
+}
+
 async function findTasklifyComponents(): Promise<
   Map<string, ComponentNode | ComponentSetNode>
 > {
@@ -757,8 +829,6 @@ function syncIcon(
       return component;
     });
     componentSet = figma.combineAsVariants(components, figma.currentPage);
-    componentSet.x = 440;
-    componentSet.y = 320;
   } else {
     if (existing.type !== 'COMPONENT_SET') {
       throw new Error('Tasklify Icon identity points to a non-Component Set');
@@ -897,17 +967,13 @@ function syncButton(
   const types = requireVariantValues(definition, 'Type');
   let componentSet: ComponentSetNode;
   if (!existing) {
-    const variants = types.map((type, index) => {
+    const variants = types.map((type) => {
       const component = figma.createComponent();
       component.name = `Type=${type}`;
-      component.x = index * 180;
-      component.y = 0;
       configureButtonVariant(component, type, variables);
       return component;
     });
     componentSet = figma.combineAsVariants(variants, figma.currentPage);
-    componentSet.x = 0;
-    componentSet.y = 0;
   } else {
     if (existing.type !== 'COMPONENT_SET') {
       throw new Error('Tasklify Button identity points to a non-Component Set');
@@ -976,17 +1042,13 @@ function syncBadge(
   );
   let componentSet: ComponentSetNode;
   if (!existing) {
-    const components = variants.map(({ type, size, key }, index) => {
+    const components = variants.map(({ type, size, key }) => {
       const component = figma.createComponent();
       component.name = key;
-      component.x = (index % 4) * 150;
-      component.y = Math.floor(index / 4) * 52;
       configureBadgeVariant(component, type, size, variables);
       return component;
     });
     componentSet = figma.combineAsVariants(components, figma.currentPage);
-    componentSet.x = 0;
-    componentSet.y = 140;
   } else {
     if (existing.type !== 'COMPONENT_SET') {
       throw new Error('Tasklify Badge identity points to a non-Component Set');
@@ -1059,8 +1121,6 @@ function syncStatCard(
   let component: ComponentNode;
   if (!existing) {
     component = figma.createComponent();
-    component.x = 0;
-    component.y = 320;
   } else {
     if (existing.type !== 'COMPONENT') {
       throw new Error('Tasklify Stat Card identity points to a non-Component');
@@ -1072,9 +1132,6 @@ function syncStatCard(
   tagComponent(component, definition.id);
   configureAutoLayout(component, 'VERTICAL', 12, 8);
   bindNumeric(component, 'itemSpacing', variables, 'semantic.spacing.inline-tight');
-  component.resize(170, 112);
-  component.primaryAxisSizingMode = 'FIXED';
-  component.counterAxisSizingMode = 'FIXED';
   bindNumeric(component, 'paddingLeft', variables, 'semantic.spacing.component');
   bindNumeric(component, 'paddingRight', variables, 'semantic.spacing.component');
   bindNumeric(component, 'paddingTop', variables, 'semantic.spacing.component');
@@ -1124,6 +1181,7 @@ function syncStatCard(
   const label = ensureText(component, 'stat-label');
   configureText(label, 'Active Employees', 10, false, variables, 'semantic.text.secondary');
   reorderChildren(component, [top, value, label]);
+  configureFixedWidthHugHeight(component, 170);
   return component;
 }
 
@@ -1137,8 +1195,6 @@ function syncTaskCard(
   let component: ComponentNode;
   if (!existing) {
     component = figma.createComponent();
-    component.x = 220;
-    component.y = 320;
   } else {
     if (existing.type !== 'COMPONENT') {
       throw new Error('Tasklify Task Card identity points to a non-Component');
@@ -1150,9 +1206,6 @@ function syncTaskCard(
   tagComponent(component, definition.id);
   configureAutoLayout(component, 'VERTICAL', 12, 12);
   bindNumeric(component, 'itemSpacing', variables, 'semantic.spacing.component');
-  component.resize(180, 184);
-  component.primaryAxisSizingMode = 'FIXED';
-  component.counterAxisSizingMode = 'FIXED';
   bindNumeric(component, 'paddingLeft', variables, 'semantic.spacing.component');
   bindNumeric(component, 'paddingRight', variables, 'semantic.spacing.component');
   bindNumeric(component, 'paddingTop', variables, 'semantic.spacing.component');
@@ -1291,6 +1344,7 @@ function syncTaskCard(
   reorderChildren(activity, [comment, divider, activityDate]);
   reorderChildren(footer, [avatars, activity]);
   reorderChildren(component, [meta, content, dueChip, footer]);
+  configureFixedWidthHugHeight(component, 180);
   return component;
 }
 
@@ -1302,6 +1356,8 @@ async function syncTasklifyRender(
   sidebarWidth: number,
   components: Map<string, ComponentNode | ComponentSetNode>,
   variables: Map<string, Variable>,
+  x: number,
+  y: number,
 ): Promise<FrameNode> {
   const existingMatches = await findTasklifyRenders(renderId);
   if (existingMatches.length > 1) throw new Error(`Duplicate Tasklify render ID: ${renderId}`);
@@ -1309,9 +1365,9 @@ async function syncTasklifyRender(
   const existingNodeId = screen?.id;
   if (!screen) {
     screen = figma.createFrame();
-    screen.x = mode === 'desktop' ? 760 : 1780;
-    screen.y = 0;
   }
+  screen.x = x;
+  screen.y = y;
   screen.name = `Tasklify / Dashboard Overview / ${mode === 'desktop' ? 'Desktop' : 'Tablet 834'}`;
   screen.resize(width, height);
   screen.layoutMode = 'HORIZONTAL';
@@ -2393,6 +2449,15 @@ function configureAutoLayout(
   node.paddingTop = padding;
   node.paddingBottom = padding;
   node.itemSpacing = gap;
+}
+
+function configureFixedWidthHugHeight(
+  node: ComponentNode,
+  width: number,
+): void {
+  node.resize(width, Math.max(1, node.height));
+  node.counterAxisSizingMode = 'FIXED';
+  node.primaryAxisSizingMode = 'AUTO';
 }
 
 function configureFixedFrame(

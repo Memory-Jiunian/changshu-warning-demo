@@ -973,6 +973,129 @@ assert(
     ),
   'Tasklify Stat Card must use a dark icon surface with inverse MD icon and SM chevron',
 );
+const syncIconStart = tasklifySource.indexOf('function syncIcon(');
+const syncButtonStart = tasklifySource.indexOf('function syncButton(');
+const syncBadgeStart = tasklifySource.indexOf('function syncBadge(');
+const syncStatCardStart = tasklifySource.indexOf('function syncStatCard(');
+const syncTaskCardStart = tasklifySource.indexOf('function syncTaskCard(');
+const syncRenderStart = tasklifySource.indexOf('async function syncTasklifyRender(');
+const findRendersStart = tasklifySource.indexOf('async function findTasklifyRenders(');
+assert(
+  syncIconStart >= 0 &&
+    syncButtonStart > syncIconStart &&
+    syncBadgeStart > syncButtonStart &&
+    syncStatCardStart > syncBadgeStart &&
+    syncTaskCardStart > syncStatCardStart &&
+    syncRenderStart > syncTaskCardStart &&
+    findRendersStart > syncRenderStart,
+  'Tasklify Component and render source boundaries not found',
+);
+const statCardSource = tasklifySource.slice(syncStatCardStart, syncTaskCardStart);
+const taskCardSource = tasklifySource.slice(syncTaskCardStart, syncRenderStart);
+assert(
+  statCardSource.includes('configureFixedWidthHugHeight(component, 170)') &&
+    taskCardSource.includes('configureFixedWidthHugHeight(component, 180)') &&
+    !statCardSource.includes('component.resize(170, 112)') &&
+    !taskCardSource.includes('component.resize(180, 184)') &&
+    !statCardSource.includes("component.primaryAxisSizingMode = 'FIXED'") &&
+    !taskCardSource.includes("component.primaryAxisSizingMode = 'FIXED'"),
+  'Tasklify Stat/Task Card must retain fixed width without a fixed-height contract',
+);
+const hugSizingStart = tasklifySource.indexOf(
+  'function configureFixedWidthHugHeight(',
+);
+const fixedFrameStart = tasklifySource.indexOf('function configureFixedFrame(');
+assert(
+  hugSizingStart >= 0 && fixedFrameStart > hugSizingStart,
+  'Tasklify fixed-width/Hug-height helper source boundaries not found',
+);
+const hugSizingSource = tasklifySource.slice(hugSizingStart, fixedFrameStart);
+assert(
+  hugSizingSource.indexOf('node.resize(width, Math.max(1, node.height))') >= 0 &&
+    hugSizingSource.indexOf("node.counterAxisSizingMode = 'FIXED'") >
+      hugSizingSource.indexOf('node.resize(width, Math.max(1, node.height))') &&
+    hugSizingSource.indexOf("node.primaryAxisSizingMode = 'AUTO'") >
+      hugSizingSource.indexOf("node.counterAxisSizingMode = 'FIXED'"),
+  'Tasklify Stat/Task Card final sizing must be W Fixed and H Hug after resize',
+);
+assert(
+  compilerReadme.includes('Stat Card: `W Fixed`, `H Hug`') &&
+    compilerReadme.includes('Task Card: `W Fixed`, `H Hug`') &&
+    compilerReadme.includes('height adapts naturally') &&
+    compilerReadme.includes('Screen Instances continue to inherit correctly'),
+  'Tasklify README must include the Stat/Task W Fixed and H Hug Runtime checklist',
+);
+
+const galleryStart = tasklifySource.indexOf(
+  'function layoutTasklifyComponentGallery(',
+);
+const tasklifyComponentLookupStart = tasklifySource.indexOf(
+  'async function findTasklifyComponents(',
+);
+assert(
+  galleryStart >= 0 && tasklifyComponentLookupStart > galleryStart,
+  'Tasklify Component Gallery source boundaries not found',
+);
+const gallerySource = tasklifySource.slice(
+  galleryStart,
+  tasklifyComponentLookupStart,
+);
+for (const componentId of [
+  'component.button',
+  'component.badge',
+  'component.stat-card',
+  'component.task-card',
+  'component.icon',
+]) {
+  assert(
+    gallerySource.includes(`'${componentId}'`),
+    `Tasklify Component Gallery is missing: ${componentId}`,
+  );
+}
+assert(
+  gallerySource.includes('node.width') &&
+    gallerySource.includes('node.height') &&
+    gallerySource.includes('GALLERY_GAP') &&
+    gallerySource.includes('assertTopLevelNodesDoNotOverlap('),
+  'Tasklify Component Gallery must place assets from actual bounds with deterministic gaps',
+);
+for (const [start, end, componentName] of [
+  [syncIconStart, syncButtonStart, 'Icon'],
+  [syncButtonStart, syncBadgeStart, 'Button'],
+  [syncBadgeStart, syncStatCardStart, 'Badge'],
+  [syncStatCardStart, syncTaskCardStart, 'Stat Card'],
+  [syncTaskCardStart, syncRenderStart, 'Task Card'],
+]) {
+  const componentSource = tasklifySource.slice(start, end);
+  assert(
+    !/\b(?:component|componentSet)\.[xy]\s*=/.test(componentSource),
+    `Tasklify ${componentName} sync must not own top-level x/y placement`,
+  );
+}
+assert(
+  tasklifySyncSource.includes(
+    'const galleryBounds = layoutTasklifyComponentGallery(components)',
+  ) &&
+    tasklifySyncSource.includes('galleryBounds.maxX + SCREEN_GAP') &&
+    tasklifySyncSource.includes('desktop.x + desktop.width + SCREEN_GAP') &&
+    tasklifySyncSource.includes('assertTopLevelNodesDoNotOverlap(') &&
+    tasklifySyncSource.includes('[...components.values(), desktop, tablet]') &&
+    syncRenderStart >= 0,
+  'Tasklify Desktop/Tablet placement must derive from Gallery and prior Screen bounds',
+);
+const syncRenderSource = tasklifySource.slice(syncRenderStart, findRendersStart);
+assert(
+  syncRenderSource.includes('screen.x = x') &&
+    syncRenderSource.includes('screen.y = y') &&
+    !syncRenderSource.includes("mode === 'desktop' ? 760 : 1780"),
+  'Tasklify render placement must be deterministic on CREATE and UPDATE',
+);
+assert(
+  compilerReadme.includes('non-overlapping top-level gallery') &&
+    compilerReadme.includes('Desktop starts after the gallery') &&
+    compilerReadme.includes('Tablet starts after Desktop'),
+  'Tasklify README must include Component Gallery and Screen separation Runtime checks',
+);
 assert(
   tasklifySource.includes('if (!screen)') &&
     tasklifySource.includes('Tasklify render node identity changed during UPDATE'),
@@ -1076,7 +1199,7 @@ assert(
 );
 
 console.log(
-  `Pilot 03B + Tasklify V2 Slice 01B.1 verification passed: fail-before-mutation preflight retained, deterministic canonical Paint visibility, Icon Name/Size/Tone, Badge Type/Size, refined Task/Stat anatomy, recovery contracts, and Pilot paths retained. Runtime visual acceptance remains manual in Figma.`,
+  `Pilot 03B + Tasklify V2 Slice 01B.2 verification passed: fail-before-mutation preflight and 01B.1 contracts retained; Stat/Task fixed-width Hug-height sizing, bounds-driven Component Gallery, and deterministic Screen separation are statically verified. Runtime visual acceptance remains manual in Figma.`,
 );
 
 function assert(condition, message) {

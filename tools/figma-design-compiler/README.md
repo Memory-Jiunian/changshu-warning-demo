@@ -154,6 +154,17 @@ After rebuilding and restarting the Plugin:
     Variable-bound Contract value while the Variant node ID remains unchanged.
     This verifies Component recovery; it is separate from identity preflight and
     must not delete/recreate the Component or Component Set.
+14. Select the top-level Stat Card and Task Card Components and confirm the Figma
+    right-side Resizing controls report:
+    - Stat Card: `W Fixed`, `H Hug`
+    - Task Card: `W Fixed`, `H Hug`
+    Record both Component node IDs, run Sync repeatedly, and confirm the settings
+    and node IDs remain stable. Change managed text content and confirm Component
+    height adapts naturally while Screen Instances continue to inherit correctly.
+15. Confirm Icon, Button, Badge, Stat Card, and Task Card form a deterministic
+    non-overlapping top-level gallery. Confirm Desktop starts after the gallery
+    bounds and Tablet starts after Desktop with stable gaps. Run Sync repeatedly
+    and confirm all top-level positions remain stable.
 
 The plugin creates missing Pilot objects and updates existing ones in place: one
 `Pilot Design System` local variable collection, five local variables, a
