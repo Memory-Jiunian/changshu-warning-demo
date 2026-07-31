@@ -30,6 +30,7 @@ export function ConfirmDialog({
       open={open}
       title={title}
       description={description}
+      dismissible={!submitting}
       onClose={onCancel}
       footer={
         <>

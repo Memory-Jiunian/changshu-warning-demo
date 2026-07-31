@@ -241,7 +241,7 @@ export function RetestReminderPage({
         description="本操作只记录提醒动作，不代表学生已经完成复测。"
         confirmLabel={submitError ? '重试确认' : '确认已提醒'}
         submitting={loading}
-        onCancel={() => !loading && setDialogOpen(false)}
+        onCancel={() => setDialogOpen(false)}
         onConfirm={() => void confirm()}
       >
         <dl className="mvp-confirm-summary">

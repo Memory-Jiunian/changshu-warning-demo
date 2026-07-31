@@ -731,15 +731,13 @@
 .ui-sheet__overlay {
   position: absolute;
   inset: 0;
-  width: 100%;
-  border: 0;
   background: rgba(21, 26, 51, 0.32);
 }
 
 .ui-sheet__panel {
   position: relative;
   z-index: 1;
-  width: min(100%, 430px);
+  width: min(430px, calc(100vw - 16px));
   max-height: min(82vh, 720px);
   overflow: auto;
   border: 1px solid var(--color-border-glass);
@@ -782,6 +780,11 @@
   background: rgba(255, 255, 255, 0.74);
   font-size: 24px;
   line-height: 1;
+}
+
+.ui-sheet__close:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
 }
 
 .ui-sheet__body {
