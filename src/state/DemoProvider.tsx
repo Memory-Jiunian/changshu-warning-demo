@@ -14,6 +14,7 @@ import type {
   ObservationRecord,
   SupervisionInput,
   SupervisionRecord,
+  CurrentSupervisionInput,
 } from '../domain/feedback';
 import type { Result } from '../domain/result';
 import type { StudentProfile } from '../domain/students';
@@ -35,6 +36,7 @@ import { createDemoRepository, type DemoSnapshot } from '../data/demoRepository'
 import { toLegacyWarningTasks } from '../data/legacyAdapter';
 import type { WarningTask } from '../mockData';
 import { getTaskCounts, getTeacherPendingTaskCount } from '../selectors/taskSelectors';
+import type { GradeDirectorSupervisionItem } from '../selectors/gradeDirectorSelectors';
 
 interface DemoContextValue {
   currentRole: UserRole;
@@ -51,6 +53,7 @@ interface DemoContextValue {
   interventionReminderRecords: InterventionReminderRecord[];
   teacherActionItems: TeacherActionItem[];
   teacherActionDataIssues: TeacherActionDataIssue[];
+  gradeDirectorSupervisionItems: GradeDirectorSupervisionItem[];
   legacyTasks: WarningTask[];
   now: string;
   pendingCount: number;
@@ -80,6 +83,7 @@ interface DemoContextValue {
     input: InterventionReminderConfirmationInput,
   ) => Promise<Result<InterventionReminderRecord>>;
   addSupervisionRecord: (taskId: string, input: SupervisionInput) => Promise<Result<SupervisionRecord>>;
+  addCurrentSupervisionRecord: (sourceActionId: string, input: CurrentSupervisionInput) => Promise<Result<SupervisionRecord>>;
   simulateNextWriteFailure: () => void;
   reload: () => void;
 }
@@ -162,6 +166,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       interventionReminderRecords: snapshot.interventionReminderRecords,
       teacherActionItems: snapshot.teacherActionItems,
       teacherActionDataIssues: snapshot.teacherActionDataIssues,
+      gradeDirectorSupervisionItems: snapshot.gradeDirectorSupervisionItems,
       legacyTasks,
       now: snapshot.now,
       pendingCount,
@@ -193,6 +198,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         ),
       addSupervisionRecord: (taskId, input) =>
         runWrite(() => repository.addSupervisionRecord(taskId, input)),
+      addCurrentSupervisionRecord: (sourceActionId, input) =>
+        runWrite(() => repository.addCurrentSupervisionRecord(sourceActionId, input)),
       simulateNextWriteFailure: () => repository.simulateNextWriteFailure(),
       reload: refresh,
     }),
@@ -220,6 +227,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       snapshot.tasks,
       snapshot.teacherActionItems,
       snapshot.teacherActionDataIssues,
+      snapshot.gradeDirectorSupervisionItems,
       snapshot.users,
       switchDemoRole,
     ],

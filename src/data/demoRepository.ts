@@ -7,6 +7,7 @@ import type {
   ObservationRecord,
   SupervisionInput,
   SupervisionRecord,
+  CurrentSupervisionInput,
 } from '../domain/feedback';
 import { err, ok, type Result } from '../domain/result';
 import type { StudentProfile } from '../domain/students';
@@ -41,6 +42,8 @@ import {
   getTeacherActionDataIssues,
   getTeacherActionItems,
 } from '../selectors/teacherActionSelectors';
+import { getGradeDirectorSupervisionItems } from '../selectors/gradeDirectorSelectors';
+import type { GradeDirectorSupervisionItem } from '../selectors/gradeDirectorSelectors';
 import {
   mockAbnormalReports,
   mockObservationRecords,
@@ -70,6 +73,7 @@ export interface DemoSnapshot {
   interventionReminderRecords: InterventionReminderRecord[];
   teacherActionItems: TeacherActionItem[];
   teacherActionDataIssues: TeacherActionDataIssue[];
+  gradeDirectorSupervisionItems: GradeDirectorSupervisionItem[];
   drafts: Draft[];
   now: string;
 }
@@ -231,6 +235,18 @@ export class DemoRepository {
     );
   }
 
+  getGradeDirectorSupervisionItems(user = this.requireCurrentUser()) {
+    const actions = this.users
+      .filter((candidate) => candidate.role === 'head_teacher')
+      .flatMap((teacher) => this.getTeacherActionItems(teacher));
+    return clone(getGradeDirectorSupervisionItems({
+      director: user,
+      actions,
+      users: this.users,
+      records: this.supervisionRecords,
+    }));
+  }
+
   getAbnormalReportById(
     reportId: string,
     user = this.requireCurrentUser(),
@@ -317,6 +333,7 @@ export class DemoRepository {
         interventionReminderRecords,
         teacherActionItems: this.getTeacherActionItems(currentUser),
         teacherActionDataIssues: this.getTeacherActionDataIssues(currentUser),
+        gradeDirectorSupervisionItems: this.getGradeDirectorSupervisionItems(currentUser),
         drafts: this.drafts.filter((draft) => draft.userId === currentUser.id),
         now: this.nowIso,
       }),
@@ -584,6 +601,47 @@ export class DemoRepository {
       method: input.method,
       summary: input.summary.trim(),
       createdAt: this.nowIso,
+    };
+    this.supervisionRecords.push(record);
+    this.persist();
+    return ok(clone(record));
+  }
+
+  async addCurrentSupervisionRecord(
+    sourceActionId: string,
+    input: CurrentSupervisionInput,
+  ): Promise<Result<SupervisionRecord>> {
+    await this.wait();
+    const user = this.requireCurrentUser();
+    if (user.role !== 'grade_director') {
+      return err('SUPERVISION_FORBIDDEN', '只有年级主任可以记录督办');
+    }
+    const action = this.getGradeDirectorSupervisionItems(user).find(
+      (item) => item.id === sourceActionId,
+    );
+    if (!action) return err('SUPERVISION_ACTION_NOT_FOUND', '督办事项不存在或已失效');
+    if (!input.submissionRequestId.trim()) return err('REQUEST_ID_REQUIRED', '缺少提交请求编号');
+    if (input.method === 'other' && !input.otherMethod?.trim()) {
+      return err('SUPERVISION_METHOD_REQUIRED', '请填写其他督办方式');
+    }
+    const submission = this.beginRequest(input.submissionRequestId);
+    if ('code' in submission) return err(submission.code, submission.message);
+
+    const method = input.method === 'other' ? 'message' : input.method;
+    const record: SupervisionRecord = {
+      id: this.nextId('supervision'),
+      taskId: action.target.name === 'intervention' ? action.sourceId : action.target.taskId,
+      supervisorId: user.id,
+      method,
+      summary: input.otherMethod?.trim() || '已向责任班主任发送督办提醒',
+      createdAt: this.nowIso,
+      sourceActionId: action.id,
+      sourceKind: action.kind,
+      studentId: action.student.id,
+      responsibleTeacherId: action.assigneeId,
+      supervisedByNameSnapshot: user.name,
+      otherMethod: input.otherMethod?.trim() || undefined,
+      submissionRequestId: input.submissionRequestId,
     };
     this.supervisionRecords.push(record);
     this.persist();

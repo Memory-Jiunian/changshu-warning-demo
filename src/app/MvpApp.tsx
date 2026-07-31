@@ -24,6 +24,7 @@ import { TeacherReportListPage } from '../pages/TeacherReportListPage';
 import { ObservationFeedbackPage } from '../pages/ObservationFeedbackPage';
 import { TeacherTaskDetailPage } from '../pages/TeacherTaskDetailPage';
 import { TeacherTaskListPage } from '../pages/TeacherTaskListPage';
+import { GradeDirectorTasksPage } from '../pages/GradeDirectorTasksPage';
 import { canTaskAcceptObservation } from '../selectors/taskSelectors';
 import {
   type NavigationGuardRegistration,
@@ -50,6 +51,12 @@ function isApprovedCurrentTeacherRoute(route: MvpRoute) {
   return (
     route.name === 'retest' || route.name === 'report'
   );
+}
+
+function getCurrentRouteRole(route: MvpRoute): MvpRole | null {
+  if (route.name === 'supervision') return 'grade_director';
+  if (isApprovedCurrentTeacherRoute(route)) return 'head_teacher';
+  return null;
 }
 
 function replaceHash(hash: string) {
@@ -87,13 +94,13 @@ export function MvpApp({
     simulateNextWriteFailure,
     retestSchedules,
     teacherActionItems,
+    gradeDirectorSupervisionItems,
+    addCurrentSupervisionRecord,
     error,
   } = useDemo();
   const [route, setRoute] = useState<MvpRoute>(() => getMvpRoute());
   const [selectedRole, setSelectedRole] = useState<MvpRole | null>(() =>
-    isApprovedCurrentTeacherRoute(getMvpRoute())
-      ? 'head_teacher'
-      : readStoredRole(),
+    getCurrentRouteRole(getMvpRoute()) ?? readStoredRole(),
   );
   const [navigationGuard, setNavigationGuardState] =
     useState<NavigationGuardRegistration | null>(null);
@@ -434,13 +441,14 @@ export function MvpApp({
       role={selectedRole}
       activeNavigation={activeNavigation}
       onNavigate={navigate}
-      showMainContentPlate={!['teacherFeedback', 'report'].includes(route.name)}
+      showMainContentPlate={!['teacherFeedback', 'report', 'supervision'].includes(route.name)}
       showBottomNavigation={
         ![
           'teacherTaskDetail',
           'teacherFeedback',
           'retest',
           'report',
+          'supervision',
         ].includes(route.name)
       }
     >
@@ -548,11 +556,11 @@ export function MvpApp({
         />
       ) : null}
       {route.name === 'supervision' ? (
-        <PlaceholderPage
-          title="督办事项"
-          description="督办事项的详细处理暂未开放。"
-          icon="supervision"
-          action={{ label: '返回首页', onClick: () => navigate('#/mvp/home') }}
+        <GradeDirectorTasksPage
+          currentUser={currentUser}
+          items={gradeDirectorSupervisionItems}
+          loading={loading}
+          onSubmit={addCurrentSupervisionRecord}
         />
       ) : null}
       {route.name === 'profile' ? (

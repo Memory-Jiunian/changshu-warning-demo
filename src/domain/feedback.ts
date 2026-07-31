@@ -114,6 +114,8 @@ export interface AbnormalReportDraft {
 
 export type SupervisionMethod = 'message' | 'phone' | 'in_person' | 'resource_coordination';
 
+export type CurrentSupervisionMethod = 'in_person' | 'phone' | 'message' | 'other';
+
 export interface SupervisionRecord {
   id: string;
   taskId: string;
@@ -121,12 +123,25 @@ export interface SupervisionRecord {
   method: SupervisionMethod;
   summary: string;
   createdAt: string;
+  sourceActionId?: string;
+  sourceKind?: 'feedback_request' | 'retest_reminder' | 'intervention_reminder';
+  studentId?: string;
+  responsibleTeacherId?: string;
+  supervisedByNameSnapshot?: string;
+  otherMethod?: string;
+  submissionRequestId?: string;
 }
 
 export interface SupervisionInput {
   requestId: string;
   method: SupervisionMethod;
   summary: string;
+}
+
+export interface CurrentSupervisionInput {
+  submissionRequestId: string;
+  method: CurrentSupervisionMethod;
+  otherMethod?: string;
 }
 
 export interface Draft<T = unknown> {

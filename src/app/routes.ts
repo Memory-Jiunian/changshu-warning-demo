@@ -93,6 +93,9 @@ export function getMvpRoute(): MvpRoute {
       filter: query.get('filter') ?? undefined,
     };
   }
+  if (parts[0] === 'mvp' && parts[1] === 'grade-director' && parts[2] === 'tasks') {
+    return { name: 'supervision' };
+  }
   if (parts[0] === 'legacy' && parts[1] === 'counselor') return { name: 'legacyCounselor' };
   if (parts[0] === 'legacy' && parts[1] === 'principal') return { name: 'legacyPrincipal' };
   if (parts[0] === 'school-overview') return { name: 'legacyPrincipal' };
